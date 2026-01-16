@@ -1,8 +1,8 @@
 {
   "profiles": {
-    "FunctionApps": {
+    "FunctionApps.Host": {
       "commandName": "Project",
-      "commandLineArgs": "--port 7018",
+      "commandLineArgs": "--port 7016",
       "launchBrowser": false
     }
   }

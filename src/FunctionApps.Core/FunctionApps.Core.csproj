@@ -1,0 +1,37 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+   <PropertyGroup>
+      <TargetFramework>net8.0</TargetFramework>
+      <ImplicitUsings>enable</ImplicitUsings>
+      <Nullable>enable</Nullable>
+   </PropertyGroup>
+
+   <ItemGroup>
+      <!-- AutoMapper for DTO mapping -->
+      <PackageReference Include="AutoMapper" Version="12.0.1"/>
+      <PackageReference Include="AutoMapper.Extensions.Microsoft.DependencyInjection" Version="12.0.1"/>
+
+      <!-- Scrutor for assembly scanning -->
+      <PackageReference Include="Scrutor" Version="4.2.2"/>
+   </ItemGroup>
+
+   <!-- Project References -->
+   <ItemGroup>
+      <ProjectReference Include="..\FunctionApps.Entities\FunctionApps.Entities.csproj"/>
+      <ProjectReference Include="..\FunctionApps.Configuration\FunctionApps.Configuration.csproj"/>
+   </ItemGroup>
+
+   <ItemGroup>
+      <Folder Include="ConversationDetail\"/>
+      <Folder Include="References\Clients\"/>
+      <Folder Include="References\Configuration\"/>
+      <Folder Include="References\DTOs\"/>
+      <Folder Include="References\Mappers\"/>
+      <Folder Include="References\Services\"/>
+      <Folder Include="Shared\Exceptions\"/>
+      <Folder Include="Shared\Extensions\"/>
+      <Folder Include="Shared\Models\"/>
+      <Folder Include="UserDetail\"/>
+   </ItemGroup>
+
+</Project>
