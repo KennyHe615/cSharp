@@ -29,7 +29,6 @@
       <Folder Include="References\Mappers\"/>
       <Folder Include="References\Services\"/>
       <Folder Include="References\Validators\"/>
-      <Folder Include="Shared\Exceptions\"/>
       <Folder Include="Shared\Extensions\"/>
       <Folder Include="Shared\Models\"/>
    </ItemGroup>
