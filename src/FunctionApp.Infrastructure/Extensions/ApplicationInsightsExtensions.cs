@@ -72,43 +72,50 @@ public static class ApplicationInsightsExtensions
 
     private static void LogStructuredMessage(this ILogger logger, LogLevel logLevel, object data)
     {
-        var json = JsonSerializer.Serialize(data, _jsonOption);
+        var msg = JsonSerializer.Serialize(data, _jsonOption);
 
         switch (logLevel)
         {
             case LogLevel.Trace:
-                logger.LogTrace("========== Execution Details ==========\n{Json}", json);
+                logger.LogTrace("========== Execution Details ==========");
+                logger.LogTrace("{Msg}", msg);
 
                 break;
 
             case LogLevel.Debug:
-                logger.LogDebug("========== Execution Details ==========\n{Json}", json);
+                logger.LogDebug("========== Execution Details ==========");
+                logger.LogDebug("{Msg}", msg);
 
                 break;
 
             case LogLevel.Information:
-                logger.LogInformation("========== Execution Details ==========\n{Json}", json);
+                logger.LogInformation("========== Execution Details ==========");
+                logger.LogInformation("{Msg}", msg);
 
                 break;
 
             case LogLevel.Warning:
-                logger.LogWarning("========== Execution Details ==========\n{Json}", json);
+                logger.LogWarning("========== Execution Details ==========");
+                logger.LogWarning("{Msg}", msg);
 
                 break;
 
             case LogLevel.Error:
-                logger.LogError("========== Execution Details ==========\n{Json}", json);
+                logger.LogError("========== Execution Details ==========");
+                logger.LogError("{Msg}", msg);
 
                 break;
 
             case LogLevel.Critical:
-                logger.LogCritical("========== Execution Details ==========\n{Json}", json);
+                logger.LogCritical("========== Execution Details ==========");
+                logger.LogCritical("{Msg}", msg);
 
                 break;
 
             case LogLevel.None:
             default:
-                logger.LogInformation("========== Execution Details ==========\n{Json}", json);
+                logger.LogInformation("========== Execution Details ==========");
+                logger.LogInformation("{Msg}", msg);
 
                 break;
         }
