@@ -1,0 +1,15 @@
+﻿{
+    "ApplicationInsights": {
+        "ConnectionString": "string",
+        "EnableAdaptiveSampling": "bool",
+        "EnablePerformanceCounterCollectionModule": "bool",
+        "EnableAzureInstanceMetadataTelemetryModule": "bool",
+        "EnableDiagnosticsTelemetryModule": "bool",
+        "EnableHeartbeat": "bool",
+        "EnableQuickPulseMetricStream": "bool",
+        "LogLevel": {
+            "Default": "string",
+            "Microsoft": "string"
+        }
+    }
+}

@@ -1,14 +1,14 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FunctionApps.Host", "src\FunctionApps.Host\FunctionApps.Host.csproj", "{E87A4DBB-AEEB-42EF-917A-5850AB1879E1}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FunctionApp.Host", "src\FunctionApp.Host\FunctionApp.Host.csproj", "{E87A4DBB-AEEB-42EF-917A-5850AB1879E1}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FunctionApps.Core", "src\FunctionApps.Core\FunctionApps.Core.csproj", "{309C4400-C60C-409C-A677-F6B58D26B591}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FunctionApp.Application", "src\FunctionApp.Application\FunctionApp.Application.csproj", "{309C4400-C60C-409C-A677-F6B58D26B591}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FunctionApps.Infrastructure", "src\FunctionApps.Infrastructure\FunctionApps.Infrastructure.csproj", "{70AA6A92-AF44-4846-A0DE-BA834DE9B41D}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FunctionApp.Infrastructure", "src\FunctionApp.Infrastructure\FunctionApp.Infrastructure.csproj", "{70AA6A92-AF44-4846-A0DE-BA834DE9B41D}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FunctionApps.Configuration", "src\FunctionApps.Configuration\FunctionApps.Configuration.csproj", "{7150911B-FA69-493A-9463-38437C89D625}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FunctionApp.Configuration", "src\FunctionApp.Configuration\FunctionApp.Configuration.csproj", "{7150911B-FA69-493A-9463-38437C89D625}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FunctionApps.Entities", "src\FunctionApps.Entities\FunctionApps.Entities.csproj", "{D3DDF415-5F26-4636-A3FD-7C1945CC5A57}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FunctionApp.Domain", "src\FunctionApp.Domain\FunctionApp.Domain.csproj", "{D3DDF415-5F26-4636-A3FD-7C1945CC5A57}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

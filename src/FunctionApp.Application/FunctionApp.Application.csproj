@@ -4,6 +4,7 @@
       <TargetFramework>net8.0</TargetFramework>
       <ImplicitUsings>enable</ImplicitUsings>
       <Nullable>enable</Nullable>
+      <RootNamespace>FunctionApp.Application</RootNamespace>
    </PropertyGroup>
 
    <ItemGroup>
@@ -17,21 +18,20 @@
 
    <!-- Project References -->
    <ItemGroup>
-      <ProjectReference Include="..\FunctionApps.Entities\FunctionApps.Entities.csproj"/>
-      <ProjectReference Include="..\FunctionApps.Configuration\FunctionApps.Configuration.csproj"/>
+      <ProjectReference Include="..\FunctionApp.Domain\FunctionApp.Domain.csproj"/>
+      <ProjectReference Include="..\FunctionApp.Configuration\FunctionApp.Configuration.csproj"/>
    </ItemGroup>
 
    <ItemGroup>
-      <Folder Include="ConversationDetail\"/>
       <Folder Include="References\Clients\"/>
       <Folder Include="References\Configuration\"/>
       <Folder Include="References\DTOs\"/>
       <Folder Include="References\Mappers\"/>
       <Folder Include="References\Services\"/>
+      <Folder Include="References\Validators\"/>
       <Folder Include="Shared\Exceptions\"/>
       <Folder Include="Shared\Extensions\"/>
       <Folder Include="Shared\Models\"/>
-      <Folder Include="UserDetail\"/>
    </ItemGroup>
 
 </Project>

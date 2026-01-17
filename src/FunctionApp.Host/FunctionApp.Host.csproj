@@ -22,9 +22,9 @@
       <PackageReference Include="Microsoft.Azure.Functions.Worker.ApplicationInsights" Version="2.50.0"/>
 
       <!-- Project References -->
-      <ProjectReference Include="..\FunctionApps.Core\FunctionApps.Core.csproj"/>
-      <ProjectReference Include="..\FunctionApps.Infrastructure\FunctionApps.Infrastructure.csproj"/>
-      <ProjectReference Include="..\FunctionApps.Configuration\FunctionApps.Configuration.csproj"/>
+      <ProjectReference Include="..\FunctionApp.Infrastructure\FunctionApp.Infrastructure.csproj"/>
+      <ProjectReference Include="..\FunctionApp.Application\FunctionApp.Application.csproj"/>
+      <ProjectReference Include="..\FunctionApp.Configuration\FunctionApp.Configuration.csproj"/>
    </ItemGroup>
 
    <ItemGroup>

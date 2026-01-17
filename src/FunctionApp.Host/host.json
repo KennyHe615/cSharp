@@ -1,0 +1,28 @@
+{
+    "version": "2.0",
+    "logging": {
+        "logLevel": {
+            "default": "Information",
+            "FunctionApp": "Information",
+            "Worker": "Information",
+            "Workers": "Information",
+            "Microsoft.Azure.Functions.Worker": "Information",
+            "Microsoft": "Warning",
+            "Microsoft.Hosting.Lifetime": "Warning",
+            "Microsoft.AspNetCore": "Warning",
+            "Host.Startup": "Warning",
+            "Host.General": "Warning"
+        },
+        "applicationInsights": {
+            "samplingSettings": {
+                "isEnabled": false,
+                "excludedTypes": "Request"
+            },
+            "enableLiveMetricsFilters": true
+        },
+        "console": {
+            "isEnabled": true
+        }
+    },
+    "functionTimeout": "00:05:00"
+}

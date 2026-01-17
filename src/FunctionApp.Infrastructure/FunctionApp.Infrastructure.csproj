@@ -22,19 +22,14 @@
 
    <!-- Project References -->
    <ItemGroup>
-      <ProjectReference Include="..\FunctionApps.Entities\FunctionApps.Entities.csproj"/>
-      <ProjectReference Include="..\FunctionApps.Configuration\FunctionApps.Configuration.csproj"/>
+      <ProjectReference Include="..\FunctionApp.Application\FunctionApp.Application.csproj"/>
+      <ProjectReference Include="..\FunctionApp.Domain\FunctionApp.Domain.csproj"/>
+      <ProjectReference Include="..\FunctionApp.Configuration\FunctionApp.Configuration.csproj"/>
    </ItemGroup>
 
    <ItemGroup>
-      <Folder Include="Http\"/>
-      <Folder Include="Logging\"/>
-      <Folder Include="Monitoring\"/>
-      <Folder Include="Persistence\Configurations\"/>
+      <Folder Include="ExternalServices\Genesys\"/>
       <Folder Include="Persistence\Migrations\"/>
-      <Folder Include="Persistence\Repositories\"/>
-      <Folder Include="Security\"/>
-      <Folder Include="Storage\"/>
    </ItemGroup>
 
 </Project>
