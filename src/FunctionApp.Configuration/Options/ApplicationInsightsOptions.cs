@@ -1,15 +1,19 @@
-﻿namespace FunctionApp.Configuration.Options
+﻿using System.ComponentModel.DataAnnotations;
+
+
+namespace FunctionApp.Configuration.Options
 {
     /// <summary>
     /// Configuration options for Application Insights
     /// </summary>
-    public class ApplicationInsightsOptions
+    public sealed class ApplicationInsightsOptions
     {
         public const string SectionName = "ApplicationInsights";
 
         /// <summary>
         /// Connection string for Application Insights
         /// </summary>
+        [Required(ErrorMessage = "Application Insights connection string is required")]
         public string? ConnectionString { get; set; }
 
         /// <summary>
@@ -41,5 +45,11 @@
         /// Enable quick pulse metric stream
         /// </summary>
         public bool EnableQuickPulseMetricStream { get; set; } = true;
+
+        /// <summary>
+        /// Sampling rate percentage (1-100)
+        /// </summary>
+        [Range(1, 100, ErrorMessage = "Sampling rate must be between 1-100%")]
+        public int SamplingPercentage { get; set; } = 100;
     }
 }

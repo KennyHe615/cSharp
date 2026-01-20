@@ -1,15 +1,47 @@
 ﻿{
-    "ApplicationInsights": {
-        "ConnectionString": "string",
-        "EnableAdaptiveSampling": "bool",
-        "EnablePerformanceCounterCollectionModule": "bool",
-        "EnableAzureInstanceMetadataTelemetryModule": "bool",
-        "EnableDiagnosticsTelemetryModule": "bool",
-        "EnableHeartbeat": "bool",
-        "EnableQuickPulseMetricStream": "bool",
-        "LogLevel": {
-            "Default": "string",
-            "Microsoft": "string"
-        }
+  "ApplicationInsights": {
+    "ConnectionString": "string",
+    "EnableAdaptiveSampling": "bool",
+    "EnablePerformanceCounterCollectionModule": "bool",
+    "EnableAzureInstanceMetadataTelemetryModule": "bool",
+    "EnableDiagnosticsTelemetryModule": "bool",
+    "EnableHeartbeat": "bool",
+    "EnableQuickPulseMetricStream": "bool",
+    "SamplingPercentage": "int",
+    "LogLevel": {
+      "Default": "string",
+      "Microsoft": "string"
     }
+  },
+  "FlurlClient": {
+    "BaseUrl": "string",
+    "TimeoutSeconds": "int",
+    "OAuthToken": "string",
+    "RetryPolicyOptions": {
+      "MaxAttempts": "int",
+      "Delay": "string",
+      "MaxDelay": "string",
+      "UseExponentialBackoff": "bool",
+      "RetryStatusCodes": "[int]",
+      "NamedRetryPolicies": {
+        "Idempotent": {
+          "MaxAttempts": "int",
+          "StatusCodes": "[int]",
+          "UseExponentialBackoff": "bool",
+          "InitialDelay": "string"
+        },
+        "NonIdempotent": {
+          "MaxAttempts": "int",
+          "StatusCodes": "[int]",
+          "UseExponentialBackoff": "bool",
+          "InitialDelay": "string"
+        }
+      }
+    },
+    "CircuitBreaker": {
+      "ExceptionsAllowedBeforeBreaking": "int",
+      "DurationOfBreak": "string",
+      "HandledStatusCodes": "[int]"
+    }
+  }
 }

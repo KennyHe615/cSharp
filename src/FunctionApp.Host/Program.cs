@@ -11,15 +11,13 @@ using FunctionApp.Infrastructure;
 var builder = new HostBuilder().ConfigureFunctionsWorkerDefaults()
                                .ConfigureAppConfiguration((context, configBuilder) =>
                                                           {
-                                                              var env = context.HostingEnvironment.EnvironmentName;
+                                                              string env = context.HostingEnvironment.EnvironmentName;
 
                                                               // Always load local settings in Development
                                                               configBuilder.AddJsonFile(env == "Development"
-                                                                   ? "local.settings.json"
-                                                                   // Load environment-specific appsettings
-                                                                   : $"appsettings.{env}.json",
-                                                               optional: true,
-                                                               reloadOnChange: true);
+                                                                                            ? "local.settings.json"
+                                                                                            // Load environment-specific appsettings
+                                                                                            : $"appsettings.{env}.json", optional: true, reloadOnChange: true);
 
                                                               // Always load environment variables
                                                               configBuilder.AddEnvironmentVariables();

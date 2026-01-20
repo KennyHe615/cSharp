@@ -1,35 +1,37 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-   <PropertyGroup>
-      <TargetFramework>net8.0</TargetFramework>
-      <ImplicitUsings>enable</ImplicitUsings>
-      <Nullable>enable</Nullable>
-   </PropertyGroup>
+    <PropertyGroup>
+        <TargetFramework>net8.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+    </PropertyGroup>
 
-   <ItemGroup>
-      <!-- Entity Framework Core -->
-      <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="8.0.0"/>
-      <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="8.0.0"/>
-      <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="8.0.0"/>
+    <ItemGroup>
+        <!-- Entity Framework Core -->
+        <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="8.0.0"/>
+        <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="8.0.0"/>
+        <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="8.0.0"/>
 
-      <!-- HTTP Client - Flurl-->
-      <PackageReference Include="Flurl.Http" Version="4.0.0"/>
+        <!-- HTTP Client -->
+        <PackageReference Include="Flurl.Http" Version="4.0.0"/>
+        <PackageReference Include="Polly" Version="8.4.2"/>
 
-      <!-- Azure Services -->
-      <PackageReference Include="Azure.Security.KeyVault.Secrets" Version="4.5.0"/>
-      <PackageReference Include="Azure.Storage.Blobs" Version="12.19.1"/>
-   </ItemGroup>
+        <!-- Azure Services -->
+        <PackageReference Include="Azure.Security.KeyVault.Secrets" Version="4.5.0"/>
+        <PackageReference Include="Azure.Storage.Blobs" Version="12.19.1"/>
+    </ItemGroup>
 
-   <!-- Project References -->
-   <ItemGroup>
-      <ProjectReference Include="..\FunctionApp.Application\FunctionApp.Application.csproj"/>
-      <ProjectReference Include="..\FunctionApp.Domain\FunctionApp.Domain.csproj"/>
-      <ProjectReference Include="..\FunctionApp.Configuration\FunctionApp.Configuration.csproj"/>
-   </ItemGroup>
+    <!-- Project References -->
+    <ItemGroup>
+        <ProjectReference Include="..\FunctionApp.Application\FunctionApp.Application.csproj"/>
+        <ProjectReference Include="..\FunctionApp.Domain\FunctionApp.Domain.csproj"/>
+        <ProjectReference Include="..\FunctionApp.Configuration\FunctionApp.Configuration.csproj"/>
+    </ItemGroup>
 
-   <ItemGroup>
-      <Folder Include="ExternalServices\Genesys\"/>
-      <Folder Include="Persistence\Migrations\"/>
-   </ItemGroup>
+    <ItemGroup>
+        <Folder Include="ExternalServices\Genesys\"/>
+        <Folder Include="Factories\"/>
+        <Folder Include="Persistence\Migrations\"/>
+    </ItemGroup>
 
 </Project>

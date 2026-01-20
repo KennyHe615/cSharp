@@ -14,6 +14,14 @@ public static class ConfigurationExtensions
     /// </summary>
     public static void AddFunctionAppConfiguration(this IServiceCollection services, IConfiguration configuration)
     {
-        services.Configure<ApplicationInsightsOptions>(configuration.GetSection(ApplicationInsightsOptions.SectionName));
+        services.AddOptions<ApplicationInsightsOptions>()
+                .Bind(configuration.GetSection(ApplicationInsightsOptions.SectionName))
+                .ValidateDataAnnotations()
+                .ValidateOnStart();
+
+        services.AddOptions<FlurlClientOptions>()
+                .Bind(configuration.GetSection(FlurlClientOptions.SectionName))
+                .ValidateDataAnnotations()
+                .ValidateOnStart();
     }
 }

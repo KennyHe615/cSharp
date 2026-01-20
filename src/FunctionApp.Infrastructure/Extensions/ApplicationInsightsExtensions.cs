@@ -14,13 +14,12 @@ public static class ApplicationInsightsExtensions
                                                                     IndentSize = 4,
                                                                 };
 
-    public static void AddApplicationInsightsCustom(this IServiceCollection services)
+    public static void AddApplicationInsights(this IServiceCollection services)
     {
         services.AddApplicationInsightsTelemetryWorkerService(options =>
                                                               {
                                                                   // Configure telemetry options
-                                                                  options.EnableAdaptiveSampling =
-                                                                      false;// Disable sampling to ensure all logs are captured
+                                                                  options.EnableAdaptiveSampling = false;// Disable sampling to ensure all logs are captured
                                                                   options.EnablePerformanceCounterCollectionModule = false;
                                                                   options.EnableAzureInstanceMetadataTelemetryModule = false;
                                                                   options.EnableDiagnosticsTelemetryModule = false;
@@ -34,16 +33,11 @@ public static class ApplicationInsightsExtensions
                                                     // Ensure Information level logs reach Application Insights
                                                     options.Rules.Add(new
                                                                           LoggerFilterRule("Microsoft.Extensions.Logging.ApplicationInsights.ApplicationInsightsLoggerProvider",
-                                                                           "FunctionApp",
-                                                                           LogLevel.Information,
-                                                                           null));
+                                                                                           "FunctionApp", LogLevel.Information, null));
 
-                                                    options.Rules
-                                                           .Add(new
-                                                                    LoggerFilterRule("Microsoft.Extensions.Logging.ApplicationInsights.ApplicationInsightsLoggerProvider",
-                                                                                     null,
-                                                                                     LogLevel.Information,
-                                                                                     null));
+                                                    options.Rules.Add(new
+                                                                          LoggerFilterRule("Microsoft.Extensions.Logging.ApplicationInsights.ApplicationInsightsLoggerProvider",
+                                                                                           null, LogLevel.Information, null));
                                                 });
     }
 
@@ -72,7 +66,7 @@ public static class ApplicationInsightsExtensions
 
     private static void LogStructuredMessage(this ILogger logger, LogLevel logLevel, object data)
     {
-        var msg = JsonSerializer.Serialize(data, _jsonOption);
+        string msg = JsonSerializer.Serialize(data, _jsonOption);
 
         switch (logLevel)
         {
