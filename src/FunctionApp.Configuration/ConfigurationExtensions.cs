@@ -33,5 +33,10 @@ public static class ConfigurationExtensions
                 .Bind(configuration.GetSection(KeyVaultOptions.SectionName))
                 .ValidateDataAnnotations()
                 .ValidateOnStart();
+
+        services.AddOptions<DatabaseOptions>()
+                .Bind(configuration.GetSection(DatabaseOptions.SectionName))
+                .ValidateDataAnnotations()
+                .ValidateOnStart();
     }
 }

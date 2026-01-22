@@ -49,5 +49,19 @@
         "ClientId": "string",
         "ClientSecret": "string",
         "ApiEndpoint": "string (URL)"
+    },
+    "KeyVault": {
+        "VaultUri": "string (URL)",
+        "CacheDurationMinutes": "int",
+        "MaxRetryAttempts": "int",
+        "RetryDelayMilliseconds": "int",
+        "UseExponentialBackoff": "bool"
+    },
+    "Database": {
+        "ConnectionString": "string",
+        "MaxRetryCount": "int",
+        "CommandTimeout": "int",
+        "EnableDetailedErrors": "bool",
+        "EnableSensitiveDataLogging": "bool"
     }
 }
