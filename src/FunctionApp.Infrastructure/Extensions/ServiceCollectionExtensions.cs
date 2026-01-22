@@ -1,5 +1,7 @@
 ﻿using FunctionApp.Infrastructure.ExternalServices.FlurlHttp;
 using FunctionApp.Infrastructure.ExternalServices.Genesys;
+using FunctionApp.Infrastructure.KeyVault;
+using FunctionApp.Infrastructure.Security;
 
 using Microsoft.Extensions.DependencyInjection;
 
@@ -16,7 +18,10 @@ public static class ServiceCollectionExtensions
 
         services.AddFlurlHttpClient();
 
+        services.AddKeyVaultSecretProvider();
+
         services.AddScoped<IGenesysService, GenesysService>();
+
         // services.AddBlobStorageClient();
         // services.AddRepositories();
     }

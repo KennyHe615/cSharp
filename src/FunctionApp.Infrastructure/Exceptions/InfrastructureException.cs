@@ -10,7 +10,7 @@ public abstract class InfrastructureException : Exception
     {
     }
 
-    protected InfrastructureException(string message, Exception innerException) : base(message, innerException)
+    protected InfrastructureException(string message, Exception? innerException) : base(message, innerException)
     {
     }
 }

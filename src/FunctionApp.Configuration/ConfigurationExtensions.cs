@@ -15,17 +15,22 @@ public static class ConfigurationExtensions
     public static void AddFunctionAppConfiguration(this IServiceCollection services, IConfiguration configuration)
     {
         services.AddOptions<ApplicationInsightsOptions>()
-                .Bind(config: configuration.GetSection(ApplicationInsightsOptions.SectionName))
+                .Bind(configuration.GetSection(ApplicationInsightsOptions.SectionName))
                 .ValidateDataAnnotations()
                 .ValidateOnStart();
 
         services.AddOptions<FlurlClientOptions>()
-                .Bind(config: configuration.GetSection(FlurlClientOptions.SectionName))
+                .Bind(configuration.GetSection(FlurlClientOptions.SectionName))
                 .ValidateDataAnnotations()
                 .ValidateOnStart();
 
         services.AddOptions<GenesysOptions>()
-                .Bind(config: configuration.GetSection(GenesysOptions.SectionName))
+                .Bind(configuration.GetSection(GenesysOptions.SectionName))
+                .ValidateDataAnnotations()
+                .ValidateOnStart();
+
+        services.AddOptions<KeyVaultOptions>()
+                .Bind(configuration.GetSection(KeyVaultOptions.SectionName))
                 .ValidateDataAnnotations()
                 .ValidateOnStart();
     }

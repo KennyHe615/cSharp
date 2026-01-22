@@ -17,8 +17,4 @@
         <PackageReference Include="Microsoft.Azure.Functions.Worker.ApplicationInsights" Version="2.50.0"/>
     </ItemGroup>
 
-    <ItemGroup>
-        <Folder Include="Factories\"/>
-    </ItemGroup>
-
 </Project>
