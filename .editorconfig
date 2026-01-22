@@ -12,99 +12,24 @@ trim_trailing_whitespace = true
 indent_style = space
 indent_size = 4
 
-############################################################
-# C# files
-############################################################
-# New line preferences
-csharp_new_line_before_open_brace = all
-csharp_new_line_before_else = true
-csharp_new_line_before_catch = true
-csharp_new_line_before_finally = true
-csharp_new_line_between_query_expression_clauses = true
-
-# Using directives
+[*.cs]
+# Keep usings grouped and stable across tooling
 dotnet_sort_system_directives_first = true
 dotnet_separate_import_directive_groups = true
 
-# Namespace style (C# 10+)
+# Prefer file-scoped namespaces (C# 10+); set to suggestion to avoid breaking builds in older projects
 csharp_style_namespace_declarations = file_scoped:suggestion
 
-# "var" preferences
+# "var" policy (common enterprise default: explicit types)
 csharp_style_var_for_built_in_types = false:suggestion
 csharp_style_var_when_type_is_apparent = false:suggestion
 csharp_style_var_elsewhere = false:suggestion
 
-# Expression-bodied members
-csharp_style_expression_bodied_methods = false:suggestion
-csharp_style_expression_bodied_constructors = false:suggestion
-csharp_style_expression_bodied_operators = false:suggestion
-csharp_style_expression_bodied_properties = true:suggestion
-csharp_style_expression_bodied_indexers = true:suggestion
-csharp_style_expression_bodied_accessors = true:suggestion
-
-# Null-checking
-csharp_style_throw_expression = true:suggestion
-
-############################################################
-# Naming conventions
-############################################################
-
-# Interfaces should begin with I
-dotnet_naming_rule.interfaces_should_be_prefixed_with_i.severity = warning
-dotnet_naming_rule.interfaces_should_be_prefixed_with_i.symbols = interfaces
-dotnet_naming_rule.interfaces_should_be_prefixed_with_i.style = prefix_i
-
-dotnet_naming_symbols.interfaces.applicable_kinds = interface
-dotnet_naming_symbols.interfaces.applicable_accessibilities = *
-dotnet_naming_symbols.interfaces.required_modifiers =
-
-dotnet_naming_style.prefix_i.required_prefix = I
-dotnet_naming_style.prefix_i.capitalization = pascal_case
-
-# Private fields should begin with _
-dotnet_naming_rule.private_fields_should_be_prefixed_with_underscore.severity = warning
-dotnet_naming_rule.private_fields_should_be_prefixed_with_underscore.symbols = private_fields
-dotnet_naming_rule.private_fields_should_be_prefixed_with_underscore.style = underscore_prefix
-
-dotnet_naming_symbols.private_fields.applicable_kinds = field
-dotnet_naming_symbols.private_fields.applicable_accessibilities = private
-
-dotnet_naming_style.underscore_prefix.required_prefix = _
-dotnet_naming_style.underscore_prefix.capitalization = camel_case
-
-############################################################
-# Code quality
-############################################################
-dotnet_diagnostic.ide0058.severity = warning # Remove unnecessary expressions
-dotnet_diagnostic.ide0060.severity = warning # Remove unused parameters
-dotnet_diagnostic.ide0090.severity = suggestion # Simplify new expression
-dotnet_diagnostic.ca1822.severity = suggestion # Mark members as static
-
-############################################################
-# Nullable reference types
-############################################################
-dotnet_diagnostic.cs8600.severity = warning
-dotnet_diagnostic.cs8602.severity = warning
-dotnet_diagnostic.cs8603.severity = warning
-dotnet_diagnostic.cs8604.severity = warning
+# Braces/newlines (stable, widely accepted)
+csharp_new_line_before_open_brace = all
+csharp_new_line_before_else = true
+csharp_new_line_before_catch = true
+csharp_new_line_before_finally = true
 
 # ReSharper properties
-resharper_csharp_max_line_length = 172
-resharper_indent_anonymous_method_block = true
-resharper_wrap_arguments_style = wrap_if_long
-resharper_wrap_before_first_method_call = false
-
-############################################################
-# Tests
-############################################################
-[*.{Tests,Test}.cs]
-dotnet_diagnostic.ca1707.severity = none # Allow underscores in test names
-
-############################################################
-# JSON / YAML
-############################################################
-[*.json]
-indent_size = 2
-
-[*.yml]
-indent_size = 2
+resharper_csharp_max_line_length = 120

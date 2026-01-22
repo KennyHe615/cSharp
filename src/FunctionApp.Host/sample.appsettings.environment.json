@@ -1,47 +1,53 @@
 ﻿{
-  "ApplicationInsights": {
-    "ConnectionString": "string",
-    "EnableAdaptiveSampling": "bool",
-    "EnablePerformanceCounterCollectionModule": "bool",
-    "EnableAzureInstanceMetadataTelemetryModule": "bool",
-    "EnableDiagnosticsTelemetryModule": "bool",
-    "EnableHeartbeat": "bool",
-    "EnableQuickPulseMetricStream": "bool",
-    "SamplingPercentage": "int",
-    "LogLevel": {
-      "Default": "string",
-      "Microsoft": "string"
-    }
-  },
-  "FlurlClient": {
-    "BaseUrl": "string",
-    "TimeoutSeconds": "int",
-    "OAuthToken": "string",
-    "RetryPolicyOptions": {
-      "MaxAttempts": "int",
-      "Delay": "string",
-      "MaxDelay": "string",
-      "UseExponentialBackoff": "bool",
-      "RetryStatusCodes": "[int]",
-      "NamedRetryPolicies": {
-        "Idempotent": {
-          "MaxAttempts": "int",
-          "StatusCodes": "[int]",
-          "UseExponentialBackoff": "bool",
-          "InitialDelay": "string"
-        },
-        "NonIdempotent": {
-          "MaxAttempts": "int",
-          "StatusCodes": "[int]",
-          "UseExponentialBackoff": "bool",
-          "InitialDelay": "string"
+    "ApplicationInsights": {
+        "ConnectionString": "string",
+        "EnableAdaptiveSampling": "bool",
+        "EnablePerformanceCounterCollectionModule": "bool",
+        "EnableAzureInstanceMetadataTelemetryModule": "bool",
+        "EnableDiagnosticsTelemetryModule": "bool",
+        "EnableHeartbeat": "bool",
+        "EnableQuickPulseMetricStream": "bool",
+        "SamplingPercentage": "int",
+        "LogLevel": {
+            "Default": "string",
+            "Microsoft": "string"
         }
-      }
     },
-    "CircuitBreaker": {
-      "ExceptionsAllowedBeforeBreaking": "int",
-      "DurationOfBreak": "string",
-      "HandledStatusCodes": "[int]"
+    "FlurlClient": {
+        "TimeoutSeconds": "int",
+        "RetryStrategies": {
+            "SafeMethods": {
+                "MaxAttempts": "int",
+                "StatusCodes": "[int]",
+                "UseExponentialBackoff": "bool",
+                "InitialDelay": "string (TimeSpan format: HH:mm:ss)",
+                "MaxDelay": "string (TimeSpan format: HH:mm:ss)"
+            },
+            "RateLimited": {
+                "MaxAttempts": "int",
+                "StatusCodes": "[int]",
+                "UseExponentialBackoff": "bool",
+                "InitialDelay": "string (TimeSpan format: HH:mm:ss)",
+                "MaxDelay": "string (TimeSpan format: HH:mm:ss)"
+            },
+            "UnsafeMethods": {
+                "MaxAttempts": "int",
+                "StatusCodes": "[int]",
+                "UseExponentialBackoff": "bool",
+                "InitialDelay": "string (TimeSpan format: HH:mm:ss)",
+                "MaxDelay": "string (TimeSpan format: HH:mm:ss)"
+            }
+        },
+        "CircuitBreaker": {
+            "ExceptionsAllowedBeforeBreaking": "int",
+            "DurationOfBreak": "string (TimeSpan format: HH:mm:ss)",
+            "HandledStatusCodes": "[int]"
+        }
+    },
+    "Genesys": {
+        "OAuthEndpoint": "string (URL)",
+        "ClientId": "string",
+        "ClientSecret": "string",
+        "ApiEndpoint": "string (URL)"
     }
-  }
 }

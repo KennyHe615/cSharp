@@ -1,4 +1,5 @@
 ﻿using FunctionApp.Infrastructure.ExternalServices.FlurlHttp;
+using FunctionApp.Infrastructure.ExternalServices.Genesys;
 
 using Microsoft.Extensions.DependencyInjection;
 
@@ -10,7 +11,12 @@ public static class ServiceCollectionExtensions
     public static void AddInfrastructureServices(this IServiceCollection services)
     {
         services.AddApplicationInsights();
+
+        services.AddMemoryCache();
+
         services.AddFlurlHttpClient();
+
+        services.AddScoped<IGenesysService, GenesysService>();
         // services.AddBlobStorageClient();
         // services.AddRepositories();
     }

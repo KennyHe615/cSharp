@@ -8,37 +8,45 @@ namespace FunctionApp.Infrastructure.Extensions;
 
 public static class ApplicationInsightsExtensions
 {
-    private static readonly JsonSerializerOptions _jsonOption = new JsonSerializerOptions
-                                                                {
-                                                                    WriteIndented = true,
-                                                                    IndentSize = 4,
-                                                                };
+    private static readonly JsonSerializerOptions JsonOption = new() { WriteIndented = true, IndentSize = 4 };
 
     public static void AddApplicationInsights(this IServiceCollection services)
     {
-        services.AddApplicationInsightsTelemetryWorkerService(options =>
-                                                              {
-                                                                  // Configure telemetry options
-                                                                  options.EnableAdaptiveSampling = false;// Disable sampling to ensure all logs are captured
-                                                                  options.EnablePerformanceCounterCollectionModule = false;
-                                                                  options.EnableAzureInstanceMetadataTelemetryModule = false;
-                                                                  options.EnableDiagnosticsTelemetryModule = false;
-                                                                  options.EnableHeartbeat = false;
-                                                                  options.EnableQuickPulseMetricStream = false;
-                                                              });
+        services.AddApplicationInsightsTelemetryWorkerService(options: options =>
+                                                                       {
+                                                                           // Configure telemetry options
+                                                                           options.EnableAdaptiveSampling =
+                                                                               false; // Disable sampling to ensure all logs are captured
+                                                                           options
+                                                                                   .EnablePerformanceCounterCollectionModule =
+                                                                               false;
+                                                                           options
+                                                                                   .EnableAzureInstanceMetadataTelemetryModule =
+                                                                               false;
+                                                                           options.EnableDiagnosticsTelemetryModule =
+                                                                               false;
+                                                                           options.EnableHeartbeat = false;
+                                                                           options.EnableQuickPulseMetricStream = false;
+                                                                       });
 
         // Configure logging specifically for Application Insights
-        services.Configure<LoggerFilterOptions>(options =>
-                                                {
-                                                    // Ensure Information level logs reach Application Insights
-                                                    options.Rules.Add(new
-                                                                          LoggerFilterRule("Microsoft.Extensions.Logging.ApplicationInsights.ApplicationInsightsLoggerProvider",
-                                                                                           "FunctionApp", LogLevel.Information, null));
+        services.Configure<LoggerFilterOptions>(configureOptions: options =>
+                                                                  {
+                                                                      // Ensure Information level logs reach Application Insights
+                                                                      options.Rules.Add(
+                                                                          item: new LoggerFilterRule(
+                                                                              "Microsoft.Extensions.Logging.ApplicationInsights.ApplicationInsightsLoggerProvider",
+                                                                              "FunctionApp",
+                                                                              LogLevel.Information,
+                                                                              null));
 
-                                                    options.Rules.Add(new
-                                                                          LoggerFilterRule("Microsoft.Extensions.Logging.ApplicationInsights.ApplicationInsightsLoggerProvider",
-                                                                                           null, LogLevel.Information, null));
-                                                });
+                                                                      options.Rules.Add(
+                                                                          item: new LoggerFilterRule(
+                                                                              "Microsoft.Extensions.Logging.ApplicationInsights.ApplicationInsightsLoggerProvider",
+                                                                              null,
+                                                                              LogLevel.Information,
+                                                                              null));
+                                                                  });
     }
 
     // Convenience methods for common log levels
@@ -66,7 +74,7 @@ public static class ApplicationInsightsExtensions
 
     private static void LogStructuredMessage(this ILogger logger, LogLevel logLevel, object data)
     {
-        string msg = JsonSerializer.Serialize(data, _jsonOption);
+        string msg = JsonSerializer.Serialize(data, JsonOption);
 
         switch (logLevel)
         {
