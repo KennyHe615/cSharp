@@ -1,5 +1,3 @@
-using System.Text;
-
 using FunctionApp.Configuration.Options;
 using FunctionApp.Infrastructure.Security;
 
@@ -8,16 +6,15 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 
-namespace FunctionApp.Infrastructure.ExternalServices.Genesys;
+namespace FunctionApp.Infrastructure.ExternalServices.Genesys.Shared.Token;
 
 public sealed class GenesysTokenProvider(IOptions<GenesysOptions> options,
-                                         TokenHttpClient tokenHttpClient,
+                                         GenesysTokenClient tokenClient,
                                          IMemoryCache cache,
                                          ILogger<GenesysTokenProvider> logger) : ITokenProvider
 {
     private readonly GenesysOptions _options = options.Value;
     private readonly SemaphoreSlim _tokenLock = new(1, 1);
-
     private const string TokenCacheKey = "GenesysOAuthToken";
 
     public async Task<string> GetValidTokenAsync(CancellationToken cancellationToken = default)
@@ -66,20 +63,15 @@ public sealed class GenesysTokenProvider(IOptions<GenesysOptions> options,
         }
     }
 
+    #region ========== *** Private Methods *** ==========
+
     private async Task<string> FetchAndCacheTokenAsync(CancellationToken cancellationToken)
     {
-        string credentials = $"{_options.ClientId}:{_options.ClientSecret}";
-        string base64Credentials = Convert.ToBase64String(Encoding.UTF8.GetBytes(credentials));
+        logger.LogInformation("Requesting new Genesys OAuth token");
 
-        Dictionary<string, string> headers = new()
-                                             {
-                                                 { "Authorization", $"Basic {base64Credentials}" },
-                                                 { "Content-Type", "application/x-www-form-urlencoded" }
-                                             };
-
-        GenesysTokenResponseDto? tokenResponse = await tokenHttpClient.PostAsync<GenesysTokenResponseDto>(
-            "/oauth/token?grant_type=client_credentials",
-            headers,
+        GenesysTokenResponseDto? tokenResponse = await tokenClient.FetchTokenAsync(
+            _options.ClientId,
+            _options.ClientSecret,
             cancellationToken);
 
         if (tokenResponse?.AccessToken == null)
@@ -87,11 +79,14 @@ public sealed class GenesysTokenProvider(IOptions<GenesysOptions> options,
             throw new InvalidOperationException("Failed to retrieve access token from Genesys");
         }
 
+        // Cache for the duration specified by Genesys, minus a 5-minute safety margin
         TimeSpan cacheExpiration = TimeSpan.FromSeconds(tokenResponse.ExpiresIn - 300);
         cache.Set(TokenCacheKey, tokenResponse.AccessToken, cacheExpiration);
 
-        logger.LogInformation("Genesys token cached successfully, expires in {ExpiresIn}s", tokenResponse.ExpiresIn);
+        logger.LogInformation("Genesys token cached successfully. Expires in {ExpiresIn}s", tokenResponse.ExpiresIn);
 
         return tokenResponse.AccessToken;
     }
+
+    #endregion
 }
