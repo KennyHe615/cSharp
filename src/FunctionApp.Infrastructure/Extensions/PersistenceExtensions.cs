@@ -1,5 +1,7 @@
 using FunctionApp.Configuration.Options;
+using FunctionApp.Domain.Repositories;
 using FunctionApp.Infrastructure.Persistence.DbContext;
+using FunctionApp.Infrastructure.Persistence.Repositories;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -13,8 +15,11 @@ public static class PersistenceExtensions
     public static void AddPersistence(this IServiceCollection services)
     {
         services.AddDatabase();
-        // services.AddRepositories(); // We can add this later
+
+        services.AddUnitOfWork();
     }
+
+    #region ========== *** Private Methods *** ==========
 
     private static void AddDatabase(this IServiceCollection services)
     {
@@ -31,7 +36,6 @@ public static class PersistenceExtensions
                                                                                  sqlOptions.CommandTimeout(
                                                                                      databaseOptions.CommandTimeout);
                                                                              });
-
                                                         if (databaseOptions.EnableDetailedErrors)
                                                         {
                                                             options.EnableDetailedErrors();
@@ -43,4 +47,11 @@ public static class PersistenceExtensions
                                                         }
                                                     });
     }
+
+    private static void AddUnitOfWork(this IServiceCollection services)
+    {
+        services.AddScoped<IUnitOfWork, UnitOfWork>();
+    }
+
+    #endregion
 }
