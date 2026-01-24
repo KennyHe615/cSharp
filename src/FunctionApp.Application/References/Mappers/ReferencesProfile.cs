@@ -21,6 +21,16 @@ public class ReferencesProfile : Profile
             .ForMember(dest => dest.AppCreatedAt, opt => opt.Ignore())
             .ForMember(dest => dest.AppUpdatedAt, opt => opt.Ignore());
 
+        // Presence Definition Mapping
+        CreateMap<PresenceDefinitionDto, PresenceDefinition>()
+            .ForMember(dest => dest.LanguageLabel,
+                       opt => opt.MapFrom(src => src.LanguageLabels != null
+                                              ? src.LanguageLabels.GetValueOrDefault("en") ??
+                                                src.LanguageLabels.GetValueOrDefault("en_US") ?? "N/A"
+                                              : "N/A"))
+            .ForMember(dest => dest.AppCreatedAt, opt => opt.Ignore())
+            .ForMember(dest => dest.AppUpdatedAt, opt => opt.Ignore());
+
         // Add other reference mappings here (e.g., LanguageDto -> Language)
         // CreateMap<LanguageDto, Language>()
         //     .ForMember(dest => dest.AppCreatedAt, opt => opt.Ignore())
