@@ -1,36 +1,32 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-   <PropertyGroup>
-      <TargetFramework>net8.0</TargetFramework>
-      <ImplicitUsings>enable</ImplicitUsings>
-      <Nullable>enable</Nullable>
-      <RootNamespace>FunctionApp.Application</RootNamespace>
-   </PropertyGroup>
+    <PropertyGroup>
+        <TargetFramework>net8.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <RootNamespace>FunctionApp.Application</RootNamespace>
+    </PropertyGroup>
 
-   <ItemGroup>
-      <!-- AutoMapper for DTO mapping -->
-      <PackageReference Include="AutoMapper" Version="12.0.1"/>
-      <PackageReference Include="AutoMapper.Extensions.Microsoft.DependencyInjection" Version="12.0.1"/>
+    <ItemGroup>
+        <!-- AutoMapper for DTO mapping -->
+        <PackageReference Include="AutoMapper" Version="12.0.1"/>
+        <PackageReference Include="AutoMapper.Extensions.Microsoft.DependencyInjection" Version="12.0.1"/>
 
-      <!-- Scrutor for assembly scanning -->
-      <PackageReference Include="Scrutor" Version="4.2.2"/>
-   </ItemGroup>
+        <!-- Scrutor for assembly scanning -->
+        <PackageReference Include="Scrutor" Version="4.2.2"/>
+    </ItemGroup>
 
-   <!-- Project References -->
-   <ItemGroup>
-      <ProjectReference Include="..\FunctionApp.Domain\FunctionApp.Domain.csproj"/>
-      <ProjectReference Include="..\FunctionApp.Configuration\FunctionApp.Configuration.csproj"/>
-   </ItemGroup>
+    <!-- Project References -->
+    <ItemGroup>
+        <ProjectReference Include="..\FunctionApp.Domain\FunctionApp.Domain.csproj"/>
+        <ProjectReference Include="..\FunctionApp.Configuration\FunctionApp.Configuration.csproj"/>
+    </ItemGroup>
 
-   <ItemGroup>
-      <Folder Include="References\Clients\"/>
-      <Folder Include="References\Configuration\"/>
-      <Folder Include="References\DTOs\"/>
-      <Folder Include="References\Mappers\"/>
-      <Folder Include="References\Services\"/>
-      <Folder Include="References\Validators\"/>
-      <Folder Include="Shared\Extensions\"/>
-      <Folder Include="Shared\Models\"/>
-   </ItemGroup>
+    <ItemGroup>
+        <Folder Include="References\Configuration\"/>
+        <Folder Include="References\Validators\"/>
+        <Folder Include="Shared\Extensions\"/>
+        <Folder Include="Shared\Models\"/>
+    </ItemGroup>
 
 </Project>

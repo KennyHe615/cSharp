@@ -12,41 +12,52 @@ public static class ApplicationInsightsExtensions
 
     public static void AddApplicationInsights(this IServiceCollection services)
     {
-        services.AddApplicationInsightsTelemetryWorkerService(options: options =>
-                                                                       {
-                                                                           // Configure telemetry options
-                                                                           options.EnableAdaptiveSampling =
-                                                                               false; // Disable sampling to ensure all logs are captured
-                                                                           options
-                                                                                   .EnablePerformanceCounterCollectionModule =
-                                                                               false;
-                                                                           options
-                                                                                   .EnableAzureInstanceMetadataTelemetryModule =
-                                                                               false;
-                                                                           options.EnableDiagnosticsTelemetryModule =
-                                                                               false;
-                                                                           options.EnableHeartbeat = false;
-                                                                           options.EnableQuickPulseMetricStream = false;
-                                                                       });
+        services.AddApplicationInsightsTelemetryWorkerService(options =>
+                                                              {
+                                                                  // Configure telemetry options
+                                                                  options.EnableAdaptiveSampling =
+                                                                      false; // Disable sampling to ensure all logs are captured
+                                                                  options.EnablePerformanceCounterCollectionModule =
+                                                                      false;
+                                                                  options.EnableAzureInstanceMetadataTelemetryModule =
+                                                                      false;
+                                                                  options.EnableDiagnosticsTelemetryModule = false;
+                                                                  options.EnableHeartbeat = false;
+                                                                  options.EnableQuickPulseMetricStream = false;
+                                                              });
 
         // Configure logging specifically for Application Insights
-        services.Configure<LoggerFilterOptions>(configureOptions: options =>
-                                                                  {
-                                                                      // Ensure Information level logs reach Application Insights
-                                                                      options.Rules.Add(
-                                                                          item: new LoggerFilterRule(
-                                                                              "Microsoft.Extensions.Logging.ApplicationInsights.ApplicationInsightsLoggerProvider",
-                                                                              "FunctionApp",
-                                                                              LogLevel.Information,
-                                                                              null));
+        services.Configure<LoggerFilterOptions>(options =>
+                                                {
+                                                    // Filter out EF Core SQL command logs globally (affects Console and AI)
+                                                    options.Rules.Add(
+                                                        new LoggerFilterRule(
+                                                            null,
+                                                            "Microsoft.EntityFrameworkCore.Database.Command",
+                                                            LogLevel.Warning,
+                                                            null));
+                                                    options.Rules.Add(
+                                                        new LoggerFilterRule(
+                                                            null,
+                                                            "Microsoft.EntityFrameworkCore",
+                                                            LogLevel.Warning,
+                                                            null));
 
-                                                                      options.Rules.Add(
-                                                                          item: new LoggerFilterRule(
-                                                                              "Microsoft.Extensions.Logging.ApplicationInsights.ApplicationInsightsLoggerProvider",
-                                                                              null,
-                                                                              LogLevel.Information,
-                                                                              null));
-                                                                  });
+                                                    // Ensure Information level logs reach Application Insights
+                                                    options.Rules.Add(
+                                                        new LoggerFilterRule(
+                                                            "Microsoft.Extensions.Logging.ApplicationInsights.ApplicationInsightsLoggerProvider",
+                                                            "FunctionApp",
+                                                            LogLevel.Information,
+                                                            null));
+
+                                                    options.Rules.Add(
+                                                        new LoggerFilterRule(
+                                                            "Microsoft.Extensions.Logging.ApplicationInsights.ApplicationInsightsLoggerProvider",
+                                                            null,
+                                                            LogLevel.Information,
+                                                            null));
+                                                });
     }
 
     // Convenience methods for common log levels

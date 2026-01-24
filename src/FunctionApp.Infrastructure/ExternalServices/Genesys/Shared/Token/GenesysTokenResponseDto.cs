@@ -1,3 +1,6 @@
+using System.Text.Json.Serialization;
+
+
 namespace FunctionApp.Infrastructure.ExternalServices.Genesys.Shared.Token;
 
 /// <summary>
@@ -14,11 +17,13 @@ public class GenesysTokenResponseDto
     /// The OAuth 2.0 access token used for authenticating API requests to Genesys Cloud.
     /// Should be included in the Authorization header as "Bearer {token}".
     /// </summary>
+    [JsonPropertyName("access_token")]
     public string? AccessToken { get; set; }
 
     /// <summary>
     /// The type of token issued, typically "bearer".
     /// </summary>
+    [JsonPropertyName("token_type")]
     public string? TokenType { get; set; } = "bearer";
 
     /// <summary>
@@ -29,5 +34,6 @@ public class GenesysTokenResponseDto
     /// Tokens are typically cached with a safety margin (e.g., ExpiresIn - 300 seconds)
     /// to prevent usage of tokens near expiration.
     /// </remarks>
+    [JsonPropertyName("expires_in")]
     public int ExpiresIn { get; set; } = 86399;
 }

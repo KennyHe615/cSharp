@@ -1,17 +1,27 @@
 using System.Text;
 
+using Flurl.Http;
+
 using FunctionApp.Configuration.Options;
 using FunctionApp.Infrastructure.ExternalServices.FlurlHttp;
 
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 
 namespace FunctionApp.Infrastructure.ExternalServices.Genesys.Shared.Token;
 
-public class GenesysTokenClient(IFlurlHttpClientFactory factory, IOptions<GenesysOptions> genesysOptions)
+/// <summary>
+/// Resilient client for Genesys OAuth token acquisition.
+/// Inherits retry and circuit breaker logic from FlurlHttpClient.
+/// </summary>
+public class GenesysTokenClient(IOptions<GenesysOptions> genesysOptions,
+                                IOptions<FlurlClientOptions> flurlOptions,
+                                ILogger<GenesysTokenClient> logger) : FlurlHttpClient(
+    new FlurlClient(genesysOptions.Value.OAuthEndpoint),
+    flurlOptions,
+    logger)
 {
-    private readonly IFlurlHttpClient _client = factory.CreateClient(genesysOptions.Value.OAuthEndpoint);
-
     public async Task<GenesysTokenResponseDto?> FetchTokenAsync(string clientId,
                                                                 string clientSecret,
                                                                 CancellationToken cancellationToken = default)
@@ -19,15 +29,25 @@ public class GenesysTokenClient(IFlurlHttpClientFactory factory, IOptions<Genesy
         string credentials = $"{clientId}:{clientSecret}";
         string base64Credentials = Convert.ToBase64String(Encoding.UTF8.GetBytes(credentials));
 
-        Dictionary<string, string> headers = new()
-                                             {
-                                                 { "Authorization", $"Basic {base64Credentials}" },
-                                                 { "Content-Type", "application/x-www-form-urlencoded" }
-                                             };
+        Dictionary<string, string> headers = new() { { "Authorization", $"Basic {base64Credentials}" } };
 
-        return await _client.PostAsync<object, GenesysTokenResponseDto>("/oauth/token?grant_type=client_credentials",
-                                                                        new { },
-                                                                        headers,
-                                                                        cancellationToken);
+        try
+        {
+            // Uses the inherited PostUrlEncodedAsync which includes retries and circuit breaking
+            return await PostUrlEncodedAsync<GenesysTokenResponseDto>("/oauth/token",
+                                                                      new { grant_type = "client_credentials" },
+                                                                      headers,
+                                                                      cancellationToken);
+        }
+        catch (FlurlHttpException ex)
+        {
+            string? responseBody = await ex.GetResponseStringAsync();
+            logger.LogError(ex,
+                            "Genesys OAuth token request failed. Status: {StatusCode}. Response: {ResponseBody}",
+                            ex.StatusCode,
+                            responseBody);
+
+            throw;
+        }
     }
 }

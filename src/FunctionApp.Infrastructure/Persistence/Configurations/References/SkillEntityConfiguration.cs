@@ -17,7 +17,7 @@ public class SkillEntityConfiguration : IEntityTypeConfiguration<Skill>
 
         builder.Property(x => x.Name).HasMaxLength(255);
 
-        builder.Property(x => x.Version).HasMaxLength(10);
+        builder.Property(x => x.Version).HasMaxLength(8);
 
         // Map State Enum to lowercase strings: "active", "inactive", "deleted"
         builder.Property(x => x.State)

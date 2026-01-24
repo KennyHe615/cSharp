@@ -13,6 +13,11 @@ public interface IFlurlHttpClient
                                                     Dictionary<string, string>? headers = null,
                                                     CancellationToken cancellationToken = default);
 
+    Task<TResponse?> PostUrlEncodedAsync<TResponse>(string endpoint,
+                                                    object payload,
+                                                    Dictionary<string, string>? headers = null,
+                                                    CancellationToken cancellationToken = default);
+
     Task<TResponse?> PutAsync<TRequest, TResponse>(string endpoint,
                                                    TRequest payload,
                                                    Dictionary<string, string>? headers = null,

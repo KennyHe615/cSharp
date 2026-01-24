@@ -29,15 +29,37 @@ IHost builder = new HostBuilder().ConfigureFunctionsWorkerDefaults()
                                                         // Bind configuration to strongly-typed options
                                                         services.AddFunctionAppConfiguration(context.Configuration);
 
+                                                        // Register AutoMapper
+                                                        services.AddAutoMapper(
+                                                            typeof(FunctionApp.Application.AssemblyMarker));
+
                                                         // Configure infrastructure (consume the options)
                                                         services.AddInfrastructureServices();
 
                                                         // DI for other services via Scrutor
                                                         services.Scan(scan => scan
-                                                                              .FromAssembliesOf(typeof(AssemblyMarker))
+                                                                              .FromAssembliesOf(typeof(AssemblyMarker),
+                                                                                  typeof(FunctionApp.Application.
+                                                                                      AssemblyMarker))
                                                                               .AddClasses(classes =>
                                                                                   classes.Where(type =>
                                                                                       !type.IsAbstract &&
+                                                                                      (type.Namespace?.StartsWith(
+                                                                                              "FunctionApp.Application") ==
+                                                                                          true ||
+                                                                                          type.Namespace?.StartsWith(
+                                                                                              "FunctionApp.Infrastructure") ==
+                                                                                          true) &&
+                                                                                      type.Name != "FlurlHttpClient" &&
+                                                                                      type.Name != "GenesysApiClient" &&
+                                                                                      type.Name !=
+                                                                                      "GenesysReferencesClient" &&
+                                                                                      type.Name !=
+                                                                                      "FlurlHttpClientFactory" &&
+                                                                                      type.Name !=
+                                                                                      "GenesysTokenClient" &&
+                                                                                      type.Name !=
+                                                                                      "GenesysTokenProvider" &&
                                                                                       !type.IsAssignableTo(
                                                                                           typeof(Exception))))
                                                                               .AsImplementedInterfaces()

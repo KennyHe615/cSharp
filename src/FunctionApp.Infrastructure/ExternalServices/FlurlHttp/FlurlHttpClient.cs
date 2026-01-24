@@ -110,6 +110,31 @@ public class FlurlHttpClient : IFlurlHttpClient
                                             cancellationToken);
     }
 
+    public async Task<TResponse?> PostUrlEncodedAsync<TResponse>(string endpoint,
+                                                                 object payload,
+                                                                 Dictionary<string, string>? headers = null,
+                                                                 CancellationToken cancellationToken = default)
+    {
+        return await ExecuteWithPolicyAsync(_unsafeMethodPolicy,
+                                            async (token, ct) =>
+                                            {
+                                                _logger.LogInformation(
+                                                    "Sending POST (UrlEncoded) request to {Endpoint}",
+                                                    endpoint);
+
+                                                IFlurlRequest request = _client.Request(endpoint);
+
+                                                ApplyHeadersAndAuth(request, headers, token);
+
+                                                return await request.PostUrlEncodedAsync(payload, cancellationToken: ct)
+                                                                    .ReceiveJson<TResponse>()
+                                                                    .ConfigureAwait(false);
+                                            },
+                                            endpoint,
+                                            "POST",
+                                            cancellationToken);
+    }
+
     public async Task<TResponse?> PutAsync<TRequest, TResponse>(string endpoint,
                                                                 TRequest payload,
                                                                 Dictionary<string, string>? headers = null,

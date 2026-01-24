@@ -57,8 +57,8 @@ public class FunctionAppDbContext(DbContextOptions<FunctionAppDbContext> options
             // Set column names to snake_case
             foreach (IMutableProperty property in entity.GetProperties())
             {
-                string? columnName = property.GetColumnName(StoreObjectIdentifier.Table(entity.GetTableName()!));
-                property.SetColumnName(columnName.ToSnakeCase());
+                // Use the property name directly to generate the column name
+                property.SetColumnName(property.Name.ToSnakeCase());
             }
 
             // Set key and index names to snake_case
@@ -69,12 +69,12 @@ public class FunctionAppDbContext(DbContextOptions<FunctionAppDbContext> options
 
             foreach (IMutableForeignKey foreignKey in entity.GetForeignKeys())
             {
-                foreignKey.SetConstraintName(foreignKey.GetConstraintName()!.ToSnakeCase());
+                foreignKey.SetConstraintName(foreignKey.GetConstraintName().ToSnakeCase());
             }
 
             foreach (IMutableIndex index in entity.GetIndexes())
             {
-                index.SetDatabaseName(index.GetDatabaseName()!.ToSnakeCase());
+                index.SetDatabaseName(index.GetDatabaseName().ToSnakeCase());
             }
         }
     }

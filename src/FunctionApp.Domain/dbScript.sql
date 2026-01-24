@@ -11,10 +11,10 @@ CREATE TABLE [ref].[skills]
     [name]           nvarchar(255)     NULL,
     [date_modified]  datetimeoffset(0) NULL,
     [state]          nvarchar(8)       NULL,
-    [version]        nvarchar(10)      NULL,
+    [version]        nvarchar(8)       NULL,
     [app_created_at] datetimeoffset(0) NOT NULL DEFAULT (SYSDATETIMEOFFSET()),
     [app_updated_at] datetimeoffset(0) NOT NULL DEFAULT (SYSDATETIMEOFFSET()),
-    
+
     CONSTRAINT [pk_skills] PRIMARY KEY ([id])
 );
 GO
@@ -22,8 +22,6 @@ GO
 CREATE INDEX [ix_skills_name] ON [ref].[skills] ([name]);
 GO
 CREATE INDEX [ix_skills_state] ON [ref].[skills] ([state]);
-GO
-CREATE INDEX [ix_skills_app_created_at] ON [ref].[skills] ([app_created_at]);
 GO
 CREATE INDEX [ix_skills_app_updated_at] ON [ref].[skills] ([app_updated_at]);
 GO
