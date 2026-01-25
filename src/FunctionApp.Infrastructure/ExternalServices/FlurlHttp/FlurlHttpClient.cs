@@ -73,7 +73,8 @@ public class FlurlHttpClient : IFlurlHttpClient
         return await ExecuteWithPolicyAsync(_safeMethodPolicy,
                                             async (token, ct) =>
                                             {
-                                                _logger.LogInformation("Sending GET request to {Endpoint}", endpoint);
+                                                string fullUrl = $"{BaseUrl.TrimEnd('/')}/{endpoint.TrimStart('/')}";
+                                                _logger.LogInformation("Sending GET request to {Url}", fullUrl);
 
                                                 IFlurlRequest request = _client.Request(endpoint);
 
@@ -95,7 +96,8 @@ public class FlurlHttpClient : IFlurlHttpClient
         return await ExecuteWithPolicyAsync(_unsafeMethodPolicy,
                                             async (token, ct) =>
                                             {
-                                                _logger.LogInformation("Sending POST request to {Endpoint}", endpoint);
+                                                string fullUrl = $"{BaseUrl.TrimEnd('/')}/{endpoint.TrimStart('/')}";
+                                                _logger.LogInformation("Sending POST request to {Url}", fullUrl);
 
                                                 IFlurlRequest request = _client.Request(endpoint);
 
@@ -118,9 +120,9 @@ public class FlurlHttpClient : IFlurlHttpClient
         return await ExecuteWithPolicyAsync(_unsafeMethodPolicy,
                                             async (token, ct) =>
                                             {
-                                                _logger.LogInformation(
-                                                    "Sending POST (UrlEncoded) request to {Endpoint}",
-                                                    endpoint);
+                                                string fullUrl = $"{BaseUrl.TrimEnd('/')}/{endpoint.TrimStart('/')}";
+                                                _logger.LogInformation("Sending POST (UrlEncoded) request to {Url}",
+                                                                       fullUrl);
 
                                                 IFlurlRequest request = _client.Request(endpoint);
 
@@ -143,7 +145,8 @@ public class FlurlHttpClient : IFlurlHttpClient
         return await ExecuteWithPolicyAsync(_unsafeMethodPolicy,
                                             async (token, ct) =>
                                             {
-                                                _logger.LogInformation("Sending PUT request to {Endpoint}", endpoint);
+                                                string fullUrl = $"{BaseUrl.TrimEnd('/')}/{endpoint.TrimStart('/')}";
+                                                _logger.LogInformation("Sending PUT request to {Url}", fullUrl);
 
                                                 IFlurlRequest request = _client.Request(endpoint);
 
@@ -165,8 +168,8 @@ public class FlurlHttpClient : IFlurlHttpClient
         return await ExecuteWithPolicyAsync(_unsafeMethodPolicy,
                                             async (token, ct) =>
                                             {
-                                                _logger.LogInformation("Sending DELETE request to {Endpoint}",
-                                                                       endpoint);
+                                                string fullUrl = $"{BaseUrl.TrimEnd('/')}/{endpoint.TrimStart('/')}";
+                                                _logger.LogInformation("Sending DELETE request to {Url}", fullUrl);
 
                                                 IFlurlRequest request = _client.Request(endpoint);
 

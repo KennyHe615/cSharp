@@ -25,7 +25,6 @@
     <ItemGroup>
         <Folder Include="References\Configuration\"/>
         <Folder Include="References\Validators\"/>
-        <Folder Include="Shared\Extensions\"/>
         <Folder Include="Shared\Models\"/>
     </ItemGroup>
 

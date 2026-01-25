@@ -10,8 +10,7 @@ using Microsoft.Extensions.Logging;
 
 namespace FunctionApp.Application.References.Services;
 
-public class ReferencesSyncService(ISkillClient skillClient,
-                                   IPresenceDefinitionClient presenceDefinitionClient,
+public class ReferencesSyncService(IReferencesClient referencesClient,
                                    IUnitOfWork unitOfWork,
                                    IMapper mapper,
                                    ILogger<ReferencesSyncService> logger) : IReferencesSyncService
@@ -22,19 +21,32 @@ public class ReferencesSyncService(ISkillClient skillClient,
 
         try
         {
-            // await SyncSkillsAsync(cancellationToken);
+            // 1. Start all fetch tasks in parallel to improve performance (Parallel I/O)
+            Task<List<SkillResponseDto>> skillsTask = referencesClient.GetSkillsAsync(cancellationToken);
+            Task<List<PresenceDefinitionResponseDto>> presenceDefinitionsTask =
+                referencesClient.GetPresenceDefinitionsAsync(cancellationToken);
+            Task<List<GroupResponseDto>> groupsTask = referencesClient.GetGroupsAsync(cancellationToken);
 
-            await SyncPresenceDefinitionsAsync(cancellationToken);
+            // Wait for all API calls to complete
+            await Task.WhenAll(skillsTask, presenceDefinitionsTask, groupsTask);
 
-            // Add other reference entities here (Languages, Queues, etc.)
+            // 2. Process, Map, and Save changes sequentially to ensure DbContext thread safety
+            List<(string Name, bool Success)> syncResults =
+            [
+                await ProcessAndSaveAsync<SkillResponseDto, Skill>("Skills", await skillsTask, cancellationToken),
+                await ProcessAndSaveAsync<PresenceDefinitionResponseDto, PresenceDefinition>(
+                    "PresenceDefinitions",
+                    await presenceDefinitionsTask,
+                    cancellationToken),
+                await ProcessAndSaveAsync<GroupResponseDto, Group>("Groups", await groupsTask, cancellationToken)
+            ];
 
-            await unitOfWork.SaveChangesAsync(cancellationToken);
-
-            logger.LogInformation("Successfully synchronized all reference entities");
+            // 3. Report final summary
+            ReportFinalStatus(syncResults);
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "An error occurred while synchronizing reference entities");
+            logger.LogError(ex, "Critical failure during reference entities synchronization");
 
             throw;
         }
@@ -42,44 +54,52 @@ public class ReferencesSyncService(ISkillClient skillClient,
 
     #region ========== *** Private Methods *** ==========
 
-    private async Task SyncSkillsAsync(CancellationToken cancellationToken)
+    private async Task<(string Name, bool Success)> ProcessAndSaveAsync<TDto, TEntity>(
+        string entityName,
+        List<TDto> dtos,
+        CancellationToken cancellationToken) where TEntity : class
     {
-        logger.LogInformation("Fetching skills from Genesys...");
-        List<SkillDto> skillDtos = await skillClient.GetSkillsAsync(cancellationToken);
-
-        if (skillDtos.Count == 0)
+        try
         {
-            logger.LogError("No skills found in Genesys");
+            if (dtos.Count == 0)
+            {
+                logger.LogError("No {EntityName} found in Genesys to synchronize", entityName);
 
-            return;
+                return (entityName, false);
+            }
+
+            List<TEntity>? entities = mapper.Map<List<TEntity>>(dtos);
+
+            await unitOfWork.UpsertRangeAsync(entities, cancellationToken);
+
+            // Sequential SaveChanges for this entity type
+            int savedCount = await unitOfWork.SaveChangesAsync(cancellationToken);
+
+            logger.LogInformation("Successfully synchronized {EntityName} (Changes: {Count})", entityName, savedCount);
+
+            return (entityName, true);
         }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Synchronization failed for {EntityName}", entityName);
 
-        logger.LogInformation("Mapping {Count} skills to domain entities...", skillDtos.Count);
-        List<Skill> skills = mapper.Map<List<Skill>>(skillDtos);
-
-        logger.LogInformation("Upserting skills into the database...");
-        await unitOfWork.UpsertRangeAsync(skills, cancellationToken);
+            return (entityName, false);
+        }
     }
 
-    private async Task SyncPresenceDefinitionsAsync(CancellationToken cancellationToken)
+    private void ReportFinalStatus(List<(string Name, bool Success)> results)
     {
-        logger.LogInformation("Fetching presence definitions from Genesys...");
-        List<PresenceDefinitionDto> presenceDefinitionDtos =
-            await presenceDefinitionClient.GetPresenceDefinitionsAsync(cancellationToken);
+        List<string> failed = results.Where(r => !r.Success).Select(r => r.Name).ToList();
 
-        if (presenceDefinitionDtos.Count == 0)
+        if (failed.Count == 0)
         {
-            logger.LogError("No presence definitions found in Genesys");
+            logger.LogInformation("All reference entities synchronized successfully");
 
             return;
         }
 
-        logger.LogInformation("Mapping {Count} presence definitions to domain entities...",
-                              presenceDefinitionDtos.Count);
-        List<PresenceDefinition> presenceDefinitions = mapper.Map<List<PresenceDefinition>>(presenceDefinitionDtos);
-
-        logger.LogInformation("Upserting presence definitions into the database...");
-        await unitOfWork.UpsertRangeAsync(presenceDefinitions, cancellationToken);
+        logger.LogWarning("Reference synchronization completed with partial success. Failed: [{Failed}]",
+                          string.Join(", ", failed));
     }
 
     #endregion

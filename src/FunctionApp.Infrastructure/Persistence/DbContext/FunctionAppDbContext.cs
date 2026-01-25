@@ -1,5 +1,5 @@
-﻿using FunctionApp.Domain.Entities;
-using FunctionApp.Infrastructure.Extensions;
+﻿using FunctionApp.Application.Shared.Extensions;
+using FunctionApp.Domain.Entities;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
@@ -16,7 +16,7 @@ public class FunctionAppDbContext(DbContextOptions<FunctionAppDbContext> options
         IEnumerable<EntityEntry> entries = ChangeTracker.Entries()
                                                         .Where(e => e is
                                                         {
-                                                            Entity: BaseEntity,
+                                                            Entity: AuditEntity,
                                                             State: EntityState.Added or EntityState.Modified
                                                         });
 
@@ -24,7 +24,7 @@ public class FunctionAppDbContext(DbContextOptions<FunctionAppDbContext> options
 
         foreach (EntityEntry entityEntry in entries)
         {
-            BaseEntity entity = (BaseEntity)entityEntry.Entity;
+            AuditEntity entity = (AuditEntity)entityEntry.Entity;
             entity.AppUpdatedAt = now;
 
             if (entityEntry.State == EntityState.Added)
@@ -34,7 +34,7 @@ public class FunctionAppDbContext(DbContextOptions<FunctionAppDbContext> options
             else
             {
                 // Ensure AppCreatedAt is never modified during an update
-                entityEntry.Property(nameof(BaseEntity.AppCreatedAt)).IsModified = false;
+                entityEntry.Property(nameof(AuditEntity.AppCreatedAt)).IsModified = false;
             }
         }
 

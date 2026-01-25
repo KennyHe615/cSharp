@@ -35,8 +35,6 @@ public sealed class GenesysTokenProvider(IOptions<GenesysOptions> options,
                 return cachedToken;
             }
 
-            logger.LogInformation("Fetching new Genesys OAuth token");
-
             return await FetchAndCacheTokenAsync(cancellationToken);
         }
         finally
@@ -51,6 +49,15 @@ public sealed class GenesysTokenProvider(IOptions<GenesysOptions> options,
 
         try
         {
+            // Double-check: If the cache already has a token, it means another
+            // concurrent request already performed the refresh while we were waiting.
+            if (cache.TryGetValue(TokenCacheKey, out string? cachedToken) && !string.IsNullOrEmpty(cachedToken))
+            {
+                logger.LogDebug("Token was already refreshed by another concurrent request.");
+
+                return;
+            }
+
             logger.LogInformation("Refreshing Genesys OAuth token due to 401");
 
             cache.Remove(TokenCacheKey);
@@ -67,8 +74,6 @@ public sealed class GenesysTokenProvider(IOptions<GenesysOptions> options,
 
     private async Task<string> FetchAndCacheTokenAsync(CancellationToken cancellationToken)
     {
-        logger.LogInformation("Requesting new Genesys OAuth token");
-
         GenesysTokenResponseDto? tokenResponse = await tokenClient.FetchTokenAsync(
             _options.ClientId,
             _options.ClientSecret,
@@ -83,7 +88,8 @@ public sealed class GenesysTokenProvider(IOptions<GenesysOptions> options,
         TimeSpan cacheExpiration = TimeSpan.FromSeconds(tokenResponse.ExpiresIn - 300);
         cache.Set(TokenCacheKey, tokenResponse.AccessToken, cacheExpiration);
 
-        logger.LogInformation("Genesys token cached successfully. Expires in {ExpiresIn}s", tokenResponse.ExpiresIn);
+        logger.LogInformation("Genesys token refreshed and cached successfully. Expires in {ExpiresIn}s",
+                              tokenResponse.ExpiresIn);
 
         return tokenResponse.AccessToken;
     }

@@ -1,7 +1,7 @@
 using System.Text.RegularExpressions;
 
 
-namespace FunctionApp.Infrastructure.Extensions;
+namespace FunctionApp.Application.Shared.Extensions;
 
 public static partial class StringExtensions
 {
@@ -16,6 +16,11 @@ public static partial class StringExtensions
 
         return startUnderscores +
                SnakeCaseRegex2().Replace(input[startUnderscores.Length..], "$1_$2").ToLowerInvariant();
+    }
+
+    public static string? Truncate(this string? value, int maxLength)
+    {
+        return value?.Length > maxLength ? value[..maxLength] : value;
     }
 
     #region ========== *** Private Methods *** ==========

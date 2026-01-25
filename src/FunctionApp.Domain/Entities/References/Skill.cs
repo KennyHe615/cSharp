@@ -1,9 +1,13 @@
+// ReSharper disable ClassNeverInstantiated.Global
+// ReSharper disable PropertyCanBeMadeInitOnly.Global
+// ReSharper disable UnusedAutoPropertyAccessor.Global
+
 using FunctionApp.Domain.Enums.References;
 
 
 namespace FunctionApp.Domain.Entities.References;
 
-public class Skill : BaseEntity
+public class Skill : AuditEntity
 {
     public Guid Id { get; set; }
 
@@ -11,7 +15,7 @@ public class Skill : BaseEntity
 
     public DateTimeOffset? DateModified { get; set; }
 
-    public SkillState? State { get; set; }
+    public State? State { get; set; }
 
     public string? Version { get; set; }
 }

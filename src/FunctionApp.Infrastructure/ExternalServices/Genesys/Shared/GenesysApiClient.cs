@@ -16,7 +16,7 @@ namespace FunctionApp.Infrastructure.ExternalServices.Genesys.Shared;
 /// </summary>
 public class GenesysApiClient(IOptions<GenesysOptions> genesysOptions,
                               IOptions<FlurlClientOptions> flurlOptions,
-                              ILogger<GenesysApiClient> logger,
+                              ILogger logger,
                               ITokenProvider tokenProvider) : FlurlHttpClient(
     new FlurlClient(genesysOptions.Value.ApiEndpoint),
     flurlOptions,

@@ -102,11 +102,7 @@ public class ReferencesTimer(ILogger<ReferencesTimer> logger,
 
             #region Test Sync all references
 
-            logger.LogInformation("Starting References synchronization via Timer Trigger...");
-
             await referencesSyncService.SyncAllAsync(cancellationToken);
-
-            logger.LogInformation("References synchronization completed successfully.");
 
             #endregion
         }

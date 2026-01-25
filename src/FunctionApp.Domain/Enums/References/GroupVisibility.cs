@@ -4,9 +4,9 @@ using System.Text.Json.Serialization;
 namespace FunctionApp.Domain.Enums.References;
 
 [JsonConverter(typeof(JsonStringEnumConverter))]
-public enum SkillState
+public enum GroupVisibility
 {
-    Active,
-    Inactive,
-    Deleted
+    Public,
+    Owners,
+    Members
 }

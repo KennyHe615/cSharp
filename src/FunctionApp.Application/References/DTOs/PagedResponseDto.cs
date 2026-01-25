@@ -4,11 +4,11 @@ public class PagedResponseDto<T>
 {
     public List<T> Entities { get; set; } = [];
 
-    public int PageSize { get; set; }
+    public int? PageSize { get; set; }
 
-    public int PageNumber { get; set; }
+    public int? PageNumber { get; set; }
 
-    public long Total { get; set; }
+    public long? Total { get; set; }
 
     public string? NextUri { get; set; }
 
@@ -18,5 +18,5 @@ public class PagedResponseDto<T>
 
     public string? SelfUri { get; set; }
 
-    public int PageCount { get; set; }
+    public int? PageCount { get; set; }
 }
