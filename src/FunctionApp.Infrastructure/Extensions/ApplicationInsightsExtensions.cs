@@ -1,138 +1,102 @@
-﻿using System.Text.Json;
+﻿using FunctionApp.Configuration.Options;
 
+using Microsoft.ApplicationInsights.WorkerService;
+using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 
 namespace FunctionApp.Infrastructure.Extensions;
 
 public static class ApplicationInsightsExtensions
 {
-    private static readonly JsonSerializerOptions JsonOption = new() { WriteIndented = true, IndentSize = 4 };
-
     public static void AddApplicationInsights(this IServiceCollection services)
     {
-        services.AddApplicationInsightsTelemetryWorkerService(options =>
-                                                              {
-                                                                  // Configure telemetry options
-                                                                  options.EnableAdaptiveSampling =
-                                                                      false; // Disable sampling to ensure all logs are captured
-                                                                  options.EnablePerformanceCounterCollectionModule =
-                                                                      false;
-                                                                  options.EnableAzureInstanceMetadataTelemetryModule =
-                                                                      false;
-                                                                  options.EnableDiagnosticsTelemetryModule = false;
-                                                                  options.EnableHeartbeat = false;
-                                                                  options.EnableQuickPulseMetricStream = false;
-                                                              });
+        services.AddApplicationInsightsTelemetryWorkerService();
+
+        services.AddOptions<ApplicationInsightsServiceOptions>()
+                .Configure<IOptions<ApplicationInsightsOptions>>((telemetryOptions, appOptions) =>
+                                                                 {
+                                                                     ApplicationInsightsOptions config =
+                                                                         appOptions.Value;
+
+                                                                     if (!string.IsNullOrEmpty(config.ConnectionString))
+                                                                     {
+                                                                         telemetryOptions.ConnectionString =
+                                                                             config.ConnectionString;
+                                                                     }
+
+                                                                     telemetryOptions.EnableAdaptiveSampling =
+                                                                         config.EnableAdaptiveSampling;
+                                                                     telemetryOptions
+                                                                             .EnablePerformanceCounterCollectionModule =
+                                                                         config
+                                                                             .EnablePerformanceCounterCollectionModule;
+                                                                     telemetryOptions
+                                                                             .EnableAzureInstanceMetadataTelemetryModule =
+                                                                         config
+                                                                             .EnableAzureInstanceMetadataTelemetryModule;
+                                                                     telemetryOptions.EnableDiagnosticsTelemetryModule =
+                                                                         config.EnableDiagnosticsTelemetryModule;
+                                                                     telemetryOptions.EnableHeartbeat =
+                                                                         config.EnableHeartbeat;
+                                                                     telemetryOptions.EnableQuickPulseMetricStream =
+                                                                         config.EnableQuickPulseMetricStream;
+                                                                 });
+
+        // This call is essential for .NET Isolated workers to bridge worker logs to the host telemetry
+        services.ConfigureFunctionsApplicationInsights();
 
         // Configure logging specifically for Application Insights
         services.Configure<LoggerFilterOptions>(options =>
                                                 {
-                                                    // Filter out EF Core SQL command logs globally (affects Console and AI)
+                                                    string[] aiProviders =
+                                                    [
+                                                        "Microsoft.Extensions.Logging.ApplicationInsights.ApplicationInsightsLoggerProvider",
+                                                        "ApplicationInsights"
+                                                    ];
+
+                                                    // For Application Insights, LogLevel.Information == 1
+                                                    // Therefore, using Error level to mute noise
+
+                                                    foreach (string provider in aiProviders)
+                                                    {
+                                                        // Ensure Information level logs reach AI by default
+                                                        options.Rules.Add(
+                                                            new LoggerFilterRule(
+                                                                provider,
+                                                                null,
+                                                                LogLevel.Information,
+                                                                null));
+
+                                                        // Filter out Microsoft infrastructure logs (like "Content root path") for AI providers
+                                                        options.Rules.Add(
+                                                            new LoggerFilterRule(
+                                                                provider,
+                                                                "Microsoft",
+                                                                LogLevel.Error,
+                                                                null));
+
+                                                        // Override EF Core logs to Warning level for AI providers
+                                                        // This prevents the broad rule above from pulling in EF Information logs
+                                                        options.Rules.Add(
+                                                            new LoggerFilterRule(
+                                                                provider,
+                                                                "Microsoft.EntityFrameworkCore",
+                                                                LogLevel.Error,
+                                                                null));
+                                                    }
+
+                                                    // Apply global filter for EF Core (affects Console and other providers)
                                                     options.Rules.Add(
-                                                        new LoggerFilterRule(
-                                                            null,
-                                                            "Microsoft.EntityFrameworkCore.Database.Command",
-                                                            LogLevel.Warning,
-                                                            null));
+                                                        new LoggerFilterRule(null, "Microsoft", LogLevel.Error, null));
                                                     options.Rules.Add(
                                                         new LoggerFilterRule(
                                                             null,
                                                             "Microsoft.EntityFrameworkCore",
-                                                            LogLevel.Warning,
-                                                            null));
-
-                                                    // Ensure Information level logs reach Application Insights
-                                                    options.Rules.Add(
-                                                        new LoggerFilterRule(
-                                                            "Microsoft.Extensions.Logging.ApplicationInsights.ApplicationInsightsLoggerProvider",
-                                                            "FunctionApp",
-                                                            LogLevel.Information,
-                                                            null));
-
-                                                    options.Rules.Add(
-                                                        new LoggerFilterRule(
-                                                            "Microsoft.Extensions.Logging.ApplicationInsights.ApplicationInsightsLoggerProvider",
-                                                            null,
-                                                            LogLevel.Information,
+                                                            LogLevel.Error,
                                                             null));
                                                 });
     }
-
-    // Convenience methods for common log levels
-    public static void LogInfoStructuredDetails(this ILogger logger, object data)
-    {
-        logger.LogStructuredMessage(LogLevel.Information, data);
-    }
-
-    public static void LogWarningStructuredDetails(this ILogger logger, object data)
-    {
-        logger.LogStructuredMessage(LogLevel.Warning, data);
-    }
-
-    public static void LogErrorStructuredDetails(this ILogger logger, object data)
-    {
-        logger.LogStructuredMessage(LogLevel.Error, data);
-    }
-
-    public static void LogCriticalStructuredDetails(this ILogger logger, object data)
-    {
-        logger.LogStructuredMessage(LogLevel.Critical, data);
-    }
-
-    #region ========== *** Private Methods *** ==========
-
-    private static void LogStructuredMessage(this ILogger logger, LogLevel logLevel, object data)
-    {
-        string msg = JsonSerializer.Serialize(data, JsonOption);
-
-        switch (logLevel)
-        {
-            case LogLevel.Trace:
-                logger.LogTrace("========== Execution Details ==========");
-                logger.LogTrace("{Msg}", msg);
-
-                break;
-
-            case LogLevel.Debug:
-                logger.LogDebug("========== Execution Details ==========");
-                logger.LogDebug("{Msg}", msg);
-
-                break;
-
-            case LogLevel.Information:
-                logger.LogInformation("========== Execution Details ==========");
-                logger.LogInformation("{Msg}", msg);
-
-                break;
-
-            case LogLevel.Warning:
-                logger.LogWarning("========== Execution Details ==========");
-                logger.LogWarning("{Msg}", msg);
-
-                break;
-
-            case LogLevel.Error:
-                logger.LogError("========== Execution Details ==========");
-                logger.LogError("{Msg}", msg);
-
-                break;
-
-            case LogLevel.Critical:
-                logger.LogCritical("========== Execution Details ==========");
-                logger.LogCritical("{Msg}", msg);
-
-                break;
-
-            case LogLevel.None:
-            default:
-                logger.LogInformation("========== Execution Details ==========");
-                logger.LogInformation("{Msg}", msg);
-
-                break;
-        }
-    }
-
-    #endregion
 }

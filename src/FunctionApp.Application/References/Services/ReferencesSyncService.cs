@@ -3,6 +3,7 @@ using AutoMapper;
 using FunctionApp.Application.References.Clients;
 using FunctionApp.Application.References.DTOs;
 using FunctionApp.Application.Shared.Context;
+using FunctionApp.Application.Shared.Providers;
 using FunctionApp.Domain.Entities.References;
 using FunctionApp.Domain.Repositories;
 
@@ -15,14 +16,13 @@ public class ReferencesSyncService(IReferencesClient referencesClient,
                                    IUnitOfWork unitOfWork,
                                    IMapper mapper,
                                    ILobContext lobContext,
+                                   IDateTimeProvider dateTimeProvider,
                                    ILogger<ReferencesSyncService> logger) : IReferencesSyncService
 {
     private string? LobName => lobContext.LobName;
 
     public async Task SyncAllAsync(CancellationToken cancellationToken)
     {
-        logger.LogInformation("[LOB: {Lob}] Starting synchronization of all reference entities...", LobName);
-
         try
         {
             // 1. Start all fetch tasks in parallel to improve performance (Parallel I/O)
@@ -103,14 +103,18 @@ public class ReferencesSyncService(IReferencesClient referencesClient,
 
         if (failed.Count == 0)
         {
-            logger.LogInformation("[LOB: {Lob}] All reference entities synchronized successfully", LobName);
+            logger.LogCritical("[LOB: {Lob}]💯Synchronization of [References] SUCCESSFULLY ON **{Time}**",
+                               LobName,
+                               dateTimeProvider.FormatLocalTimestamp());
 
             return;
         }
 
-        logger.LogWarning("[LOB: {Lob}] Reference synchronization completed with partial success. Failed: [{Failed}]",
-                          LobName,
-                          string.Join(", ", failed));
+        logger.LogCritical(
+            "[LOB: {Lob}] Synchronization of [References]❌PARTIALLY SUCCESSFUL ON **{Time}**. FAILED: [{Failed}]",
+            LobName,
+            dateTimeProvider.FormatLocalTimestamp(),
+            string.Join(", ", failed));
     }
 
     #endregion

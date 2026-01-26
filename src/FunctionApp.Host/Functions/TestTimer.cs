@@ -30,14 +30,6 @@ public class TestTimer(ILogger<TestTimer> logger,
                           FunctionContext context,
                           CancellationToken cancellationToken)
     {
-        var executionDetails = new
-                               {
-                                   ExecutionTime = dateTimeProvider.FormatLocalTimestamp(),
-                                   FunctionName = context.FunctionDefinition.Name
-                               };
-
-        logger.LogInfoStructuredDetails(executionDetails);
-
         try
         {
             // #region Test Api
