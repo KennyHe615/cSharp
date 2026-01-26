@@ -2,6 +2,7 @@ using System.Text;
 
 using Flurl.Http;
 
+using FunctionApp.Application.Shared.Context;
 using FunctionApp.Configuration.Options;
 using FunctionApp.Infrastructure.ExternalServices.FlurlHttp;
 
@@ -15,11 +16,13 @@ namespace FunctionApp.Infrastructure.ExternalServices.Genesys.Shared.Token;
 /// Resilient client for Genesys OAuth token acquisition.
 /// Inherits retry and circuit breaker logic from FlurlHttpClient.
 /// </summary>
-public class GenesysTokenClient(IOptions<GenesysOptions> genesysOptions,
-                                IOptions<FlurlClientOptions> flurlOptions,
+public class GenesysTokenClient(IOptions<MultiLobOptions> multiLobOptions,
+                                IFlurlHttpClientFactory factory,
+                                ILobContext lobContext,
                                 ILogger<GenesysTokenClient> logger) : FlurlHttpClient(
-    new FlurlClient(genesysOptions.Value.OAuthEndpoint),
-    flurlOptions,
+    factory.GetOrAddClient(multiLobOptions.Value.GenesysOAuthEndpoint),
+    factory,
+    lobContext,
     logger)
 {
     public async Task<GenesysTokenResponseDto?> FetchTokenAsync(string clientId,
@@ -29,13 +32,19 @@ public class GenesysTokenClient(IOptions<GenesysOptions> genesysOptions,
         string credentials = $"{clientId}:{clientSecret}";
         string base64Credentials = Convert.ToBase64String(Encoding.UTF8.GetBytes(credentials));
 
-        Dictionary<string, string> headers = new() { { "Authorization", $"Basic {base64Credentials}" } };
+        Dictionary<string, string> headers = new()
+                                             {
+                                                 { "Authorization", $"Basic {base64Credentials}" }
+                                             };
 
         try
         {
             // Uses the inherited PostUrlEncodedAsync which includes retries and circuit breaking
             return await PostUrlEncodedAsync<GenesysTokenResponseDto>("/oauth/token",
-                                                                      new { grant_type = "client_credentials" },
+                                                                      new
+                                                                      {
+                                                                          grant_type = "client_credentials"
+                                                                      },
                                                                       headers,
                                                                       cancellationToken);
         }

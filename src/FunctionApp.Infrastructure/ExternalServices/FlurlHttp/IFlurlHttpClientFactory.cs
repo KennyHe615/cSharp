@@ -1,8 +1,16 @@
+using Flurl.Http;
+
+using Polly.Wrap;
+
+
 namespace FunctionApp.Infrastructure.ExternalServices.FlurlHttp;
 
 public interface IFlurlHttpClientFactory
 {
-    IFlurlHttpClient CreateClient(string baseUrl,
-                                  Func<CancellationToken, Task<string?>>? tokenProvider = null,
-                                  Func<CancellationToken, Task>? refreshToken = null);
+    FlurlClient GetOrAddClient(string baseUrl);
+
+    // Shared global policies
+    AsyncPolicyWrap GetSafePolicy();
+
+    AsyncPolicyWrap GetUnsafePolicy();
 }

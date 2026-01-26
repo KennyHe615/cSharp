@@ -1,5 +1,6 @@
 using Flurl.Http;
 
+using FunctionApp.Application.Shared.Context;
 using FunctionApp.Configuration.Options;
 using FunctionApp.Infrastructure.ExternalServices.FlurlHttp;
 using FunctionApp.Infrastructure.Security;
@@ -14,12 +15,14 @@ namespace FunctionApp.Infrastructure.ExternalServices.Genesys.Shared;
 /// Specialized client for Genesys API calls.
 /// Inherits all resilience (Retry, Circuit Breaker) and configuration from FlurlHttpClient.
 /// </summary>
-public class GenesysApiClient(IOptions<GenesysOptions> genesysOptions,
-                              IOptions<FlurlClientOptions> flurlOptions,
+public class GenesysApiClient(IOptions<MultiLobOptions> multiLobOptions,
+                              IFlurlHttpClientFactory factory,
+                              ILobContext lobContext,
                               ILogger logger,
                               ITokenProvider tokenProvider) : FlurlHttpClient(
-    new FlurlClient(genesysOptions.Value.ApiEndpoint),
-    flurlOptions,
+    factory.GetOrAddClient(multiLobOptions.Value.GenesysApiEndpoint),
+    factory,
+    lobContext,
     logger,
     async ct => await tokenProvider.GetValidTokenAsync(ct),
     async ct => await tokenProvider.RefreshTokenAsync(ct));

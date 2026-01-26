@@ -1,3 +1,4 @@
+using FunctionApp.Application.Shared.Extensions;
 using FunctionApp.Configuration;
 using FunctionApp.Infrastructure.Extensions;
 
@@ -35,6 +36,9 @@ IHost builder = new HostBuilder().ConfigureFunctionsWorkerDefaults()
 
                                                         // Configure infrastructure (consume the options)
                                                         services.AddInfrastructureServices();
+
+                                                        // Register Application services (e.g., SyncOrchestrator)
+                                                        services.AddApplicationServices();
 
                                                         // DI for other services via Scrutor
                                                         services.Scan(scan => scan

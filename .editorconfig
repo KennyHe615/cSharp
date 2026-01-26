@@ -38,7 +38,7 @@ resharper_csharp_max_line_length = 120
 ############################################################
 # DTOs, Mapper Profiles and Entities - Suppress ReSharper warnings
 ############################################################
-[{**/Entities/**.cs,**/*Dto.cs,**/*Profile.cs}]
+[{**/*Options.cs,**/Entities/**.cs,**/*Dto.cs,**/*Profile.cs}]
 resharper_class_never_instantiated_global_highlighting = none
 resharper_unused_type_global_highlighting = none
 resharper_unused_member_global_highlighting = none

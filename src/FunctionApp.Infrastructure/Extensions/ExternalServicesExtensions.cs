@@ -16,9 +16,11 @@ public static class ExternalServicesExtensions
         // 1. Register the Generic HTTP Engine
         services.AddSingleton<IFlurlHttpClientFactory, FlurlHttpClientFactory>();
 
-        // 2. Register Genesys Token Management (Singletons for shared caching)
-        services.AddSingleton<GenesysTokenClient>();
-        services.AddSingleton<ITokenProvider, GenesysTokenProvider>();
+        // 2. Register Genesys Token Management
+        // Scoped: This ensures the Provider can access the Scoped ILobContext
+        // to use the correct LOB-specific credentials and cache keys.
+        services.AddScoped<GenesysTokenClient>();
+        services.AddScoped<ITokenProvider, GenesysTokenProvider>();
 
         // 3. Register Genesys API Clients
         services.AddScoped<IReferencesClient, ReferencesClient>();

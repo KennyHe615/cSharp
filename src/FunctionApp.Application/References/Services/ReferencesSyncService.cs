@@ -2,6 +2,7 @@ using AutoMapper;
 
 using FunctionApp.Application.References.Clients;
 using FunctionApp.Application.References.DTOs;
+using FunctionApp.Application.Shared.Context;
 using FunctionApp.Domain.Entities.References;
 using FunctionApp.Domain.Repositories;
 
@@ -13,11 +14,14 @@ namespace FunctionApp.Application.References.Services;
 public class ReferencesSyncService(IReferencesClient referencesClient,
                                    IUnitOfWork unitOfWork,
                                    IMapper mapper,
+                                   ILobContext lobContext,
                                    ILogger<ReferencesSyncService> logger) : IReferencesSyncService
 {
+    private string? LobName => lobContext.LobName;
+
     public async Task SyncAllAsync(CancellationToken cancellationToken)
     {
-        logger.LogInformation("Starting synchronization of all reference entities...");
+        logger.LogInformation("[LOB: {Lob}] Starting synchronization of all reference entities...", LobName);
 
         try
         {
@@ -46,7 +50,7 @@ public class ReferencesSyncService(IReferencesClient referencesClient,
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Critical failure during reference entities synchronization");
+            logger.LogError(ex, "[LOB: {Lob}] Critical failure during reference entities synchronization", LobName);
 
             throw;
         }
@@ -63,7 +67,9 @@ public class ReferencesSyncService(IReferencesClient referencesClient,
         {
             if (dtos.Count == 0)
             {
-                logger.LogError("No {EntityName} found in Genesys to synchronize", entityName);
+                logger.LogError("[LOB: {Lob} Reference \"{EntityName}\"] No data found in Genesys to synchronize",
+                                LobName,
+                                entityName);
 
                 return (entityName, false);
             }
@@ -75,13 +81,17 @@ public class ReferencesSyncService(IReferencesClient referencesClient,
             // Sequential SaveChanges for this entity type
             int savedCount = await unitOfWork.SaveChangesAsync(cancellationToken);
 
-            logger.LogInformation("Successfully synchronized {EntityName} (Changes: {Count})", entityName, savedCount);
+            logger.LogInformation(
+                "[LOB: {Lob} Reference \"{EntityName}\"] Successfully synchronized (Changes: {Count})",
+                LobName,
+                entityName,
+                savedCount);
 
             return (entityName, true);
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Synchronization failed for {EntityName}", entityName);
+            logger.LogError(ex, "[LOB: {Lob} Reference \"{EntityName}\"] Synchronization failed", LobName, entityName);
 
             return (entityName, false);
         }
@@ -93,12 +103,13 @@ public class ReferencesSyncService(IReferencesClient referencesClient,
 
         if (failed.Count == 0)
         {
-            logger.LogInformation("All reference entities synchronized successfully");
+            logger.LogInformation("[LOB: {Lob}] All reference entities synchronized successfully", LobName);
 
             return;
         }
 
-        logger.LogWarning("Reference synchronization completed with partial success. Failed: [{Failed}]",
+        logger.LogWarning("[LOB: {Lob}] Reference synchronization completed with partial success. Failed: [{Failed}]",
+                          LobName,
                           string.Join(", ", failed));
     }
 

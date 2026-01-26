@@ -1,6 +1,8 @@
 using FunctionApp.Application.References.Clients;
 using FunctionApp.Application.References.DTOs;
+using FunctionApp.Application.Shared.Context;
 using FunctionApp.Configuration.Options;
+using FunctionApp.Infrastructure.ExternalServices.FlurlHttp;
 using FunctionApp.Infrastructure.ExternalServices.Genesys.Shared;
 using FunctionApp.Infrastructure.Security;
 
@@ -10,13 +12,16 @@ using Microsoft.Extensions.Options;
 
 namespace FunctionApp.Infrastructure.ExternalServices.Genesys.Clients;
 
-public class ReferencesClient(IOptions<GenesysOptions> genesysOptions,
-                              IOptions<FlurlClientOptions> flurlOptions,
+public class ReferencesClient(IOptions<MultiLobOptions> multiLobOptions,
+                              IFlurlHttpClientFactory factory,
+                              ILobContext lobContext,
                               ILogger<ReferencesClient> logger,
                               ITokenProvider tokenProvider)
-    : GenesysApiClient(genesysOptions, flurlOptions, logger, tokenProvider), IReferencesClient
+    : GenesysApiClient(multiLobOptions, factory, lobContext, logger, tokenProvider), IReferencesClient
 {
     private const int MaxPaginationIterations = 100;
+
+    private string? LobName => LobContext.LobName;
 
     public async Task<List<GroupResponseDto>> GetGroupsAsync(CancellationToken cancellationToken)
     {
@@ -38,6 +43,8 @@ public class ReferencesClient(IOptions<GenesysOptions> genesysOptions,
                                                          cancellationToken);
     }
 
+    #region ========== *** Private Methods *** ==========
+
     private async Task<List<T>> GetPaginatedAsync<T>(string initialUrl,
                                                      string entityName,
                                                      CancellationToken cancellationToken = default)
@@ -52,11 +59,13 @@ public class ReferencesClient(IOptions<GenesysOptions> genesysOptions,
             {
                 if (iterationCount >= MaxPaginationIterations)
                 {
-                    logger.LogError("Exceeded maximum pagination iterations ({Max}) for {EntityName}",
+                    logger.LogError("[LOB: {Lob}] Exceeded maximum pagination iterations ({Max}) for {EntityName}",
+                                    LobName,
                                     MaxPaginationIterations,
                                     entityName);
 
-                    throw new InvalidOperationException($"Exceeded maximum pagination iterations for {entityName}");
+                    throw new InvalidOperationException(
+                        $"[LOB: {LobName}] Exceeded maximum pagination iterations for {entityName}");
                 }
 
                 try
@@ -66,11 +75,13 @@ public class ReferencesClient(IOptions<GenesysOptions> genesysOptions,
 
                     if (response?.Entities == null)
                     {
-                        logger.LogError("Invalid response: Missing entities array for {EntityName} at {Url}",
-                                        entityName,
-                                        currentUrl);
+                        logger.LogError(
+                            "[LOB: {Lob}] Invalid response: Missing entities array for {EntityName} at {Url}",
+                            LobName,
+                            entityName,
+                            currentUrl);
 
-                        throw new InvalidOperationException($"Invalid response for {entityName}");
+                        throw new InvalidOperationException($"[LOB: {LobName}] Invalid response for {entityName}");
                     }
 
                     results.AddRange(response.Entities);
@@ -80,7 +91,8 @@ public class ReferencesClient(IOptions<GenesysOptions> genesysOptions,
                 catch (Exception ex) when (ex is not InvalidOperationException)
                 {
                     logger.LogError(ex,
-                                    "Error fetching page {Page} for {EntityName} at URL: {Url}",
+                                    "[LOB: {Lob}] Error fetching page {Page} for {EntityName} at URL: {Url}",
+                                    LobName,
                                     iterationCount + 1,
                                     entityName,
                                     currentUrl);
@@ -89,17 +101,13 @@ public class ReferencesClient(IOptions<GenesysOptions> genesysOptions,
                 }
             }
 
-            logger.LogInformation("Successfully fetched {Count} {EntityName} entities across {Pages} pages",
-                                  results.Count,
-                                  entityName,
-                                  iterationCount);
-
             return results;
         }
         catch (Exception ex)
         {
             logger.LogError(ex,
-                            "Failed to complete pagination for {EntityName}. Retrieved {Count} entities across {Pages} pages before failure",
+                            "[LOB: {Lob}] Failed to complete pagination for {EntityName}. Retrieved {Count} entities across {Pages} pages before failure",
+                            LobName,
                             entityName,
                             results.Count,
                             iterationCount);
@@ -107,4 +115,6 @@ public class ReferencesClient(IOptions<GenesysOptions> genesysOptions,
             throw;
         }
     }
+
+    #endregion
 }

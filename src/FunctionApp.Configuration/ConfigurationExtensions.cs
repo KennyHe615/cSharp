@@ -24,18 +24,13 @@ public static class ConfigurationExtensions
                 .ValidateDataAnnotations()
                 .ValidateOnStart();
 
-        services.AddOptions<GenesysOptions>()
-                .Bind(configuration.GetSection(GenesysOptions.SectionName))
-                .ValidateDataAnnotations()
-                .ValidateOnStart();
-
         services.AddOptions<KeyVaultOptions>()
                 .Bind(configuration.GetSection(KeyVaultOptions.SectionName))
                 .ValidateDataAnnotations()
                 .ValidateOnStart();
 
-        services.AddOptions<DatabaseOptions>()
-                .Bind(configuration.GetSection(DatabaseOptions.SectionName))
+        services.AddOptions<MultiLobOptions>()
+                .Bind(configuration.GetSection(MultiLobOptions.SectionName))
                 .ValidateDataAnnotations()
                 .ValidateOnStart();
     }

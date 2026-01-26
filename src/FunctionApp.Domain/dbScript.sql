@@ -1,5 +1,14 @@
+-- Create database if it doesn't exist
+IF NOT EXISTS (SELECT 1
+               FROM sys.databases
+               WHERE name = N'genesys_crc_landing')
+    BEGIN
+        EXEC ('CREATE DATABASE genesys_crc_landing');
+    END;
+GO
+
 -- Create schema if it doesn't exist
-IF NOT EXISTS (SELECT *
+IF NOT EXISTS (SELECT 1
                FROM sys.schemas
                WHERE name = 'ref')
     BEGIN
