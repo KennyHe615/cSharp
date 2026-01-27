@@ -1,5 +1,3 @@
-using Flurl.Http;
-
 using FunctionApp.Application.Shared.Context;
 using FunctionApp.Configuration.Options;
 using FunctionApp.Infrastructure.ExternalServices.FlurlHttp;
@@ -18,7 +16,7 @@ namespace FunctionApp.Infrastructure.ExternalServices.Genesys.Shared;
 public class GenesysApiClient(IOptions<MultiLobOptions> multiLobOptions,
                               IFlurlHttpClientFactory factory,
                               ILobContext lobContext,
-                              ILogger logger,
+                              ILogger<GenesysApiClient> logger,
                               ITokenProvider tokenProvider) : FlurlHttpClient(
     factory.GetOrAddClient(multiLobOptions.Value.GenesysApiEndpoint),
     factory,

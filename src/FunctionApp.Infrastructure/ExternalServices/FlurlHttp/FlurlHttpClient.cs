@@ -1,6 +1,4 @@
-﻿using System.Diagnostics;
-
-using Flurl.Http;
+﻿using Flurl.Http;
 
 using FunctionApp.Application.Shared.Context;
 
@@ -27,7 +25,7 @@ public class FlurlHttpClient : IFlurlHttpClient
     protected FlurlHttpClient(FlurlClient client,
                               IFlurlHttpClientFactory factory,
                               ILobContext lobContext,
-                              ILogger logger,
+                              ILogger<FlurlHttpClient> logger,
                               Func<CancellationToken, Task<string?>>? tokenProviderFunc = null,
                               Func<CancellationToken, Task>? refreshTokenFunc = null)
     {
@@ -41,10 +39,7 @@ public class FlurlHttpClient : IFlurlHttpClient
         _safeMethodPolicy = factory.GetSafePolicy();
         _unsafeMethodPolicy = factory.GetUnsafePolicy();
 
-        // 3. Register standard event handlers
-        // _client.BeforeCall(LogRequest);
-        // _client.AfterCall(LogResponse);
-        // // _client.OnError(HandleError); // Error handling is done in ExecuteWithPolicyAsync
+        // _client.OnError(HandleError); // Error handling is done in ExecuteWithPolicyAsync
     }
 
     public string BaseUrl => _client.BaseUrl;
@@ -219,7 +214,6 @@ public class FlurlHttpClient : IFlurlHttpClient
 
                                                  (T? result, int statusCode) = await operation(currentToken, ct);
 
-                                                 // Log Success
                                                  LogResponse(statusCode, method, endpoint);
 
                                                  return result;
@@ -268,18 +262,12 @@ public class FlurlHttpClient : IFlurlHttpClient
 
     private void LogRequest(string method, string endpoint)
     {
-        string correlationId = Activity.Current?.Id ?? Guid.NewGuid().ToString()[..8];
-        _logger.LogDebug("[LOB: {Lob}] HTTP Request [CorrelationId: {CorrelationId}]: {Method} {Url}",
-                         LobContext.LobName ?? "N/A",
-                         correlationId,
-                         method,
-                         endpoint);
+        _logger.LogDebug("HTTP Request | Method: {Method} | Url: {Url}", method, endpoint);
     }
 
     private void LogResponse(int? statusCode, string method, string endpoint)
     {
-        _logger.LogDebug("[LOB: {Lob}] HTTP Response: {StatusCode} for {Method} {Url}",
-                         LobContext.LobName ?? "N/A",
+        _logger.LogDebug("HTTP Response | Status: {StatusCode} | Method: {Method} | Url: {Url}",
                          statusCode,
                          method,
                          endpoint);

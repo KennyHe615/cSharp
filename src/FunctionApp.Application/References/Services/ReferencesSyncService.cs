@@ -3,6 +3,7 @@ using AutoMapper;
 using FunctionApp.Application.References.Clients;
 using FunctionApp.Application.References.DTOs;
 using FunctionApp.Application.Shared.Context;
+using FunctionApp.Application.Shared.Extensions;
 using FunctionApp.Application.Shared.Providers;
 using FunctionApp.Domain.Entities.References;
 using FunctionApp.Domain.Repositories;
@@ -12,17 +13,19 @@ using Microsoft.Extensions.Logging;
 
 namespace FunctionApp.Application.References.Services;
 
-public class ReferencesSyncService(IReferencesClient referencesClient,
-                                   IUnitOfWork unitOfWork,
-                                   IMapper mapper,
-                                   ILobContext lobContext,
-                                   IDateTimeProvider dateTimeProvider,
-                                   ILogger<ReferencesSyncService> logger) : IReferencesSyncService
+public partial class ReferencesSyncService(IReferencesClient referencesClient,
+                                           IUnitOfWork unitOfWork,
+                                           IMapper mapper,
+                                           ILobContext lobContext,
+                                           IDateTimeProvider dateTimeProvider,
+                                           ILogger<ReferencesSyncService> logger) : IReferencesSyncService
 {
     private string? LobName => lobContext.LobName;
 
     public async Task SyncAllAsync(CancellationToken cancellationToken)
     {
+        using IDisposable scope = logger.BeginOperationScope("ReferencesSync", LobName);
+
         try
         {
             // 1. Start all fetch tasks in parallel to improve performance (Parallel I/O)
@@ -103,18 +106,14 @@ public class ReferencesSyncService(IReferencesClient referencesClient,
 
         if (failed.Count == 0)
         {
-            logger.LogCritical("[LOB: {Lob}]💯Synchronization of [References] SUCCESSFULLY ON **{Time}**",
-                               LobName,
-                               dateTimeProvider.FormatLocalTimestamp());
+            logger.LogCritical("🔚[LOB: {Lob}]🔚Synchronization of [References] SUCCESSFULLY", LobName);
 
             return;
         }
 
-        logger.LogCritical(
-            "[LOB: {Lob}] Synchronization of [References]❌PARTIALLY SUCCESSFUL ON **{Time}**. FAILED: [{Failed}]",
-            LobName,
-            dateTimeProvider.FormatLocalTimestamp(),
-            string.Join(", ", failed));
+        logger.LogCritical("[LOB: {Lob}] Synchronization of [References]❌PARTIALLY SUCCESSFUL. FAILED: [{Failed}]",
+                           LobName,
+                           string.Join(", ", failed));
     }
 
     #endregion

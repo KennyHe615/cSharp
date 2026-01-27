@@ -3,15 +3,16 @@
     "logging": {
         "logLevel": {
             "default": "Information",
-            "FunctionApp": "Information",
-            "Worker": "Information",
-            "Workers": "Information",
-            "Microsoft.Azure.Functions.Worker": "Information",
+            "Function": "Debug",
+            "Host.Startup": "Error",
+            "Host.General": "Error",
+            "Host": "Error",
+            "Worker": "Warning",
+            "Workers": "Warning",
+            "Microsoft.Azure.Functions.Worker": "Warning",
             "Microsoft": "Warning",
             "Microsoft.Hosting.Lifetime": "Warning",
-            "Microsoft.AspNetCore": "Warning",
-            "Host.Startup": "Warning",
-            "Host.General": "Warning"
+            "Microsoft.AspNetCore": "Warning"
         },
         "applicationInsights": {
             "samplingSettings": {
@@ -21,7 +22,8 @@
             "enableLiveMetricsFilters": true
         },
         "console": {
-            "isEnabled": true
+            "isEnabled": true,
+            "includeScopes": true
         }
     },
     "functionTimeout": "00:05:00"

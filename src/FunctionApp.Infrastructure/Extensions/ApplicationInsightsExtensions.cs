@@ -64,11 +64,7 @@ public static class ApplicationInsightsExtensions
                                                     {
                                                         // Ensure Information level logs reach AI by default
                                                         options.Rules.Add(
-                                                            new LoggerFilterRule(
-                                                                provider,
-                                                                null,
-                                                                LogLevel.Information,
-                                                                null));
+                                                            new LoggerFilterRule(provider, null, LogLevel.Debug, null));
 
                                                         // Filter out Microsoft infrastructure logs (like "Content root path") for AI providers
                                                         options.Rules.Add(
@@ -88,9 +84,17 @@ public static class ApplicationInsightsExtensions
                                                                 null));
                                                     }
 
+                                                    options.Rules.Add(
+                                                        new LoggerFilterRule(
+                                                            null,
+                                                            "FunctionApp",
+                                                            LogLevel.Debug,
+                                                            null));
+
                                                     // Apply global filter for EF Core (affects Console and other providers)
                                                     options.Rules.Add(
                                                         new LoggerFilterRule(null, "Microsoft", LogLevel.Error, null));
+
                                                     options.Rules.Add(
                                                         new LoggerFilterRule(
                                                             null,

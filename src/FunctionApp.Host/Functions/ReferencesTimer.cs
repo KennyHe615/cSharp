@@ -16,8 +16,7 @@ public class ReferencesTimer(SyncOrchestrator orchestrator,
     [Function("Sync-NTT-References")]
     public Task RunNtt([TimerTrigger(TimerSchedule)] TimerInfo timer, FunctionContext context, CancellationToken ct)
     {
-        logger.LogCritical("[LOB: NTT]✅Synchronization of [References] STARTS ON **{Time}**",
-                           dateTimeProvider.FormatLocalTimestamp());
+        logger.LogCritical("🏁[LOB: NTT]🏁Synchronization of [References] STARTS");
 
         return orchestrator.ExecuteSyncAsync("NTT", ct);
     }
@@ -25,8 +24,7 @@ public class ReferencesTimer(SyncOrchestrator orchestrator,
     [Function("Sync-LCL-References")]
     public Task RunLcl([TimerTrigger(TimerSchedule)] TimerInfo timer, CancellationToken ct)
     {
-        logger.LogCritical("[LOB: LCL]✅Synchronization of [References] STARTS ON **{Time}**",
-                           dateTimeProvider.FormatLocalTimestamp());
+        logger.LogCritical("🏁[LOB: LCL]🏁Synchronization of [References] STARTS");
 
         return orchestrator.ExecuteSyncAsync("LCL", ct);
     }
@@ -34,8 +32,7 @@ public class ReferencesTimer(SyncOrchestrator orchestrator,
     [Function("Sync-CRC-References")]
     public Task RunCrc([TimerTrigger(TimerSchedule)] TimerInfo timer, CancellationToken ct)
     {
-        logger.LogCritical("[LOB: CRC]✅Synchronization of [References] STARTS ON **{Time}**",
-                           dateTimeProvider.FormatLocalTimestamp());
+        logger.LogCritical("🏁[LOB: CRC]🏁Synchronization of [References] STARTS");
 
         return orchestrator.ExecuteSyncAsync("CRC", ct);
     }

@@ -47,7 +47,13 @@ IHost builder = new HostBuilder().ConfigureFunctionsWorkerDefaults()
                                                                                       AssemblyMarker))
                                                                               .AddClasses(classes =>
                                                                                   classes.Where(type =>
-                                                                                      !type.IsAbstract &&
+                                                                                      type is
+                                                                                      {
+                                                                                          IsAbstract: false,
+                                                                                          IsNestedPrivate: false
+                                                                                      } &&
+                                                                                      !type.IsAssignableTo(
+                                                                                          typeof(IDisposable)) &&
                                                                                       (type.Namespace?.StartsWith(
                                                                                               "FunctionApp.Application") ==
                                                                                           true ||
