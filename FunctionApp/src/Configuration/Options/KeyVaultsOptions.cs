@@ -3,11 +3,11 @@ using System.ComponentModel.DataAnnotations;
 
 namespace Configuration.Options;
 
-public sealed class KeyVaultOptions
+public sealed class KeyVaultsOptions
 {
-    public const string SectionName = "KeyVault";
+    public const string SectionName = "KeyVaults";
 
-    [Required(ErrorMessage = "Key Vault URI is required")]
+    [Required(ErrorMessage = "Key Vaults URI is required")]
     [Url(ErrorMessage = "Must be a valid URL")]
     public string VaultUri { get; set; } = string.Empty;
 

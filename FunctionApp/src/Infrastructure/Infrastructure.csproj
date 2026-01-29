@@ -34,7 +34,6 @@
     <ItemGroup>
         <Folder Include="Genesys\Auth\"/>
         <Folder Include="Genesys\Clients\"/>
-        <Folder Include="Genesys\Models\"/>
         <Folder Include="Persistence\Mappings\"/>
         <Folder Include="Persistence\Migrations\"/>
     </ItemGroup>

@@ -22,8 +22,8 @@ public static class ConfigurationExtensions
                 .ValidateDataAnnotations()
                 .ValidateOnStart();
 
-        services.AddOptions<KeyVaultOptions>()
-                .Bind(configuration.GetSection(KeyVaultOptions.SectionName))
+        services.AddOptions<KeyVaultsOptions>()
+                .Bind(configuration.GetSection(KeyVaultsOptions.SectionName))
                 .ValidateDataAnnotations()
                 .ValidateOnStart();
 

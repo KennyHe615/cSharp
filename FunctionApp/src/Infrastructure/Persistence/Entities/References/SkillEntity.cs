@@ -1,4 +1,4 @@
-using Infrastructure.Genesys.Enums;
+using Shared.Genesys.Enums;
 
 
 namespace Infrastructure.Persistence.Entities.References;

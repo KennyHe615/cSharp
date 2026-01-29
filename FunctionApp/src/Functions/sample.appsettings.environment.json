@@ -50,7 +50,7 @@
         "ClientSecret": "string",
         "ApiEndpoint": "string (URL)"
     },
-    "KeyVault": {
+    "KeyVaults": {
         "VaultUri": "string (URL)",
         "CacheDurationMinutes": "int",
         "MaxRetryAttempts": "int",

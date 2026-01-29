@@ -1,4 +1,3 @@
-using Application;
 using Application.Shared.Extensions;
 
 using Configuration;
@@ -32,7 +31,7 @@ IHost builder = new HostBuilder().ConfigureFunctionsWorkerDefaults()
                                                         services.AddConfiguration(context.Configuration);
 
                                                         // Register AutoMapper
-                                                        services.AddAutoMapper(typeof(AssemblyMarker));
+                                                        services.AddAutoMapper(typeof(Application.AssemblyMarker));
 
                                                         // Configure infrastructure (consume the options)
                                                         services.AddInfrastructure();
@@ -42,8 +41,9 @@ IHost builder = new HostBuilder().ConfigureFunctionsWorkerDefaults()
 
                                                         // DI for other services via Scrutor
                                                         services.Scan(scan => scan
-                                                                              .FromAssembliesOf(typeof(AssemblyMarker),
-                                                                                  typeof(AssemblyMarker))
+                                                                              .FromAssembliesOf(
+                                                                                  typeof(Application.AssemblyMarker),
+                                                                                  typeof(Infrastructure.AssemblyMarker))
                                                                               .AddClasses(classes =>
                                                                                   classes.Where(type =>
                                                                                       type is
@@ -54,10 +54,10 @@ IHost builder = new HostBuilder().ConfigureFunctionsWorkerDefaults()
                                                                                       !type.IsAssignableTo(
                                                                                           typeof(IDisposable)) &&
                                                                                       (type.Namespace?.StartsWith(
-                                                                                              "FunctionApp.Application") ==
+                                                                                              "Application") ==
                                                                                           true ||
                                                                                           type.Namespace?.StartsWith(
-                                                                                              "FunctionApp.Infrastructure") ==
+                                                                                              "Infrastructure") ==
                                                                                           true) &&
                                                                                       type.Name != "FlurlHttpClient" &&
                                                                                       type.Name != "GenesysApiClient" &&

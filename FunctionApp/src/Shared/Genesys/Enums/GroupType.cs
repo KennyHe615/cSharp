@@ -1,11 +1,11 @@
 using System.Text.Json.Serialization;
 
 
-namespace Infrastructure.Genesys.Enums;
+namespace Shared.Genesys.Enums;
 
 [JsonConverter(typeof(JsonStringEnumConverter))]
-public enum PresenceType
+public enum GroupType
 {
-    System,
-    User
+    Official,
+    Social
 }
