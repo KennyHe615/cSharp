@@ -25,13 +25,11 @@
 
     <ItemGroup>
         <Folder Include="Analytics\"/>
+        <Folder Include="Interfaces\"/>
         <Folder Include="Notifications\"/>
         <Folder Include="Recovery\"/>
-        <Folder Include="References\Clients\"/>
         <Folder Include="References\Dtos\"/>
         <Folder Include="References\Mappers\"/>
         <Folder Include="References\Services\"/>
-        <Folder Include="Shared\Mappers\"/>
-        <Folder Include="Shared\Providers\"/>
     </ItemGroup>
 </Project>

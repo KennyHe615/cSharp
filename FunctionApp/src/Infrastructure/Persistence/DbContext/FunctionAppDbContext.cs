@@ -1,5 +1,4 @@
 ﻿using Application.Shared.Context;
-using Application.Shared.Extensions;
 
 using Configuration.Options;
 
@@ -9,6 +8,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.Extensions.Options;
+
+using Shared.Extensions;
 
 
 namespace Infrastructure.Persistence.DbContext;

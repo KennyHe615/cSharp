@@ -1,11 +1,12 @@
 using System.Text.Json.Serialization;
 
 
-namespace Infrastructure.Genesys.Enums;
+namespace Shared.Genesys.Enums;
 
 [JsonConverter(typeof(JsonStringEnumConverter))]
-public enum GroupType
+public enum State
 {
-    Official,
-    Social
+    Active,
+    Inactive,
+    Deleted
 }

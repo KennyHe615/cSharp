@@ -1,8 +1,9 @@
-using Infrastructure.Genesys.Enums;
 using Infrastructure.Persistence.Entities.References;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+
+using Shared.Genesys.Enums;
 
 
 namespace Infrastructure.Persistence.Configurations.References;

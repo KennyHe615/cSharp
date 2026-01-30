@@ -1,7 +1,7 @@
 using System.Text.Json.Serialization;
 
 
-namespace Infrastructure.Genesys.Enums;
+namespace Shared.Genesys.Enums;
 
 [JsonConverter(typeof(JsonStringEnumConverter))]
 public enum SystemPresence

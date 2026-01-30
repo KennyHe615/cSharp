@@ -1,5 +1,7 @@
 ﻿using Application.Shared.Context;
 
+using Infrastructure.Azure.ApplicationInsights;
+using Infrastructure.Azure.KeyVaults;
 using Infrastructure.Shared.Context;
 
 using Microsoft.Extensions.DependencyInjection;
@@ -17,7 +19,7 @@ public static class ServiceCollectionExtensions
 
         services.AddExternalServices();
 
-        // services.AddKeyVaultSecretProvider();
+        services.AddKeyVaultsSecretProvider();
 
         services.AddPersistence();
 
