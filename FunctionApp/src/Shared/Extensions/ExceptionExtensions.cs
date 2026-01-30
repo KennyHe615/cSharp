@@ -1,3 +1,4 @@
+using System.Reflection;
 using System.Text.Json;
 
 
@@ -9,6 +10,12 @@ public static class ExceptionExtensions
                                                                 {
                                                                     WriteIndented = true
                                                                 };
+
+    private static readonly string[] ExceptionPropertyNames = typeof(Exception)
+                                                              .GetProperties(
+                                                                  BindingFlags.Public | BindingFlags.Instance)
+                                                              .Select(p => p.Name)
+                                                              .ToArray();
 
     public static string ToJson(this Exception ex)
     {
@@ -26,6 +33,25 @@ public static class ExceptionExtensions
                                               ["source"] = ex.Source,
                                               ["hresult"] = ex.HResult
                                           };
+
+        // Dynamically include any custom properties from the derived exception
+        PropertyInfo[] customProps = ex.GetType()
+                                       .GetProperties(BindingFlags.Public | BindingFlags.Instance)
+                                       .Where(p => !ExceptionPropertyNames.Contains(p.Name))
+                                       .ToArray();
+
+        foreach (PropertyInfo prop in customProps)
+        {
+            try
+            {
+                object? value = prop.GetValue(ex);
+                obj[char.ToLower(prop.Name[0]) + prop.Name[1..]] = value;
+            }
+            catch
+            {
+                // Ignore properties that fail to evaluate
+            }
+        }
 
         if (ex is AggregateException agg)
         {
