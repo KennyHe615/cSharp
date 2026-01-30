@@ -1,3 +1,4 @@
+using Azure.Core;
 using Azure.Identity;
 using Azure.Security.KeyVault.Secrets;
 
@@ -6,19 +7,47 @@ using Configuration.Options;
 
 namespace Infrastructure.Azure.KeyVaults;
 
+/// <summary>
+/// Factory responsible for creating configured instances of <see cref="SecretClient"/> for Azure Key Vault access.
+/// </summary>
+/// <remarks>
+/// This factory validates configuration values and applies retry settings based on <see cref="KeyVaultsOptions"/>.
+/// Authentication is handled via <see cref="DefaultAzureCredential"/>.
+/// </remarks>
 internal static class KeyVaultsClientFactory
 {
+    /// <summary>
+    /// Creates a new <see cref="SecretClient"/> for the configured Key Vault.
+    /// </summary>
+    /// <param name="options">
+    /// Key Vault client configuration, including the vault URI and retry settings.
+    /// </param>
+    /// <returns>
+    /// A configured <see cref="SecretClient"/> instance.
+    /// </returns>
+    /// <exception cref="ArgumentNullException">
+    /// Thrown when <paramref name="options"/> is <see langword="null"/>.
+    /// </exception>
+    /// <exception cref="KeyVaultsException">
+    /// Thrown when <see cref="KeyVaultsOptions.VaultUri"/> is missing or invalid, or when client creation fails.
+    /// </exception>
     public static SecretClient Create(KeyVaultsOptions options)
     {
-        string? clientId = Environment.GetEnvironmentVariable("AZURE_CLIENT_ID");
-        string? clientSecret = Environment.GetEnvironmentVariable("AZURE_CLIENT_SECRET");
-        string? tenantId = Environment.GetEnvironmentVariable("AZURE_TENANT_ID");
+        ArgumentNullException.ThrowIfNull(options);
 
-        Console.WriteLine("========== Key Vaults Auth Debug ==========");
-        Console.WriteLine($"AZURE_CLIENT_ID: {clientId ?? "NOT SET"}");
-        Console.WriteLine($"AZURE_CLIENT_SECRET: {clientSecret ?? "NOT SET"}");
-        Console.WriteLine($"AZURE_TENANT_ID: {tenantId ?? "NOT SET"}");
-        Console.WriteLine("==========================================");
+        if (string.IsNullOrWhiteSpace(options.VaultUri))
+        {
+            throw new KeyVaultsException("Key Vault configuration error: VaultUri must be provided.");
+        }
+
+        if (!Uri.TryCreate(options.VaultUri, UriKind.Absolute, out Uri? vaultUri))
+        {
+            throw new KeyVaultsException(
+                $"Key Vault configuration error: VaultUri is not a valid absolute URI. Value: `{options.VaultUri}`");
+        }
+
+        int delayMs = Math.Max(0, options.RetryDelayMilliseconds);
+        int maxRetries = Math.Max(0, options.MaxRetryAttempts);
 
         DefaultAzureCredential credential = new();
 
@@ -27,13 +56,23 @@ internal static class KeyVaultsClientFactory
                                                 Retry =
                                                 {
                                                     Mode = options.UseExponentialBackoff
-                                                        ? global::Azure.Core.RetryMode.Exponential
-                                                        : global::Azure.Core.RetryMode.Fixed,
-                                                    Delay = TimeSpan.FromMilliseconds(options.RetryDelayMilliseconds),
-                                                    MaxRetries = options.MaxRetryAttempts
+                                                        ? RetryMode.Exponential
+                                                        : RetryMode.Fixed,
+                                                    Delay = TimeSpan.FromMilliseconds(delayMs),
+                                                    MaxDelay = TimeSpan.FromSeconds(30),
+                                                    MaxRetries = maxRetries
                                                 }
                                             };
 
-        return new SecretClient(new Uri(options.VaultUri), credential, clientOptions);
+        try
+        {
+            return new SecretClient(vaultUri, credential, clientOptions);
+        }
+        catch (Exception ex)
+        {
+            throw new KeyVaultsException(
+                "Failed to create Azure Key Vault SecretClient. Check VaultUri and Azure credential configuration.",
+                ex);
+        }
     }
 }
