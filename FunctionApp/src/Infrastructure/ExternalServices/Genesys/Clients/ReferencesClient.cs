@@ -1,46 +1,50 @@
+using Application.Dtos.References;
 using Application.References.Clients;
 using Application.Shared.Context;
+using Application.Shared.Enums;
 using Application.Shared.Providers;
-
-using Configuration.Options;
 
 using Infrastructure.ExternalServices.FlurlHttp;
 
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 
 using Shared.Extensions;
-using Shared.Genesys.Models.References;
 
 
 namespace Infrastructure.ExternalServices.Genesys.Clients;
 
-public class ReferencesClient(IOptions<GenesysOptions> genesysOptions,
-                              IFlurlHttpClientFactory factory,
+public class ReferencesClient(IFlurlHttpClientFactory factory,
                               ILobContext lobContext,
                               ILogger<ReferencesClient> logger,
                               ITokenProvider tokenProvider)
-    : GenesysApiClient(genesysOptions, factory, lobContext, logger, tokenProvider), IReferencesClient
+    : GenesysApiClient(factory, lobContext, logger, tokenProvider), IReferencesClient
 {
     private const int MaxPaginationIterations = 100;
+    private const int PageSize = 100;
+    private readonly string _queryParams = $"?pageSize={PageSize}";
 
     public async Task<List<GroupResponse>> GetGroupsAsync(CancellationToken cancellationToken)
     {
-        return await GetPaginatedAsync<GroupResponse>("/api/v2/groups?pagesize=500", "Groups", cancellationToken);
+        const string category = nameof(SyncCategory.Groups);
+        string url = $"/api/v2/{category}{_queryParams}";
+
+        return await GetPaginatedAsync<GroupResponse>(url, category, cancellationToken);
     }
 
     public async Task<List<PresenceDefinitionResponse>> GetPresenceDefinitionsAsync(CancellationToken cancellationToken)
     {
-        return await GetPaginatedAsync<PresenceDefinitionResponse>("/api/v2/presence/definitions?pageSize=500",
-                                                                   "Presence Definitions",
-                                                                   cancellationToken);
+        const string category = nameof(SyncCategory.PresenceDefinitions);
+        string url = $"/api/v2/presence/definitions{_queryParams}";
+
+        return await GetPaginatedAsync<PresenceDefinitionResponse>(url, category, cancellationToken);
     }
 
     public async Task<List<SkillResponse>> GetSkillsAsync(CancellationToken cancellationToken)
     {
-        return await GetPaginatedAsync<SkillResponse>("/api/v2/routing/skills?pageSize=500",
-                                                      "Skills",
-                                                      cancellationToken);
+        const string category = nameof(SyncCategory.Skills);
+        string url = $"/api/v2/routing/{category}{_queryParams}";
+
+        return await GetPaginatedAsync<SkillResponse>(url, category, cancellationToken);
     }
 
     #region ========== *** Private Methods *** ==========

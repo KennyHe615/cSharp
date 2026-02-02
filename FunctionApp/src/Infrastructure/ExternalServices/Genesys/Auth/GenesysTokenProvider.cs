@@ -1,15 +1,13 @@
 using Application.Shared.Context;
 using Application.Shared.Providers;
 
-using Azure;
-
-using Configuration.Options;
-
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 
+using Shared.Constants;
 using Shared.Extensions;
+
+using KeyVaultsSecretCache = Infrastructure.Azure.KeyVaults.KeyVaultsSecretCache;
 
 
 namespace Infrastructure.ExternalServices.Genesys.Auth;
@@ -25,21 +23,19 @@ namespace Infrastructure.ExternalServices.Genesys.Auth;
 /// <item><b>API Fetch:</b> Direct request to Genesys OAuth endpoint as the final source of truth.</item>
 /// </list>
 /// </remarks>
-public sealed class GenesysTokenProvider(IOptions<GenesysOptions> genesysOptions,
-                                         ILobContext lobContext,
+public sealed class GenesysTokenProvider(ILobContext lobContext,
                                          GenesysTokenClient tokenClient,
                                          ISecretProvider secretProvider,
                                          IMemoryCache cache,
                                          ILogger<GenesysTokenProvider> logger) : ITokenProvider
 {
-    private readonly GenesysOptions _genesysOptions = genesysOptions.Value;
     private readonly SemaphoreSlim _tokenLock = new(1, 1);
 
     private string LobName => lobContext.LobName;
 
-    private string TokenCacheKey => $"GenesysOAuthToken_{LobName}";
+    private string TokenSecretName => $"{KeyVaultsConstants.GenesysToken}-{LobName}";
 
-    private string TokenSecretName => $"GenesysToken-{LobName}".NormalizeSecretName();
+    private string TokenCacheKey => KeyVaultsSecretCache.GetCacheKey(TokenSecretName);
 
     /// <summary>
     /// Retrieves a valid Genesys OAuth token, checking the local cache and Key Vault before fetching from the API.
@@ -74,20 +70,18 @@ public sealed class GenesysTokenProvider(IOptions<GenesysOptions> genesysOptions
             // Step 2: Try to get from Key Vault (via ISecretProvider which handles its own local cache)
             try
             {
-                string kvToken = await secretProvider.GetSecretAsync(TokenSecretName, cancellationToken)
-                                                     .ConfigureAwait(false);
+                // Use TryGet to treat "not found" as an acceptable case (for token ONLY; no exception, no warning log).
+                string? kvToken = await secretProvider.TryGetSecretAsync(TokenSecretName, cancellationToken)
+                                                      .ConfigureAwait(false);
+
                 if (!string.IsNullOrEmpty(kvToken))
                 {
-                    logger.LogInformation("[LOB: {Lob}] Recovered Genesys token from Key Vault", LobName);
-
                     // Cache locally for 1 hour as a safe baseline since we don't know the remaining TTL
                     cache.Set(TokenCacheKey, kvToken, TimeSpan.FromHours(1));
 
                     return kvToken;
                 }
-            }
-            catch (Exception ex) when (ex.GetBaseException() is RequestFailedException { Status: 404 })
-            {
+
                 logger.LogInformation(
                     "[LOB: {Lob}] Genesys token secret '{SecretName}' not found in Key Vault. Proceeding to API fetch.",
                     LobName,
@@ -95,6 +89,7 @@ public sealed class GenesysTokenProvider(IOptions<GenesysOptions> genesysOptions
             }
             catch (Exception ex)
             {
+                // Actual Key Vault failures (auth, throttling, network, etc.)
                 logger.LogWarning(ex,
                                   "[LOB: {Lob}] Non-critical error retrieving Genesys token from Key Vault. Falling back to API. {ExJson}",
                                   LobName,
@@ -150,7 +145,7 @@ public sealed class GenesysTokenProvider(IOptions<GenesysOptions> genesysOptions
         // Merge and Validate Credentials using MultiLobOptions for shared defaults
         string clientId = lobContext.GenesysClientId;
         string clientSecret = lobContext.GenesysClientSecret;
-        string oauthEndpoint = _genesysOptions.OAuthEndpoint;
+        const string oauthEndpoint = GenesysConstants.OAuthBaseUrl;
 
         if (string.IsNullOrWhiteSpace(clientId) ||
             string.IsNullOrWhiteSpace(clientSecret) ||
@@ -177,14 +172,15 @@ public sealed class GenesysTokenProvider(IOptions<GenesysOptions> genesysOptions
 
         // Cache for the duration specified by Genesys, minus a 5-minute safety margin
         int cacheSeconds = Math.Max(60, tokenResponse.ExpiresIn - 300);
-        TimeSpan cacheExpiration = TimeSpan.FromSeconds(cacheSeconds);
-        cache.Set(TokenCacheKey, tokenResponse.AccessToken, cacheExpiration);
+
+        string token = tokenResponse.AccessToken;
+        cache.Set(TokenCacheKey, token, TimeSpan.FromSeconds(cacheSeconds));
 
         // Persist to Key Vault for cross-instance sharing
         try
         {
-            await secretProvider.UpsertSecretAsync(TokenSecretName, tokenResponse.AccessToken, cancellationToken)
-                                .ConfigureAwait(false);
+            await secretProvider.UpsertSecretAsync(TokenSecretName, token, cancellationToken).ConfigureAwait(false);
+
             logger.LogDebug("[LOB: {Lob}] Genesys token updated in Key Vault ('{SecretName}')",
                             LobName,
                             TokenSecretName);
@@ -202,7 +198,7 @@ public sealed class GenesysTokenProvider(IOptions<GenesysOptions> genesysOptions
                               LobName,
                               tokenResponse.ExpiresIn);
 
-        return tokenResponse.AccessToken;
+        return token;
     }
 
     #endregion

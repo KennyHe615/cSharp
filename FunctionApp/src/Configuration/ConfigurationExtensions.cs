@@ -1,6 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
-
-using Configuration.Options;
+﻿using Configuration.Options;
 
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -27,29 +25,9 @@ public static class ConfigurationExtensions
                 .ValidateDataAnnotations()
                 .ValidateOnStart();
 
-        services.AddOptions<GenesysOptions>()
-                .Bind(configuration.GetSection(GenesysOptions.SectionName))
-                .ValidateDataAnnotations()
-                .ValidateOnStart();
-
         services.AddOptions<DatabaseOptions>()
                 .Bind(configuration.GetSection(DatabaseOptions.SectionName))
                 .ValidateDataAnnotations()
-                .ValidateOnStart();
-
-        services.AddOptions<LobContextOptions>()
-                .Bind(configuration.GetSection(LobContextOptions.SectionName))
-                .Validate(options =>
-                          {
-                              foreach (KeyValuePair<string, LobSettings> kvp in options)
-                              {
-                                  ValidationContext ctx = new(kvp.Value);
-                                  Validator.ValidateObject(kvp.Value, ctx, true);
-                              }
-
-                              return true;
-                          },
-                          "One or more LobContext entries are invalid.")
                 .ValidateOnStart();
     }
 }

@@ -1,14 +1,13 @@
 using Application.Shared.Context;
 using Application.Shared.Providers;
 
-using Configuration.Options;
-
 using Flurl.Http;
 
 using Infrastructure.ExternalServices.FlurlHttp;
 
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
+
+using Shared.Constants;
 
 
 namespace Infrastructure.ExternalServices.Genesys.Clients;
@@ -28,20 +27,17 @@ public abstract class GenesysApiClient : FlurlHttpClient
     /// <summary>
     /// Initializes a new instance of the <see cref="GenesysApiClient"/> class.
     /// </summary>
-    /// <param name="genesysOptions">Configuration options containing the API and OAuth endpoints.</param>
     /// <param name="factory">Factory used to acquire and manage the underlying <see cref="FlurlClient"/>.</param>
     /// <param name="lobContext">Context of the current Line of Business, used for tenant-specific logging and isolation.</param>
     /// <param name="logger">Logger for capturing request/response lifecycle events.</param>
     /// <param name="tokenProvider">Provider responsible for providing and refreshing OAuth bearer tokens.</param>
-    protected GenesysApiClient(IOptions<GenesysOptions> genesysOptions,
-                               IFlurlHttpClientFactory factory,
+    protected GenesysApiClient(IFlurlHttpClientFactory factory,
                                ILobContext lobContext,
                                ILogger<GenesysApiClient> logger,
-                               ITokenProvider tokenProvider) : base(
-        factory.GetOrAddClient(genesysOptions.Value.ApiEndpoint),
-        factory,
-        lobContext,
-        logger)
+                               ITokenProvider tokenProvider) : base(factory.GetOrAddClient(GenesysConstants.ApiBaseUrl),
+                                                                    factory,
+                                                                    lobContext,
+                                                                    logger)
     {
         _tokenProvider = tokenProvider ?? throw new ArgumentNullException(nameof(tokenProvider));
     }

@@ -1,16 +1,16 @@
+using Application.Enums;
+
 using Infrastructure.Persistence.Entities.References;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
-using Shared.Genesys.Enums;
-
 
 namespace Infrastructure.Persistence.Configurations.References;
 
-public class SkillEntityConfiguration : IEntityTypeConfiguration<SkillEntity>
+public class SkillEntityConfiguration : IEntityTypeConfiguration<Skill>
 {
-    public void Configure(EntityTypeBuilder<SkillEntity> builder)
+    public void Configure(EntityTypeBuilder<Skill> builder)
     {
         builder.ToTable("Skills", "ref");
 

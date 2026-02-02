@@ -6,17 +6,73 @@ namespace Shared.Extensions;
 
 public static partial class StringExtensions
 {
-    public static string ToSnakeCase(this string? input)
+    public static string? ToSnakeCase(this string? input)
     {
-        if (string.IsNullOrEmpty(input))
+        if (string.IsNullOrEmpty(input)) return input;
+
+        // Preserve leading underscores exactly as-is.
+        int i = 0;
+        while (i < input.Length && input[i] == '_')
         {
-            return input!;
+            i++;
         }
 
-        Match startUnderscores = SnakeCaseRegex().Match(input);
+        if (i == input.Length)
+        {
+            return input; // all underscores
+        }
 
-        return startUnderscores +
-               SnakeCaseRegex2().Replace(input[startUnderscores.Length..], "$1_$2").ToLowerInvariant();
+        StringBuilder sb = new(input.Length + 8);
+
+        // Copy prefix underscores
+        if (i > 0) sb.Append(input, 0, i);
+
+        for (; i < input.Length; i++)
+        {
+            char c = input[i];
+
+            if (c == '_')
+            {
+                // Keep underscores; avoid doubling.
+                if (sb.Length == 0 || sb[^1] != '_')
+                {
+                    sb.Append('_');
+                }
+
+                continue;
+            }
+
+            if (char.IsUpper(c))
+            {
+                bool hasPrev = sb.Length > 0;
+                bool prevIsUnderscore = hasPrev && sb[^1] == '_';
+
+                // Look at neighbors in the original input (not the output).
+                char prev = i > 0 ? input[i - 1] : '\0';
+                char next = i + 1 < input.Length ? input[i + 1] : '\0';
+
+                bool prevIsLowerOrDigit = i > 0 && (char.IsLower(prev) || char.IsDigit(prev));
+                bool prevIsUpper = i > 0 && char.IsUpper(prev);
+                bool nextIsLower = i + 1 < input.Length && char.IsLower(next);
+
+                // Insert underscore at:
+                // - lower/digit -> upper (e.g., myValue)
+                // - acronym boundary: upper -> upper + next lower (e.g., HTTPServer => http_server)
+                if (!prevIsUnderscore && hasPrev && (prevIsLowerOrDigit || (prevIsUpper && nextIsLower)))
+                {
+                    sb.Append('_');
+                }
+
+                sb.Append(char.ToLowerInvariant(c));
+
+                continue;
+            }
+
+            // Lowercase letters, digits, etc.
+            sb.Append(char.ToLowerInvariant(c));
+        }
+
+        return sb.ToString();
     }
 
     public static string? Truncate(this string? value, int maxLength)
@@ -43,7 +99,7 @@ public static partial class StringExtensions
         // - trims '-' from ends
         // - enforces length and boundary rules
 
-        ReadOnlySpan<char> input = secretName.Trim();
+        ReadOnlySpan<char> input = secretName.Trim().AsSpan();
 
         StringBuilder sb = new(input.Length);
         bool previousWasHyphen = false;

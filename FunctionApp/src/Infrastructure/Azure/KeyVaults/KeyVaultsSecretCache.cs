@@ -6,29 +6,15 @@ using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
-using Shared.Extensions;
-
 
 namespace Infrastructure.Azure.KeyVaults;
 
 /// <summary>
-/// Caching decorator for <see cref="KeyVaultsSecretProvider"/> that stores resolved secrets in an in-memory cache.
+/// A caching decorator for <see cref="KeyVaultsSecretProvider"/> that implements <see cref="ISecretProvider"/>.
 /// </summary>
 /// <remarks>
-/// <list type="bullet">
-/// <item>
-/// <description> Cache entries use an absolute expiration based on <see cref="KeyVaultsOptions.CacheDurationMinutes"/> (minimum 60 minutes). </description>
-/// </item>
-/// <item>
-/// <description> Empty or whitespace secret values are not cached. </description>
-/// </item>
-/// <item>
-/// <description> Upserts and deletes invalidate the corresponding cache entry. </description>
-/// </item>
-/// <item>
-/// <description> Provider failures are normalized by wrapping non-<see cref="KeyVaultsException"/> exceptions into <see cref="KeyVaultsException"/>. </description>
-/// </item>
-/// </list>
+/// This class reduces the number of calls to Azure Key Vault by storing secret values in an <see cref="IMemoryCache"/>.
+/// It ensures that any updates or deletions invalidate the corresponding cache entries.
 /// </remarks>
 internal sealed class KeyVaultsSecretCache : ISecretProvider
 {
@@ -40,14 +26,10 @@ internal sealed class KeyVaultsSecretCache : ISecretProvider
     /// <summary>
     /// Initializes a new instance of the <see cref="KeyVaultsSecretCache"/> class.
     /// </summary>
-    /// <param name="innerProvider">The underlying provider used to fetch/update/delete secrets.</param>
-    /// <param name="cache">The in\-memory cache used for storing resolved secret values.</param>
-    /// <param name="options">Configuration options controlling cache behavior.</param>
-    /// <param name="logger">Logger instance for cache diagnostics.</param>
-    /// <exception cref="ArgumentNullException">
-    /// Thrown when <paramref name="innerProvider"/>, <paramref name="cache"/>, <paramref name="options"/>, or <paramref name="logger"/> is null.
-    /// </exception>
-    /// <exception cref="ArgumentException">Thrown when <paramref name="options"/> has a null <see cref="IOptions{TOptions}.Value"/>.</exception>
+    /// <param name="innerProvider">The underlying secret provider for Key Vault operations.</param>
+    /// <param name="cache">The memory cache instance for storing secret values.</param>
+    /// <param name="options">Configuration options for Key Vault, including cache duration.</param>
+    /// <param name="logger">The logger instance.</param>
     public KeyVaultsSecretCache(KeyVaultsSecretProvider innerProvider,
                                 IMemoryCache cache,
                                 IOptions<KeyVaultsOptions> options,
@@ -61,25 +43,17 @@ internal sealed class KeyVaultsSecretCache : ISecretProvider
         _options = options.Value ?? throw new ArgumentException("Options value cannot be null.", nameof(options));
     }
 
-    /// <summary>
-    /// Gets a secret value by name, using the cache when available.
-    /// </summary>
-    /// <param name="secretName">The Key Vault secret name.</param>
-    /// <param name="cancellationToken">A token used to cancel the operation.</param>
-    /// <returns>The resolved secret value.</returns>
-    /// <exception cref="ArgumentException">Thrown when <paramref name="secretName"/> is null, empty, or whitespace.</exception>
-    /// <exception cref="OperationCanceledException">Thrown when <paramref name="cancellationToken"/> is canceled.</exception>
-    /// <exception cref="KeyVaultsException">
-    /// Thrown when the underlying provider fails and the exception is not already a <see cref="KeyVaultsException"/>.
-    /// </exception>
-    /// <remarks>
-    /// If the underlying provider returns an empty/whitespace value, the result is returned as\-is and is not cached.
-    /// </remarks>
-    public async Task<string> GetSecretAsync(string secretName, CancellationToken cancellationToken = default)
+    /// <inheritdoc />
+    /// <exception cref="ArgumentException">Thrown when <paramref name="secretName"/> is <c>null</c> or whitespace.</exception>
+    /// <exception cref="KeyVaultsException">Thrown when an error occurs during secret retrieval.</exception>
+    public async Task<string?> TryGetSecretAsync(string secretName, CancellationToken ct = default)
     {
-        cancellationToken.ThrowIfCancellationRequested();
+        ct.ThrowIfCancellationRequested();
 
-        string normalizedName = secretName.NormalizeSecretName();
+        if (string.IsNullOrWhiteSpace(secretName))
+        {
+            throw new ArgumentException("Secret name cannot be null, empty, or whitespace.", nameof(secretName));
+        }
 
         string cacheKey = GetCacheKey(secretName);
 
@@ -90,10 +64,10 @@ internal sealed class KeyVaultsSecretCache : ISecretProvider
             return cached;
         }
 
-        string secret;
+        string? secret;
         try
         {
-            secret = await _innerProvider.GetSecretAsync(normalizedName, cancellationToken).ConfigureAwait(false);
+            secret = await _innerProvider.TryGetSecretAsync(secretName, ct).ConfigureAwait(false);
         }
         catch (KeyVaultsException)
         {
@@ -101,48 +75,48 @@ internal sealed class KeyVaultsSecretCache : ISecretProvider
         }
         catch (Exception ex)
         {
-            throw new KeyVaultsException($"Failed to get Key Vault secret '{normalizedName}'.", ex);
+            throw new KeyVaultsException($"Failed to try-get Key Vault secret '{secretName}'.", ex);
         }
 
         if (string.IsNullOrWhiteSpace(secret))
         {
-            _logger.LogWarning("Secret '{SecretName}' resolved to an empty value; skipping cache.", normalizedName);
+            // Not found (null) or empty value: do not cache.
+            if (secret is not null)
+            {
+                _logger.LogWarning("Secret '{SecretName}' resolved to an empty value; skipping cache.", secretName);
+            }
 
             return secret;
         }
 
         MemoryCacheEntryOptions cacheEntryOptions = new MemoryCacheEntryOptions().SetAbsoluteExpiration(GetCacheTtl());
+
         _cache.Set(cacheKey, secret, cacheEntryOptions);
 
         return secret;
     }
 
-    /// <summary>
-    /// Creates or updates a secret value, then invalidates the cache entry for that secret.
-    /// </summary>
-    /// <param name="secretName">The Key Vault secret name.</param>
-    /// <param name="value">The new secret value.</param>
-    /// <param name="cancellationToken">A token used to cancel the operation.</param>
-    /// <exception cref="ArgumentException">Thrown when <paramref name="secretName"/> is null, empty, or whitespace.</exception>
-    /// <exception cref="ArgumentNullException">Thrown when <paramref name="value"/> is null.</exception>
-    /// <exception cref="OperationCanceledException">Thrown when <paramref name="cancellationToken"/> is canceled.</exception>
-    /// <exception cref="KeyVaultsException">
-    /// Thrown when the underlying provider fails and the exception is not already a <see cref="KeyVaultsException"/>.
-    /// </exception>
-    /// <remarks>
-    /// Cache invalidation occurs in a <c>finally</c> block, so the cache entry is removed even when the upsert fails.
-    /// </remarks>
-    public async Task UpsertSecretAsync(string secretName, string value, CancellationToken cancellationToken = default)
+    /// <inheritdoc />
+    /// <exception cref="KeyVaultsException">Thrown when the secret is not found or an error occurs.</exception>
+    public async Task<string> GetSecretAsync(string secretName, CancellationToken ct = default)
     {
-        cancellationToken.ThrowIfCancellationRequested();
+        string? value = await TryGetSecretAsync(secretName, ct).ConfigureAwait(false);
 
-        string normalizedName = secretName.NormalizeSecretName();
+        return value ?? throw new KeyVaultsException($"Secret '{secretName}' was not found in Key Vault.");
+    }
+
+    /// <inheritdoc />
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="value"/> is <c>null</c>.</exception>
+    /// <exception cref="KeyVaultsException">Thrown when the upsert operation fails.</exception>
+    public async Task UpsertSecretAsync(string secretName, string value, CancellationToken ct = default)
+    {
+        ct.ThrowIfCancellationRequested();
 
         ArgumentNullException.ThrowIfNull(value);
 
         try
         {
-            await _innerProvider.UpsertSecretAsync(normalizedName, value, cancellationToken).ConfigureAwait(false);
+            await _innerProvider.UpsertSecretAsync(secretName, value, ct).ConfigureAwait(false);
         }
         catch (KeyVaultsException)
         {
@@ -150,72 +124,59 @@ internal sealed class KeyVaultsSecretCache : ISecretProvider
         }
         catch (Exception ex)
         {
-            throw new KeyVaultsException($"Failed to upsert Key Vault secret '{normalizedName}'.", ex);
+            throw new KeyVaultsException($"Failed to upsert Key Vault secret '{secretName}'.", ex);
         }
         finally
         {
-            _cache.Remove(GetCacheKey(normalizedName));
+            _cache.Remove(GetCacheKey(secretName));
+        }
+    }
+
+    /// <inheritdoc />
+    /// <exception cref="KeyVaultsException">Thrown when the delete operation fails.</exception>
+    public async Task DeleteSecretAsync(string secretName, CancellationToken ct = default)
+    {
+        ct.ThrowIfCancellationRequested();
+
+        try
+        {
+            await _innerProvider.DeleteSecretAsync(secretName, ct).ConfigureAwait(false);
+        }
+        catch (KeyVaultsException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            throw new KeyVaultsException($"Failed to delete Key Vault secret '{secretName}'.", ex);
+        }
+        finally
+        {
+            _cache.Remove(GetCacheKey(secretName));
         }
     }
 
     /// <summary>
-    /// Deletes a secret by name, then invalidates the cache entry for that secret.
+    /// Generates a standardized cache key for a given secret name.
     /// </summary>
-    /// <param name="secretName">The Key Vault secret name.</param>
-    /// <param name="cancellationToken">A token used to cancel the operation.</param>
-    /// <exception cref="ArgumentException">Thrown when <paramref name="secretName"/> is null, empty, or whitespace.</exception>
-    /// <exception cref="OperationCanceledException">Thrown when <paramref name="cancellationToken"/> is canceled.</exception>
-    /// <exception cref="KeyVaultsException">
-    /// Thrown when the underlying provider fails and the exception is not already a <see cref="KeyVaultsException"/>.
-    /// </exception>
-    /// <remarks>
-    /// Cache invalidation occurs in a <c>finally</c> block, so the cache entry is removed even when the delete fails.
-    /// </remarks>
-    public async Task DeleteSecretAsync(string secretName, CancellationToken cancellationToken = default)
+    /// <param name="secretName">The name of the secret.</param>
+    /// <returns>A string representing the cache key.</returns>
+    public static string GetCacheKey(string secretName)
     {
-        cancellationToken.ThrowIfCancellationRequested();
-
-        string normalizedName = secretName.NormalizeSecretName();
-
-        try
-        {
-            await _innerProvider.DeleteSecretAsync(normalizedName, cancellationToken).ConfigureAwait(false);
-        }
-        catch (KeyVaultsException)
-        {
-            throw;
-        }
-        catch (Exception ex)
-        {
-            throw new KeyVaultsException($"Failed to delete Key Vault secret '{normalizedName}'.", ex);
-        }
-        finally
-        {
-            _cache.Remove(GetCacheKey(normalizedName));
-        }
+        return $"KeyVaultsSecret:{secretName}";
     }
 
     #region ========== *** Private Methods *** ==========
 
     /// <summary>
-    /// Computes the cache TTL to apply to secret entries.
+    /// Calculates the Time-To-Live (TTL) for cache entries based on configuration, with a minimum floor.
     /// </summary>
-    /// <returns>An absolute expiration duration, with a minimum of 60 minutes.</returns>
+    /// <returns>A <see cref="TimeSpan"/> representing the cache duration.</returns>
     private TimeSpan GetCacheTtl()
     {
         int minutes = _options.CacheDurationMinutes;
 
         return TimeSpan.FromMinutes(Math.Max(60, minutes));
-    }
-
-    /// <summary>
-    /// Builds the cache key for a given secret name.
-    /// </summary>
-    /// <param name="normalizedName">The secret name.</param>
-    /// <returns>A stable cache key string.</returns>
-    private static string GetCacheKey(string normalizedName)
-    {
-        return $"KeyVaultSecret:{normalizedName}";
     }
 
     #endregion

@@ -8,6 +8,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Configuration;
 
+using Shared.Extensions;
+
 
 IHost builder = new HostBuilder().ConfigureFunctionsWorkerDefaults()
                                  .ConfigureAppConfiguration((context, configBuilder) =>
@@ -31,13 +33,16 @@ IHost builder = new HostBuilder().ConfigureFunctionsWorkerDefaults()
                                                         services.AddConfiguration(context.Configuration);
 
                                                         // Register AutoMapper
-                                                        services.AddAutoMapper(typeof(Application.AssemblyMarker));
+                                                        services.AddAutoMapper(typeof(Infrastructure.AssemblyMarker));
 
                                                         // Configure infrastructure (consume the options)
                                                         services.AddInfrastructure();
 
                                                         // Register Application services (e.g., SyncOrchestrator)
                                                         services.AddServices();
+
+                                                        // Register Shared services
+                                                        services.AddSharedServices();
 
                                                         // DI for other services via Scrutor
                                                         services.Scan(scan => scan
