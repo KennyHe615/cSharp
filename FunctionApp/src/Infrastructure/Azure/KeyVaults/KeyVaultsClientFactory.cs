@@ -4,6 +4,8 @@ using Azure.Security.KeyVault.Secrets;
 
 using Configuration.Options;
 
+using Shared.Constants;
+
 
 namespace Infrastructure.Azure.KeyVaults;
 
@@ -16,6 +18,8 @@ namespace Infrastructure.Azure.KeyVaults;
 /// </remarks>
 internal static class KeyVaultsClientFactory
 {
+    private const string KvUri = KeyVaultsConstants.Uri;
+
     /// <summary>
     /// Creates a new <see cref="SecretClient"/> for the configured Key Vault.
     /// </summary>
@@ -29,21 +33,21 @@ internal static class KeyVaultsClientFactory
     /// Thrown when <paramref name="options"/> is <see langword="null"/>.
     /// </exception>
     /// <exception cref="KeyVaultsException">
-    /// Thrown when <see cref="KeyVaultsOptions.VaultUri"/> is missing or invalid, or when client creation fails.
+    /// Thrown when <see cref="KeyVaultsConstants.Uri"/> is missing or invalid, or when client creation fails.
     /// </exception>
     public static SecretClient Create(KeyVaultsOptions options)
     {
         ArgumentNullException.ThrowIfNull(options);
 
-        if (string.IsNullOrWhiteSpace(options.VaultUri))
+        if (string.IsNullOrWhiteSpace(KvUri))
         {
-            throw new KeyVaultsException("Key Vault configuration error: VaultUri must be provided.");
+            throw new KeyVaultsException("Key Vault configuration error: KeyVaults.Uri must be provided.");
         }
 
-        if (!Uri.TryCreate(options.VaultUri, UriKind.Absolute, out Uri? vaultUri))
+        if (!Uri.TryCreate(KvUri, UriKind.Absolute, out Uri? vaultUri))
         {
             throw new KeyVaultsException(
-                $"Key Vault configuration error: VaultUri is not a valid absolute URI. Value: `{options.VaultUri}`");
+                $"Key Vault configuration error: KeyVaults.Uri is not a valid absolute URI. Value: `{KvUri}`");
         }
 
         int delayMs = Math.Max(0, options.RetryDelayMilliseconds);

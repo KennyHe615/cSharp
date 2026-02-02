@@ -1,3 +1,7 @@
+using Application.References.Handlers;
+using Application.Shared.Interfaces;
+using Application.Shared.Services;
+
 using Microsoft.Extensions.DependencyInjection;
 
 
@@ -9,6 +13,10 @@ public static class ServiceCollectionExtensions
     {
         // Register SyncOrchestrator as a Singleton to track and manage
         // active LOB sync jobs across function invocations.
-        // services.AddSingleton<SyncOrchestrator>();
+        services.AddSingleton<ISyncOrchestrator, SyncOrchestrator>();
+
+        // Category handlers
+        services.AddScoped<ISyncCategoryHandler, SkillSyncHandler>();
+        // services.AddScoped<ISyncCategoryHandler, ReferencesSyncHandler>();
     }
 }

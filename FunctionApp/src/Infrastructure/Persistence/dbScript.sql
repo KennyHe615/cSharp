@@ -1,9 +1,9 @@
 -- Create database if it doesn't exist
 IF NOT EXISTS (SELECT 1
                FROM sys.databases
-               WHERE name = N'genesys_crc_landing')
+               WHERE name = N'genesys_landing_crc')
     BEGIN
-        EXEC ('CREATE DATABASE genesys_crc_landing');
+        EXEC ('CREATE DATABASE genesys_landing_crc');
     END;
 GO
 

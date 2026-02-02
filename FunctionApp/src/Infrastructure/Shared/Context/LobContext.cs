@@ -1,72 +1,42 @@
 using Application.Shared.Context;
 
-using Configuration.Options;
-
-using Microsoft.Extensions.Options;
-
 
 namespace Infrastructure.Shared.Context;
 
-public sealed class LobContext : ILobContext
+/// <summary>
+/// Implementation of <see cref="ILobContext"/> that retrieves LOB-specific data from an <see cref="ILobContextAccessor"/>.
+/// </summary>
+/// <param name="accessor">The accessor used to retrieve the current LOB state.</param>
+/// <remarks>
+/// All properties perform validation and throw <see cref="InvalidOperationException"/> if accessed before the context is properly initialized.
+/// </remarks>
+public sealed class LobContext(ILobContextAccessor accessor) : ILobContext
 {
-    private readonly LobContextOptions _options;
-    private readonly LobSettings _settings;
+    /// <inheritdoc />
+    /// <exception cref="InvalidOperationException">Thrown when accessed before the LOB name is set in the accessor.</exception>
+    public string LobName =>
+        !string.IsNullOrWhiteSpace(accessor.LobName)
+            ? accessor.LobName!
+            : throw new InvalidOperationException("LOB context was not initialized with a LobName.");
 
-    public LobContext(IOptions<LobContextOptions> options, ILobContextAccessor accessor)
-    {
-        string? lobName = accessor.LobName;
+    /// <inheritdoc />
+    /// <exception cref="InvalidOperationException">Thrown when the Genesys Client ID is missing for the current LOB.</exception>
+    public string GenesysClientId =>
+        !string.IsNullOrWhiteSpace(accessor.GenesysClientId)
+            ? accessor.GenesysClientId!
+            : throw new InvalidOperationException($"Missing GenesysClientId for LOB `{LobName}`.");
 
-        if (string.IsNullOrWhiteSpace(lobName))
-        {
-            throw new InvalidOperationException("LOB Context has not been initialized with a LOB name.");
-        }
+    /// <inheritdoc />
+    /// <exception cref="InvalidOperationException">Thrown when the Genesys Client Secret is missing for the current LOB.</exception>
+    public string GenesysClientSecret =>
+        !string.IsNullOrWhiteSpace(accessor.GenesysClientSecret)
+            ? accessor.GenesysClientSecret!
+            : throw new InvalidOperationException($"Missing GenesysClientSecret for LOB `{LobName}`.");
 
-        LobName = lobName;
-        _options = options.Value;
-
-        if (!TryGet(lobName, out _settings))
-        {
-            throw new KeyNotFoundException($"No LobSettings configured for LOB: {lobName}");
-        }
-    }
-
-    public string LobName { get; }
-
-    public string GenesysClientId => _settings.GenesysClientId;
-
-    public string GenesysClientSecret => _settings.GenesysClientSecret;
-
-    public string DatabaseConnectionString => _settings.DatabaseConnectionString;
-
-    #region ========== *** Private Methods *** ==========
-
-    private bool TryGet(string lobName, out LobSettings settings)
-    {
-        settings = null!;
-
-        // If LobContextOptions is a dictionary-like type
-        if (_options.TryGetValue(lobName, out LobSettings? direct))
-        {
-            settings = direct;
-
-            return true;
-        }
-
-        // Case-insensitive fallback
-        KeyValuePair<string, LobSettings> match =
-            _options.FirstOrDefault(kvp => string.Equals(kvp.Key, lobName, StringComparison.OrdinalIgnoreCase));
-
-        if (string.IsNullOrEmpty(match.Key)) return false;
-
-        settings = match.Value;
-
-        return true;
-    }
-
-    #endregion
-}
-
-public sealed class LobContextAccessor : ILobContextAccessor
-{
-    public string? LobName { get; set; }
+    /// <inheritdoc />
+    /// <exception cref="InvalidOperationException">Thrown when the database connection string is missing for the current LOB.</exception>
+    public string DbConnStr =>
+        !string.IsNullOrWhiteSpace(accessor.DbConnStr)
+            ? accessor.DbConnStr!
+            : throw new InvalidOperationException($"Missing DatabaseConnectionString for LOB `{LobName}`.");
 }

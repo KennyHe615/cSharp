@@ -1,10 +1,17 @@
+using Application.Shared.Providers;
+
+using Infrastructure.Persistence.FunctionAppDbContext;
+
 using Microsoft.Azure.Functions.Worker;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
 
 namespace Functions.Timers;
 
-public class TestTimer(ILogger<TestTimer> logger)
+public class TestTimer(ILogger<TestTimer> logger,
+                       ISecretProvider secretProvider,
+                       FunctionAppDbContext dbContext)
 {
     private const string TimerTriggerExpression = "0 */1 * * * *";
 
@@ -17,9 +24,9 @@ public class TestTimer(ILogger<TestTimer> logger)
         {
             // #region Test Api
 
-            logger.LogInformation("========== Testing HttpClient + Token Infrastructure ==========");
-
-            logger.LogInformation("Calling Genesys API: /api/v2/routing/skills?pageSize=500");
+            // logger.LogInformation("========== Testing HttpClient + Token Infrastructure ==========");
+            //
+            // logger.LogInformation("Calling Genesys API: /api/v2/routing/skills?pageSize=500");
             //
             // JsonElement response = await httpClient.GetAsync<JsonElement>("/api/v2/routing/skills?pageSize=500",
             //                                                               cancellationToken);
@@ -36,7 +43,7 @@ public class TestTimer(ILogger<TestTimer> logger)
             //     logger.LogInformation("✅ API call successful! Response received.");
 
             // #endregion
-            //
+
             // #region Test KeyVault
             //
             // logger.LogInformation("========== Testing KeyVault Infrastructure ==========");
@@ -44,10 +51,10 @@ public class TestTimer(ILogger<TestTimer> logger)
             // string genesysClientSecret = await secretProvider.GetSecretAsync("azureTableConnString", cancellationToken);
             //
             // logger.LogInformation("✅ Successfully retrieved secret from Key Vault (Value: {Value})",
-            // genesysClientSecret);
+            //                       genesysClientSecret);
             //
             // logger.LogInformation("========== KeyVault Test Complete ==========");
-
+            //
             // #endregion
 
             // #region Test Database

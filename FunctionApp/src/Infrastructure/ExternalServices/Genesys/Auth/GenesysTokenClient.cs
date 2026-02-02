@@ -2,13 +2,11 @@ using System.Text;
 
 using Application.Shared.Context;
 
-using Configuration.Options;
-
 using Infrastructure.ExternalServices.FlurlHttp;
 
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 
+using Shared.Constants;
 using Shared.Extensions;
 
 
@@ -18,23 +16,23 @@ namespace Infrastructure.ExternalServices.Genesys.Auth;
 /// Client responsible for obtaining OAuth access tokens from Genesys.
 /// Uses <see cref="FlurlHttpClient"/> with shared resiliency policies provided by <see cref="IFlurlHttpClientFactory"/>.
 /// </summary>
-public class GenesysTokenClient(IOptions<GenesysOptions> genesysOptions,
-                                IFlurlHttpClientFactory factory,
+public class GenesysTokenClient(IFlurlHttpClientFactory factory,
                                 ILobContext lobContext,
                                 ILogger<GenesysTokenClient> logger)
 {
+    private const string OAuthBaseUrl = GenesysConstants.OAuthBaseUrl;
+    private const string OAuthEndpoint = GenesysConstants.OAuthEndpoint;
+
     private readonly FlurlHttpClient _httpClient = new(
-        factory.GetOrAddClient(genesysOptions.Value.OAuthEndpoint),
+        factory.GetOrAddClient(OAuthBaseUrl),
         factory,
         lobContext,
         logger);
 
-    private const string Endpoint = "/oauth/token";
-
     /// <summary>
     /// Requests an OAuth token using the client credentials grant.
     /// Adds a Basic Authorization header built from <paramref name="clientId"/> and <paramref name="clientSecret"/>,
-    /// and posts <c>grant\_type=client\_credentials</c> as a URL\-encoded form body.
+    /// and posts <c>grant_type=client_credentials</c> as a URL-encoded form body.
     /// </summary>
     /// <param name="clientId">Genesys OAuth client id.</param>
     /// <param name="clientSecret">Genesys OAuth client secret.</param>
@@ -50,6 +48,9 @@ public class GenesysTokenClient(IOptions<GenesysOptions> genesysOptions,
                                                              string clientSecret,
                                                              CancellationToken cancellationToken = default)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(OAuthBaseUrl);
+        ArgumentException.ThrowIfNullOrWhiteSpace(OAuthEndpoint);
+
         if (string.IsNullOrWhiteSpace(clientId))
         {
             throw new ArgumentException("ClientId must be provided.", nameof(clientId));
@@ -70,7 +71,7 @@ public class GenesysTokenClient(IOptions<GenesysOptions> genesysOptions,
 
         try
         {
-            return await _httpClient.PostUrlEncodedAsync<GenesysTokenResponse>(Endpoint,
+            return await _httpClient.PostUrlEncodedAsync<GenesysTokenResponse>(OAuthEndpoint,
                                                                                new
                                                                                {
                                                                                    grant_type = "client_credentials"

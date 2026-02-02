@@ -1,6 +1,7 @@
-using Domain.Repositories;
+using Application.Shared.Repositories;
 
-using Infrastructure.Persistence.DbContext;
+using Infrastructure.Persistence.FunctionAppDbContext;
+using Infrastructure.Persistence.Interceptors;
 using Infrastructure.Persistence.Repositories;
 
 using Microsoft.Extensions.DependencyInjection;
@@ -15,6 +16,7 @@ public static class PersistenceExtensions
         // NOT calling options.UseSqlServer(...) here because the
         // connection string varies per LOB and is resolved dynamically
         // inside the FunctionAppDbContext.OnConfiguring method.
+        services.AddScoped<AuditSaveChangesInterceptor>();
         services.AddDbContext<FunctionAppDbContext>();
 
         services.AddScoped<IUnitOfWork, UnitOfWork>();

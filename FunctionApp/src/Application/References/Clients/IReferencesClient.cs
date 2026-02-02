@@ -1,4 +1,4 @@
-using Shared.Genesys.Models.References;
+using Application.Dtos.References;
 
 
 namespace Application.References.Clients;

@@ -7,10 +7,6 @@ public sealed class KeyVaultsOptions
 {
     public const string SectionName = "KeyVaults";
 
-    [Required(ErrorMessage = "Key Vaults URI is required")]
-    [Url(ErrorMessage = "Must be a valid URL")]
-    public string VaultUri { get; set; } = string.Empty;
-
     [Range(1, int.MaxValue, ErrorMessage = "Cache duration must be at least 1 minute")]
     public int CacheDurationMinutes { get; set; } = 60;
 

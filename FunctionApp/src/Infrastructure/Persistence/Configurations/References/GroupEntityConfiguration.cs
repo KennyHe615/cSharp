@@ -1,16 +1,16 @@
+using Application.Enums;
+
 using Infrastructure.Persistence.Entities.References;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
-using Shared.Genesys.Enums;
-
 
 namespace Infrastructure.Persistence.Configurations.References;
 
-public class GroupEntityConfiguration : IEntityTypeConfiguration<GroupEntity>
+public class GroupEntityConfiguration : IEntityTypeConfiguration<Group>
 {
-    public void Configure(EntityTypeBuilder<GroupEntity> builder)
+    public void Configure(EntityTypeBuilder<Group> builder)
     {
         builder.ToTable("groups", "ref");
 

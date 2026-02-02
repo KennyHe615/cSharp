@@ -1,16 +1,16 @@
+using Application.Enums;
+
 using Infrastructure.Persistence.Entities.References;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
-using Shared.Genesys.Enums;
-
 
 namespace Infrastructure.Persistence.Configurations.References;
 
-public class PresenceDefinitionEntityConfiguration : IEntityTypeConfiguration<PresenceDefinitionEntity>
+public class PresenceDefinitionEntityConfiguration : IEntityTypeConfiguration<PresenceDefinition>
 {
-    public void Configure(EntityTypeBuilder<PresenceDefinitionEntity> builder)
+    public void Configure(EntityTypeBuilder<PresenceDefinition> builder)
     {
         builder.ToTable("presence_definitions", "ref");
 

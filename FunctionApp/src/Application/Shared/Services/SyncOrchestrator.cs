@@ -1,6 +1,10 @@
 using System.Collections.Concurrent;
 
 using Application.Shared.Context;
+using Application.Shared.Enums;
+using Application.Shared.Interfaces;
+using Application.Shared.Providers;
+using Application.Shared.Records;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -8,54 +12,79 @@ using Microsoft.Extensions.Logging;
 
 namespace Application.Shared.Services;
 
+/// <summary>
+/// Orchestrates the synchronization process by managing execution scopes, resolving LOB-specific secrets,
+/// and ensuring concurrency control for active sync tasks.
+/// </summary>
+/// <param name="serviceProvider">The root service provider used to create execution scopes.</param>
+/// <param name="logger">The logger instance.</param>
 public sealed class SyncOrchestrator(IServiceProvider serviceProvider,
-                                     ILogger<SyncOrchestrator> logger)
+                                     ILogger<SyncOrchestrator> logger) : ISyncOrchestrator
 {
-    private static readonly ConcurrentDictionary<string, CancellationTokenSource> ActiveSyncs =
-        new(StringComparer.OrdinalIgnoreCase);
+    /// <summary>
+    /// Tracks active synchronization tasks to allow cancellation of stale or overlapping jobs.
+    /// </summary>
+    private static readonly ConcurrentDictionary<SyncKey, CancellationTokenSource> ActiveSyncs = new();
 
-    public async Task ExecuteSyncAsync(string lobName, CancellationToken externalToken)
+    /// <inheritdoc />
+    /// <exception cref="ArgumentException">Thrown when <paramref name="lobName"/> is <c>null</c> or empty.</exception>
+    public async Task ExecuteAsync(string lobName, SyncCategory category, CancellationToken externalToken)
     {
-        if (string.IsNullOrWhiteSpace(lobName)) throw new ArgumentException("LOB name is required.", nameof(lobName));
+        if (string.IsNullOrWhiteSpace(lobName))
+        {
+            throw new ArgumentException("LOB name is required.", nameof(lobName));
+        }
 
-        using CancellationTokenSource cts = await PrepareCancellationTokenSourceAsync(lobName, externalToken);
+        SyncKey key = new(lobName, category);
+
+        logger.LogDebug("[LOB: {Lob}] [Category: {Category}] Orchestration started.", lobName, category);
+
+        using CancellationTokenSource cts =
+            await PrepareCancellationTokenSourceAsync(key, externalToken).ConfigureAwait(false);
 
         try
         {
-            await RunSyncInScopeAsync(lobName, cts.Token);
+            await RunInScopeAsync(lobName, category, cts.Token).ConfigureAwait(false);
         }
         finally
         {
-            ActiveSyncs.TryRemove(new KeyValuePair<string, CancellationTokenSource>(lobName, cts));
+            // Remove the CTS from the active tracking map if it's still the instance we started with.
+            ActiveSyncs.TryRemove(new KeyValuePair<SyncKey, CancellationTokenSource>(key, cts));
         }
     }
 
     #region ========== *** Private Methods *** ==========
 
+    /// <summary>
+    /// Prepares a linked <see cref="CancellationTokenSource"/> and performs an atomic swap if a job is already running for the same key.
+    /// </summary>
+    /// <param name="key">The unique key for the synchronization task.</param>
+    /// <param name="externalToken">The external cancellation token (e.g., from the Function host).</param>
+    /// <returns>A new <see cref="CancellationTokenSource"/> linked to the external token.</returns>
     private async Task<CancellationTokenSource> PrepareCancellationTokenSourceAsync(
-        string lobName,
+        SyncKey key,
         CancellationToken externalToken)
     {
         // Suspend previous job if it exists for this LOB
         CancellationTokenSource newCts = CancellationTokenSource.CreateLinkedTokenSource(externalToken);
 
         //  Atomic swap logic: replace the old CTS with the new one and cancel the old one.
-        //  We avoid the AddOrUpdate lambda to eliminate "Captured variable disposed" warnings
-        //  and use TryUpdate to ensure we only cancel the correct previous instance.
         while (true)
         {
-            if (ActiveSyncs.TryGetValue(lobName, out CancellationTokenSource? oldCts))
+            if (ActiveSyncs.TryGetValue(key, out CancellationTokenSource? oldCts))
             {
-                if (!ActiveSyncs.TryUpdate(lobName, newCts, oldCts)) continue;
+                if (!ActiveSyncs.TryUpdate(key, newCts, oldCts)) continue;
 
                 try
                 {
                     if (!oldCts.IsCancellationRequested)
                     {
-                        logger.LogWarning("[LOB: {Lob}] New job arrived. Signaling cancellation to previous job.",
-                                          lobName);
+                        logger.LogWarning(
+                            "[LOB: {Lob}] [Category: {Category}] New job arrived. Signaling cancellation to previous job.",
+                            key.LobName,
+                            key.Category);
 
-                        await oldCts.CancelAsync();
+                        await oldCts.CancelAsync().ConfigureAwait(false);
                     }
                 }
                 catch (ObjectDisposedException)
@@ -67,53 +96,78 @@ public sealed class SyncOrchestrator(IServiceProvider serviceProvider,
                 break;
             }
 
-            if (ActiveSyncs.TryAdd(lobName, newCts))
-            {
-                break;
-            }
+            if (ActiveSyncs.TryAdd(key, newCts)) break;
         }
 
         return newCts;
     }
 
-    private async Task RunSyncInScopeAsync(string lobName, CancellationToken token)
+    /// <summary>
+    /// Executes the synchronization logic within a new DI scope.
+    /// </summary>
+    /// <param name="lobName">The name of the LOB.</param>
+    /// <param name="category">The sync category.</param>
+    /// <param name="token">The cancellation token.</param>
+    private async Task RunInScopeAsync(string lobName, SyncCategory category, CancellationToken token)
     {
         using IServiceScope scope = serviceProvider.CreateScope();
 
-        InitializeLobContext(scope, lobName);
+        await InitializeLobContextAsync(scope, lobName, token).ConfigureAwait(false);
 
         try
         {
-            // TODO: Wait for implement
-            // IReferencesSyncService syncService = scope.ServiceProvider.GetRequiredService<IReferencesSyncService>();
-            // if (syncService == null)
-            // {
-            //     logger.LogError("[LOB: {Lob}] IReferencesSyncService is not registered.", lobName);
-            //
-            //     return;
-            // }
-            //
-            // await syncService.SyncAllAsync(token);
+            ISyncCategoryHandler handler = ResolveHandler(scope, category);
+
+            await handler.ExecuteAsync(token).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {
-            logger.LogInformation("[LOB: {Lob}] Sync job was successfully suspended/cancelled.", lobName);
+            logger.LogWarning("[LOB: {Lob}] [Category: {Category}] Sync job was successfully suspended/cancelled.",
+                              lobName,
+                              category);
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "[LOB: {Lob}] Critical failure in sync job.", lobName);
+            logger.LogError(ex, "[LOB: {Lob}] [Category: {Category}] Critical failure in sync job.", lobName, category);
 
             throw;
         }
     }
 
-    private static void InitializeLobContext(IServiceScope scope, string lobName)
+    /// <summary>
+    /// Initializes the LOB context for the current scope by resolving secrets and triggering context validation.
+    /// </summary>
+    /// <param name="scope">The current execution scope.</param>
+    /// <param name="lobName">The name of the LOB.</param>
+    /// <param name="token">The cancellation token.</param>
+    private static async Task InitializeLobContextAsync(IServiceScope scope, string lobName, CancellationToken token)
     {
         ILobContextAccessor accessor = scope.ServiceProvider.GetRequiredService<ILobContextAccessor>();
         accessor.LobName = lobName;
 
-        // Resolve ILobContext once to ensure the settings exist for this LOB name
+        ILobSecretsResolver resolver = scope.ServiceProvider.GetRequiredService<ILobSecretsResolver>();
+        await resolver.PopulateAsync(accessor, token).ConfigureAwait(false);
+
+        // Resolving ILobContext here triggers the validation of the populated accessor values
+        // (ClientId, ClientSecret, ConnStr) within the LobContext constructor/implementation.
         _ = scope.ServiceProvider.GetRequiredService<ILobContext>();
+    }
+
+    /// <summary>
+    /// Resolves the appropriate <see cref="ISyncCategoryHandler"/> for the specified category from the scope.
+    /// </summary>
+    /// <param name="scope">The current execution scope.</param>
+    /// <param name="category">The category to resolve.</param>
+    /// <returns>The resolved handler.</returns>
+    /// <exception cref="NotSupportedException">Thrown when no handler is registered for the category.</exception>
+    private static ISyncCategoryHandler ResolveHandler(IServiceScope scope, SyncCategory category)
+    {
+        IEnumerable<ISyncCategoryHandler> handlers =
+            scope.ServiceProvider.GetRequiredService<IEnumerable<ISyncCategoryHandler>>();
+
+        ISyncCategoryHandler? handler = handlers.FirstOrDefault(h => h.Category == category);
+
+        return handler ?? throw new NotSupportedException($"Sync category {category} is not registered.");
     }
 
     #endregion

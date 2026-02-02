@@ -153,19 +153,13 @@ public sealed class FlurlHttpClientFactory : IFlurlHttpClientFactory
 
         IReadOnlyCollection<int> allowedCodes = strategy.StatusCodes;
 
-        return Policy.Handle<FlurlHttpException>(ex => ShouldRetryOnStatusCode(ex.StatusCode, allowedCodes))
-                     .Or<ExternalServiceHttpException>(ex => ShouldRetryOnStatusCode((int)ex.StatusCode, allowedCodes))
+        return Policy.Handle<Exception>(ex => ShouldRetryOnStatusCode(GetStatusCode(ex), allowedCodes))
                      .Or<HttpRequestException>()
                      .WaitAndRetryAsync(strategy.MaxAttempts,
                                         (attempt, ex, _) =>
                                         {
                                             // SPECIAL CASE: Fixed 2-minute freeze for HTTP 429 (Rate Limited)
-                                            int? statusCode = ex switch
-                                            {
-                                                FlurlHttpException fx => fx.StatusCode,
-                                                ExternalServiceHttpException hx => (int)hx.StatusCode,
-                                                _ => null
-                                            };
+                                            int? statusCode = GetStatusCode(ex);
 
                                             if (statusCode == 429)
                                             {
@@ -185,17 +179,28 @@ public sealed class FlurlHttpClientFactory : IFlurlHttpClientFactory
                                         async (ex, time, count, context) =>
                                         {
                                             // Handle 401 Refresh using the function passed via context
-                                            int? statusCode = ex switch
-                                            {
-                                                FlurlHttpException fx => fx.StatusCode,
-                                                ExternalServiceHttpException hx => (int)hx.StatusCode,
-                                                _ => null
-                                            };
+                                            int? statusCode = GetStatusCode(ex);
+
+                                            // Instrumentation: prove whether the refresh callback is present in Context.
+                                            bool hasRefresh =
+                                                context.TryGetValue(RefreshFuncKey, out object? funcObj) &&
+                                                funcObj is Func<CancellationToken, Task>;
+
+                                            _logger.LogWarning(
+                                                "[{Type}] onRetry {Count}/{Max} after {Delay}ms | status={Status} | hasRefresh={HasRefresh} | exType={ExType} | msg = {Msg}",
+                                                type,
+                                                count,
+                                                strategy.MaxAttempts,
+                                                time.TotalMilliseconds,
+                                                statusCode,
+                                                hasRefresh,
+                                                ex.GetType().FullName,
+                                                ex.Message);
 
                                             // Handle 401 refresh using the function passed via policy context.
                                             if (statusCode == 401 &&
                                                 count == 1 &&
-                                                context.TryGetValue(RefreshFuncKey, out object? funcObj) &&
+                                                hasRefresh &&
                                                 funcObj is Func<CancellationToken, Task> refreshFunc)
                                             {
                                                 _logger.LogDebug(
@@ -205,14 +210,6 @@ public sealed class FlurlHttpClientFactory : IFlurlHttpClientFactory
                                                 // Intentionally decoupled from request cancellation to allow refresh to complete.
                                                 await refreshFunc(CancellationToken.None).ConfigureAwait(false);
                                             }
-
-                                            _logger.LogWarning(
-                                                "[{Type}] Retry {Count}/{Max} after {Delay}ms due to: {Msg}",
-                                                type,
-                                                count,
-                                                strategy.MaxAttempts,
-                                                time.TotalMilliseconds,
-                                                ex.Message);
                                         });
     }
 
@@ -231,13 +228,53 @@ public sealed class FlurlHttpClientFactory : IFlurlHttpClientFactory
                      .CircuitBreakerAsync(_options.CircuitBreaker.ExceptionsAllowedBeforeBreaking,
                                           _options.CircuitBreaker.DurationOfBreak,
                                           (exception, duration) =>
+                                          {
                                               _logger.LogError(
                                                   "Circuit Breaker OPEN for {Duration}s due to {Exception}",
                                                   duration.TotalSeconds,
-                                                  exception.ToJson()),
-                                          () => _logger.LogInformation("Circuit Breaker CLOSED (Normal operation)"),
-                                          () => _logger.LogInformation(
-                                              "Circuit Breaker HALF-OPEN (Testing connectivity)"));
+                                                  exception.ToJson());
+                                          },
+                                          () =>
+                                          {
+                                              _logger.LogInformation("Circuit Breaker CLOSED (Normal operation)");
+                                          },
+                                          () =>
+                                          {
+                                              _logger.LogInformation(
+                                                  "Circuit Breaker HALF-OPEN (Testing connectivity)");
+                                          });
+    }
+
+    /// <summary>
+    /// Extracts the HTTP status code from an exception by unwrapping nested exceptions.
+    /// </summary>
+    /// <param name="ex">The exception to extract the status code from.</param>
+    /// <returns>The HTTP status code if found; otherwise <c>null</c>.</returns>
+    /// <remarks>
+    /// This method handles both <see cref="FlurlHttpException"/> and <see cref="ExternalServiceHttpException"/>
+    /// by traversing the exception chain to find the first occurrence of either type.
+    /// </remarks>
+    private static int? GetStatusCode(Exception ex)
+    {
+        // Unwrap: ExternalServiceHttpException can have an inner FlurlHttpException.
+        // Also handle the reverse (FlurlHttpException with an inner ExternalServiceHttpException), just in case.
+        while (true)
+        {
+            switch (ex)
+            {
+                case FlurlHttpException fx:
+                    return fx.StatusCode;
+
+                case ExternalServiceHttpException hx:
+                    return (int)hx.StatusCode;
+
+                default:
+                    if (ex.InnerException is null) return null;
+                    ex = ex.InnerException;
+
+                    break;
+            }
+        }
     }
 
     /// <summary>
