@@ -25,26 +25,23 @@ public class ReferencesClient(IFlurlHttpClientFactory factory,
 
     public async Task<List<GroupResponse>> GetGroupsAsync(CancellationToken cancellationToken)
     {
-        const string category = nameof(SyncCategory.Group);
-        string url = $"/api/v2/{category}{_queryParams}";
+        string url = $"/api/v2/groups{_queryParams}";
 
-        return await GetPaginatedAsync<GroupResponse>(url, category, cancellationToken);
+        return await GetPaginatedAsync<GroupResponse>(url, nameof(SyncCategory.Group), cancellationToken);
     }
 
     public async Task<List<PresenceDefinitionResponse>> GetPresenceDefinitionsAsync(CancellationToken ct)
     {
-        const string category = nameof(SyncCategory.PresenceDefinition);
         string url = $"/api/v2/presence/definitions{_queryParams}";
 
-        return await GetPaginatedAsync<PresenceDefinitionResponse>(url, category, ct);
+        return await GetPaginatedAsync<PresenceDefinitionResponse>(url, nameof(SyncCategory.PresenceDefinition), ct);
     }
 
     public async Task<List<SkillResponse>> GetSkillsAsync(CancellationToken ct)
     {
-        const string category = nameof(SyncCategory.Skill);
-        string url = $"/api/v2/routing/{category}{_queryParams}";
+        string url = $"/api/v2/routing/skills{_queryParams}";
 
-        return await GetPaginatedAsync<SkillResponse>(url, category, ct);
+        return await GetPaginatedAsync<SkillResponse>(url, nameof(SyncCategory.Skill), ct);
     }
 
     #region ========== *** Private Methods *** ==========
