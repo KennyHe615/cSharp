@@ -51,7 +51,7 @@ public class ReferencesRepository(IUnitOfWork uow,
     /// <summary>
     /// Synchronizes the provided presence definitions with the database, inserting new records and updating existing ones.
     /// </summary>
-    /// <param name="definitions">A read-only collection of presence definition DTOs retrieved from the Genesys API.</param>
+    /// <param name="presenceDefinitions">A read-only collection of presence definition DTOs retrieved from the Genesys API.</param>
     /// <param name="ct">A token to monitor for cancellation requests during the asynchronous operation.</param>
     /// <remarks>
     /// <para>
@@ -66,10 +66,11 @@ public class ReferencesRepository(IUnitOfWork uow,
     /// </remarks>
     /// <exception cref="OperationCanceledException">Thrown when the operation is cancelled via the <paramref name="ct"/>.</exception>
     /// <exception cref="PersistenceException">Thrown when a database operation fails (e.g., constraint violations, connection issues).</exception>
-    public async Task UpsertPresenceDefinitionsAsync(IReadOnlyCollection<PresenceDefinitionResponse> definitions,
-                                                     CancellationToken ct)
+    public async Task UpsertPresenceDefinitionsAsync(
+        IReadOnlyCollection<PresenceDefinitionResponse> presenceDefinitions,
+        CancellationToken ct)
     {
-        List<PresenceDefinition>? mappedEntities = mapper.Map<List<PresenceDefinition>>(definitions);
+        List<PresenceDefinition>? mappedEntities = mapper.Map<List<PresenceDefinition>>(presenceDefinitions);
 
         await uow.UpsertRangeAsync(mappedEntities, pd => pd.Deactivated = true, ct);
 
@@ -99,6 +100,36 @@ public class ReferencesRepository(IUnitOfWork uow,
         List<Group>? mappedEntities = mapper.Map<List<Group>>(groups);
 
         await uow.UpsertRangeAsync(mappedEntities, g => g.State = State.Inactive, ct);
+
+        await uow.SaveChangesAsync(ct);
+    }
+
+    /// <summary>
+    /// Synchronizes the provided wrapup codes with the database, inserting new records and updating existing ones.
+    /// </summary>
+    /// <param name="wrapupCodes">A read-only collection of wrapup code DTOs retrieved from the Genesys API.</param>
+    /// <param name="ct">A token to monitor for cancellation requests during the asynchronous operation.</param>
+    /// <remarks>
+    /// <para>
+    /// This method performs a full synchronization using the "Upsert without Inactivation" pattern:
+    /// <list type="number">
+    /// <item>Maps the incoming DTOs to <see cref="WrapupCode"/> entities using AutoMapper.</item>
+    /// <item>Calls <see cref="IUnitOfWork.UpsertRangeAsync{TEntity}"/> to insert new wrapup codes or update existing ones based on their unique identifier (Id).</item>
+    /// <item>No inactivation callback is applied—records not present in the incoming collection remain unchanged in the database.</item>
+    /// <item>Commits all changes to the database in a single transaction via <see cref="IUnitOfWork.SaveChangesAsync"/>.</item>
+    /// </list>
+    /// </para>
+    /// <para>
+    /// Unlike other reference data methods, wrapup codes do not support inactivation logic because the Genesys API does not expose a deleted/inactive state for these entities.
+    /// </para>
+    /// </remarks>
+    /// <exception cref="OperationCanceledException">Thrown when the operation is cancelled via the <paramref name="ct"/>.</exception>
+    /// <exception cref="PersistenceException">Thrown when a database operation fails (e.g., constraint violations, connection issues).</exception>
+    public async Task UpsertWrapupCodesAsync(IReadOnlyCollection<WrapupCodeResponse> wrapupCodes, CancellationToken ct)
+    {
+        List<WrapupCode>? mappedEntities = mapper.Map<List<WrapupCode>>(wrapupCodes);
+
+        await uow.UpsertRangeAsync(mappedEntities, null, ct);
 
         await uow.SaveChangesAsync(ct);
     }

@@ -22,4 +22,11 @@ public interface IReferencesSyncService
     /// <param name="ct">The cancellation token.</param>
     /// <returns>A task representing the asynchronous synchronization operation.</returns>
     Task SyncGroupsAsync(CancellationToken ct);
+
+    /// <summary>
+    /// Orchestrates the asynchronous synchronization process for wrapup_codes.
+    /// </summary>
+    /// <param name="ct">The cancellation token.</param>
+    /// <returns>A task representing the asynchronous synchronization operation.</returns>
+    Task SyncWrapupCodesAsync(CancellationToken ct);
 }

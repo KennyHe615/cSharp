@@ -80,6 +80,26 @@ public class ReferencesSyncService(IReferencesClient referencesClient,
             .ConfigureAwait(false);
     }
 
+    /// <summary>
+    /// Synchronizes Wrapup Codes data from Genesys Cloud to the database for the current LOB.
+    /// </summary>
+    /// <param name="ct">A token to monitor for cancellation requests during the asynchronous operation.</param>
+    /// <remarks>
+    /// This method fetches all wrapup codes from the Genesys API, validates that data is present,
+    /// and delegates persistence to the repository. If no wrapup codes are found, the operation is logged
+    /// as an error and exits early without modifying the database.
+    /// </remarks>
+    /// <exception cref="OperationCanceledException">Thrown when the operation is cancelled via the <paramref name="ct"/>.</exception>
+    /// <exception cref="ExternalServiceHttpException">Thrown when the Genesys API request fails.</exception>
+    /// <exception cref="PersistenceException">Thrown when database persistence fails.</exception>
+    public async Task SyncWrapupCodesAsync(CancellationToken ct)
+    {
+        await SyncReferenceDataAsync(nameof(SyncCategory.WrapupCode),
+                                     () => referencesClient.GetWrapupCodesAsync(ct),
+                                     wrapupCodes => referencesRepository.UpsertWrapupCodesAsync(wrapupCodes, ct))
+            .ConfigureAwait(false);
+    }
+
     #region ========== *** Private Methods *** ==========
 
     /// <summary>

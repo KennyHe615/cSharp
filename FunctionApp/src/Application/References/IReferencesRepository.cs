@@ -23,4 +23,9 @@ public interface IReferencesRepository
     /// Synchronizes the provided groups with the database.
     /// </summary>
     Task UpsertGroupsAsync(IReadOnlyCollection<GroupResponse> groups, CancellationToken ct);
+
+    /// <summary>
+    /// Synchronizes the provided wrapup_codes with the database.
+    /// </summary>
+    Task UpsertWrapupCodesAsync(IReadOnlyCollection<WrapupCodeResponse> wrapupCodes, CancellationToken ct);
 }

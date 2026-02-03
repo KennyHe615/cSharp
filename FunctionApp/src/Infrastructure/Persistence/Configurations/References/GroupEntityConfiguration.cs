@@ -50,22 +50,11 @@ public class GroupEntityConfiguration : IEntityTypeConfiguration<Group>
 
         builder.Property(x => x.IncludeOwners);
 
-        builder.Property(x => x.AppCreatedAt)
-               .IsRequired()
-               .HasColumnType("datetimeoffset(0)")
-               .HasDefaultValueSql("SYSDATETIMEOFFSET()");
-
-        builder.Property(x => x.AppUpdatedAt)
-               .IsRequired()
-               .HasColumnType("datetimeoffset(0)")
-               .HasDefaultValueSql("SYSDATETIMEOFFSET()");
-
         #endregion
 
         #region ========== *** Non-Clustered Indexes *** ==========
 
         builder.HasIndex(x => x.Name);
-        builder.HasIndex(x => x.AppUpdatedAt);
 
         #endregion
     }

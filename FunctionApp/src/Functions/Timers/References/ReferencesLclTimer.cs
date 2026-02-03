@@ -27,8 +27,9 @@ public sealed class ReferencesLclTimer(ISyncOrchestrator orchestrator,
             Task skillsTask = orchestrator.ExecuteAsync(LobName, SyncCategory.Skill, ct);
             Task presenceTask = orchestrator.ExecuteAsync(LobName, SyncCategory.PresenceDefinition, ct);
             Task groupTask = orchestrator.ExecuteAsync(LobName, SyncCategory.Group, ct);
+            Task wrapupCodeTask = orchestrator.ExecuteAsync(LobName, SyncCategory.WrapupCode, ct);
 
-            await Task.WhenAll(skillsTask, presenceTask, groupTask).ConfigureAwait(false);
+            await Task.WhenAll(skillsTask, presenceTask, groupTask, wrapupCodeTask).ConfigureAwait(false);
         }
         catch (Exception ex)
         {

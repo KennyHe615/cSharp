@@ -2,6 +2,7 @@
 
 using Configuration.Options;
 
+using Infrastructure.Persistence.Entities;
 using Infrastructure.Persistence.Interceptors;
 
 using Microsoft.EntityFrameworkCore;
@@ -131,6 +132,23 @@ public class FunctionAppDbContext(DbContextOptions<FunctionAppDbContext> options
                     index.SetDatabaseName(indexName.ToSnakeCase());
                 }
             }
+
+            // Centralized Audit configuration for entities inheriting from Audit base class
+            if (!typeof(Audit).IsAssignableFrom(entity.ClrType)) continue;
+
+            modelBuilder.Entity(entity.ClrType)
+                        .Property(nameof(Audit.AppCreatedAt))
+                        .IsRequired()
+                        .HasColumnType("datetimeoffset(0)")
+                        .HasDefaultValueSql("SYSDATETIMEOFFSET()");
+
+            modelBuilder.Entity(entity.ClrType)
+                        .Property(nameof(Audit.AppUpdatedAt))
+                        .IsRequired()
+                        .HasColumnType("datetimeoffset(0)")
+                        .HasDefaultValueSql("SYSDATETIMEOFFSET()");
+
+            modelBuilder.Entity(entity.ClrType).HasIndex(nameof(Audit.AppUpdatedAt));
         }
     }
 }
