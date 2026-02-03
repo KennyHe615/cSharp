@@ -396,13 +396,22 @@ public class FlurlHttpClient : IFlurlHttpClient
                                                          ex,
                                                          responseBody);
 
-                                                     _logger.LogError(wrappedEx,
-                                                                      "[LOB: {Lob}] {Method} failed | Status: {Status} | Response: {Body} | Exception: {ExJson}",
-                                                                      LobContext.LobName,
-                                                                      methodStr,
-                                                                      statusCode,
-                                                                      responseBody,
-                                                                      wrappedEx.ToJson());
+                                                     if (statusCode == HttpStatusCode.Unauthorized)
+                                                     {
+                                                         _logger.LogDebug(
+                                                             "[LOB: {Lob}] Token expired, invoking refresh handler.",
+                                                             LobContext.LobName);
+                                                     }
+                                                     else
+                                                     {
+                                                         _logger.LogError(wrappedEx,
+                                                                          "[LOB: {Lob}] {Method} failed | Status: {Status} | Response: {Body} | Exception: {ExJson}",
+                                                                          LobContext.LobName,
+                                                                          methodStr,
+                                                                          statusCode,
+                                                                          responseBody,
+                                                                          wrappedEx.ToJson());
+                                                     }
 
                                                      throw wrappedEx;
                                                  }

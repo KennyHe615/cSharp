@@ -1,3 +1,5 @@
+using System.Collections.Concurrent;
+
 using Application.Shared.Context;
 using Application.Shared.Providers;
 
@@ -16,12 +18,21 @@ namespace Infrastructure.ExternalServices.Genesys.Auth;
 /// Provides a unified, thread-safe mechanism for acquiring and caching Genesys OAuth access tokens across different Lines of Business (LOBs).
 /// </summary>
 /// <remarks>
+/// <para>
 /// Implementation follows a tiered caching strategy:
 /// <list type="bullet">
-/// <item><b>In-Memory:</b> Immediate reuse within the same process.</item>
-/// <item><b>Distributed Fallback:</b> Persists tokens to a secret store (Key Vault) to share across multiple function instances.</item>
+/// <item><b>In-Memory:</b> Immediate reuse within the same process via <see cref="IMemoryCache"/>.</item>
+/// <item><b>Distributed Fallback:</b> Persists tokens to Key Vault via <see cref="ISecretProvider"/> to share across multiple function instances.</item>
 /// <item><b>API Fetch:</b> Direct request to Genesys OAuth endpoint as the final source of truth.</item>
 /// </list>
+/// </para>
+/// <para>
+/// <b>Concurrency Management:</b>
+/// To prevent "Thundering Herd" issues on the Genesys API and avoid redundant token generation ("Token Waste"),
+/// this provider utilizes a static dictionary of <see cref="SemaphoreSlim"/> instances partitioned by LOB.
+/// Since the provider is typically registered with a Scoped lifetime, the static nature of the locks ensures
+/// that parallel Function triggers for the same LOB coordinate their API requests even across different dependency injection scopes.
+/// </para>
 /// </remarks>
 public sealed class GenesysTokenProvider(ILobContext lobContext,
                                          GenesysTokenClient tokenClient,
@@ -29,7 +40,11 @@ public sealed class GenesysTokenProvider(ILobContext lobContext,
                                          IMemoryCache cache,
                                          ILogger<GenesysTokenProvider> logger) : ITokenProvider
 {
-    private readonly SemaphoreSlim _tokenLock = new(1, 1);
+    /// <summary>
+    /// A static registry of semaphores to ensure thread-safety and serialized API access per Line of Business.
+    /// This prevents multiple parallel synchronization tasks for the same LOB from simultaneously requesting new tokens.
+    /// </summary>
+    private static readonly ConcurrentDictionary<string, SemaphoreSlim> TokenLocks = new();
 
     private string LobName => lobContext.LobName;
 
@@ -40,11 +55,13 @@ public sealed class GenesysTokenProvider(ILobContext lobContext,
     /// <summary>
     /// Retrieves a valid Genesys OAuth token, checking the local cache and Key Vault before fetching from the API.
     /// </summary>
-    /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
-    /// <returns>A valid JWT access token for Genesys API calls.</returns>
-    /// <exception cref="InvalidOperationException">Thrown when the LOB context is missing.</exception>
-    /// <exception cref="ExternalServiceHttpException">Thrown when token acquisition from Genesys fails.</exception>
-    public async Task<string> GetValidTokenAsync(CancellationToken cancellationToken = default)
+    /// <remarks>
+    /// This method implements double-check locking using the per-LOB semaphore to ensure that only the first thread
+    /// to encounter a cache miss performs the expensive API fetch, while subsequent threads wait and then
+    /// resolve the newly cached token.
+    /// </remarks>
+    /// <param name="ct">A token to monitor for cancellation requests.</param>
+    public async Task<string> GetValidTokenAsync(CancellationToken ct = default)
     {
         if (string.IsNullOrEmpty(LobName))
         {
@@ -58,7 +75,9 @@ public sealed class GenesysTokenProvider(ILobContext lobContext,
             return cachedToken;
         }
 
-        await _tokenLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+        // Get or create a lock specific to this LOB
+        SemaphoreSlim lobLock = TokenLocks.GetOrAdd(LobName, _ => new SemaphoreSlim(1, 1));
+        await lobLock.WaitAsync(ct).ConfigureAwait(false);
 
         try
         {
@@ -71,8 +90,7 @@ public sealed class GenesysTokenProvider(ILobContext lobContext,
             try
             {
                 // Use TryGet to treat "not found" as an acceptable case (for token ONLY; no exception, no warning log).
-                string? kvToken = await secretProvider.TryGetSecretAsync(TokenSecretName, cancellationToken)
-                                                      .ConfigureAwait(false);
+                string? kvToken = await secretProvider.TryGetSecretAsync(TokenSecretName, ct).ConfigureAwait(false);
 
                 if (!string.IsNullOrEmpty(kvToken))
                 {
@@ -96,11 +114,11 @@ public sealed class GenesysTokenProvider(ILobContext lobContext,
                                   ex.ToJson());
             }
 
-            return await FetchAndCacheTokenAsync(cancellationToken).ConfigureAwait(false);
+            return await FetchAndCacheTokenAsync(ct).ConfigureAwait(false);
         }
         finally
         {
-            _tokenLock.Release();
+            lobLock.Release();
         }
     }
 
@@ -108,11 +126,17 @@ public sealed class GenesysTokenProvider(ILobContext lobContext,
     /// Explicitly invalidates the current cached token and forces a fresh fetch from the Genesys OAuth API.
     /// Typically called when an upstream request receives a 401 Unauthorized response.
     /// </summary>
-    /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
+    /// <remarks>
+    /// This method shares the same per-LOB lock as <see cref="GetValidTokenAsync"/>. This ensures that while
+    /// a 401 recovery is in progress, no other parallel requests for the same LOB attempt to use the invalid
+    /// token or trigger redundant refresh cycles.
+    /// </remarks>
+    /// <param name="ct">A token to monitor for cancellation requests.</param>
     /// <returns>A task representing the asynchronous refresh operation.</returns>
-    public async Task RefreshTokenAsync(CancellationToken cancellationToken = default)
+    public async Task RefreshTokenAsync(CancellationToken ct = default)
     {
-        await _tokenLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+        SemaphoreSlim lobLock = TokenLocks.GetOrAdd(LobName, _ => new SemaphoreSlim(1, 1));
+        await lobLock.WaitAsync(ct).ConfigureAwait(false);
 
         try
         {
@@ -121,11 +145,11 @@ public sealed class GenesysTokenProvider(ILobContext lobContext,
             // Always invalidate first: a 401 means the current token is not usable even if it exists in cache.
             cache.Remove(TokenCacheKey);
 
-            await FetchAndCacheTokenAsync(cancellationToken).ConfigureAwait(false);
+            await FetchAndCacheTokenAsync(ct).ConfigureAwait(false);
         }
         finally
         {
-            _tokenLock.Release();
+            lobLock.Release();
         }
     }
 
@@ -135,12 +159,12 @@ public sealed class GenesysTokenProvider(ILobContext lobContext,
     /// Performs the actual HTTP request to fetch a new token from Genesys, updates the local memory cache,
     /// and asynchronously persists the result to the secure secret store.
     /// </summary>
-    /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
+    /// <param name="ct">A token to monitor for cancellation requests.</param>
     /// <returns>The newly acquired access token string.</returns>
     /// <exception cref="ExternalServiceHttpException">
     /// Thrown if credentials are missing or if the Genesys API returns an error or malformed response.
     /// </exception>
-    private async Task<string> FetchAndCacheTokenAsync(CancellationToken cancellationToken)
+    private async Task<string> FetchAndCacheTokenAsync(CancellationToken ct)
     {
         // Merge and Validate Credentials using MultiLobOptions for shared defaults
         string clientId = lobContext.GenesysClientId;
@@ -158,7 +182,7 @@ public sealed class GenesysTokenProvider(ILobContext lobContext,
         }
 
         GenesysTokenResponse? tokenResponse =
-            await tokenClient.FetchTokenAsync(clientId, clientSecret, cancellationToken).ConfigureAwait(false);
+            await tokenClient.FetchTokenAsync(clientId, clientSecret, ct).ConfigureAwait(false);
 
         if (tokenResponse?.AccessToken == null)
         {
@@ -179,7 +203,7 @@ public sealed class GenesysTokenProvider(ILobContext lobContext,
         // Persist to Key Vault for cross-instance sharing
         try
         {
-            await secretProvider.UpsertSecretAsync(TokenSecretName, token, cancellationToken).ConfigureAwait(false);
+            await secretProvider.UpsertSecretAsync(TokenSecretName, token, ct).ConfigureAwait(false);
 
             logger.LogDebug("[LOB: {Lob}] Genesys token updated in Key Vault ('{SecretName}')",
                             LobName,
