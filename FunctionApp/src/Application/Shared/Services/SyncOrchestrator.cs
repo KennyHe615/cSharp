@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 
 using Application.Shared.Context;
 using Application.Shared.Enums;
+using Application.Shared.Extensions;
 using Application.Shared.Interfaces;
 using Application.Shared.Providers;
 using Application.Shared.Records;
@@ -113,6 +114,10 @@ public sealed class SyncOrchestrator(IServiceProvider serviceProvider,
         using IServiceScope scope = serviceProvider.CreateScope();
 
         await InitializeLobContextAsync(scope, lobName, token).ConfigureAwait(false);
+
+        ILogger<SyncOrchestrator> scopedLogger = scope.ServiceProvider.GetRequiredService<ILogger<SyncOrchestrator>>();
+
+        using IDisposable loggingScope = scopedLogger.BeginOperationScope($"{category} Sync", lobName);
 
         try
         {

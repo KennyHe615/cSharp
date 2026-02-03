@@ -16,7 +16,8 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<ISyncOrchestrator, SyncOrchestrator>();
 
         // Category handlers
-        services.AddScoped<ISyncCategoryHandler, SkillSyncHandler>();
+        // services.AddScoped<ISyncCategoryHandler, SkillSyncHandler>();
+        // services.AddScoped<ISyncCategoryHandler, PresenceDefinitionSyncHandler>();
         // services.AddScoped<ISyncCategoryHandler, ReferencesSyncHandler>();
     }
 }

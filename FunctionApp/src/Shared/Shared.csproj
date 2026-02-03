@@ -11,8 +11,6 @@
     </ItemGroup>
 
     <ItemGroup>
-        <Folder Include="Context\"/>
-        <Folder Include="Genesys\"/>
         <Folder Include="Constants\"/>
     </ItemGroup>
 

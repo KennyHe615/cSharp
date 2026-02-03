@@ -1,5 +1,5 @@
 using Application.Dtos.References;
-using Application.References.Clients;
+using Application.References;
 using Application.Shared.Context;
 using Application.Shared.Enums;
 using Application.Shared.Providers;
@@ -31,20 +31,20 @@ public class ReferencesClient(IFlurlHttpClientFactory factory,
         return await GetPaginatedAsync<GroupResponse>(url, category, cancellationToken);
     }
 
-    public async Task<List<PresenceDefinitionResponse>> GetPresenceDefinitionsAsync(CancellationToken cancellationToken)
+    public async Task<List<PresenceDefinitionResponse>> GetPresenceDefinitionsAsync(CancellationToken ct)
     {
         const string category = nameof(SyncCategory.PresenceDefinitions);
         string url = $"/api/v2/presence/definitions{_queryParams}";
 
-        return await GetPaginatedAsync<PresenceDefinitionResponse>(url, category, cancellationToken);
+        return await GetPaginatedAsync<PresenceDefinitionResponse>(url, category, ct);
     }
 
-    public async Task<List<SkillResponse>> GetSkillsAsync(CancellationToken cancellationToken)
+    public async Task<List<SkillResponse>> GetSkillsAsync(CancellationToken ct)
     {
         const string category = nameof(SyncCategory.Skills);
         string url = $"/api/v2/routing/{category}{_queryParams}";
 
-        return await GetPaginatedAsync<SkillResponse>(url, category, cancellationToken);
+        return await GetPaginatedAsync<SkillResponse>(url, category, ct);
     }
 
     #region ========== *** Private Methods *** ==========

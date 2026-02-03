@@ -10,7 +10,7 @@ using Shared.Constants;
 namespace Functions.Timers.References;
 
 public sealed class ReferencesCrcTimer(ISyncOrchestrator orchestrator,
-                                       ILogger<ReferencesNttTimer> logger)
+                                       ILogger<ReferencesCrcTimer> logger)
 {
     private const string TimerTriggerExpression = "0 */1 * * * *";
     private const string LobName = GenesysConstants.CrcOrg;
@@ -24,7 +24,10 @@ public sealed class ReferencesCrcTimer(ISyncOrchestrator orchestrator,
         {
             logger.LogInformation("Starting references sync for LOB {Lob}", LobName);
 
-            await orchestrator.ExecuteAsync(LobName, SyncCategory.Skills, ct);
+            Task skillsTask = orchestrator.ExecuteAsync(LobName, SyncCategory.Skills, ct);
+            Task presenceTask = orchestrator.ExecuteAsync(LobName, SyncCategory.PresenceDefinitions, ct);
+
+            await Task.WhenAll(skillsTask, presenceTask).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
