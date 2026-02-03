@@ -11,11 +11,11 @@ namespace Application.References.Handlers;
 public class SkillSyncHandler(IReferencesSyncService referencesSyncService) : ISyncCategoryHandler
 {
     /// <inheritdoc />
-    public SyncCategory Category => SyncCategory.Skills;
+    public SyncCategory Category => SyncCategory.Skill;
 
     /// <inheritdoc />
     public Task ExecuteAsync(CancellationToken ct)
     {
-        return referencesSyncService.SyncSkillAsync(ct);
+        return referencesSyncService.SyncSkillsAsync(ct);
     }
 }

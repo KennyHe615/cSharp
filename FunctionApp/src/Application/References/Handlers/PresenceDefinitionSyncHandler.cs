@@ -11,11 +11,11 @@ namespace Application.References.Handlers;
 public class PresenceDefinitionSyncHandler(IReferencesSyncService referencesSyncService) : ISyncCategoryHandler
 {
     /// <inheritdoc />
-    public SyncCategory Category => SyncCategory.PresenceDefinitions;
+    public SyncCategory Category => SyncCategory.PresenceDefinition;
 
     /// <inheritdoc />
     public Task ExecuteAsync(CancellationToken ct)
     {
-        return referencesSyncService.SyncPresenceDefinitionAsync(ct);
+        return referencesSyncService.SyncPresenceDefinitionsAsync(ct);
     }
 }

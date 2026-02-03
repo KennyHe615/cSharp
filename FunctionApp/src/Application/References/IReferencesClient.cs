@@ -29,5 +29,10 @@ public interface IReferencesClient
     /// </returns>
     Task<List<PresenceDefinitionResponse>> GetPresenceDefinitionsAsync(CancellationToken ct);
 
-    // Task<List<GroupResponse>> GetGroupsAsync(CancellationToken cancellationToken);
+    /// <summary>
+    /// Retrieves all Groups from the Genesys Cloud API for the current Line of Business (LOB).
+    /// </summary>
+    /// <param name="ct">A token to monitor for cancellation requests during the asynchronous operation.</param>
+    /// <returns>A list of <see cref="GroupResponse"/> objects representing all available groups in the organization.</returns>
+    Task<List<GroupResponse>> GetGroupsAsync(CancellationToken ct);
 }

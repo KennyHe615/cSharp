@@ -24,10 +24,11 @@ public sealed class ReferencesLclTimer(ISyncOrchestrator orchestrator,
         {
             logger.LogInformation("Starting references sync for LOB {Lob}", LobName);
 
-            Task skillsTask = orchestrator.ExecuteAsync(LobName, SyncCategory.Skills, ct);
-            Task presenceTask = orchestrator.ExecuteAsync(LobName, SyncCategory.PresenceDefinitions, ct);
+            Task skillsTask = orchestrator.ExecuteAsync(LobName, SyncCategory.Skill, ct);
+            Task presenceTask = orchestrator.ExecuteAsync(LobName, SyncCategory.PresenceDefinition, ct);
+            Task groupTask = orchestrator.ExecuteAsync(LobName, SyncCategory.Group, ct);
 
-            await Task.WhenAll(skillsTask, presenceTask).ConfigureAwait(false);
+            await Task.WhenAll(skillsTask, presenceTask, groupTask).ConfigureAwait(false);
         }
         catch (Exception ex)
         {

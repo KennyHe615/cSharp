@@ -25,7 +25,7 @@ public class ReferencesClient(IFlurlHttpClientFactory factory,
 
     public async Task<List<GroupResponse>> GetGroupsAsync(CancellationToken cancellationToken)
     {
-        const string category = nameof(SyncCategory.Groups);
+        const string category = nameof(SyncCategory.Group);
         string url = $"/api/v2/{category}{_queryParams}";
 
         return await GetPaginatedAsync<GroupResponse>(url, category, cancellationToken);
@@ -33,7 +33,7 @@ public class ReferencesClient(IFlurlHttpClientFactory factory,
 
     public async Task<List<PresenceDefinitionResponse>> GetPresenceDefinitionsAsync(CancellationToken ct)
     {
-        const string category = nameof(SyncCategory.PresenceDefinitions);
+        const string category = nameof(SyncCategory.PresenceDefinition);
         string url = $"/api/v2/presence/definitions{_queryParams}";
 
         return await GetPaginatedAsync<PresenceDefinitionResponse>(url, category, ct);
@@ -41,7 +41,7 @@ public class ReferencesClient(IFlurlHttpClientFactory factory,
 
     public async Task<List<SkillResponse>> GetSkillsAsync(CancellationToken ct)
     {
-        const string category = nameof(SyncCategory.Skills);
+        const string category = nameof(SyncCategory.Skill);
         string url = $"/api/v2/routing/{category}{_queryParams}";
 
         return await GetPaginatedAsync<SkillResponse>(url, category, ct);

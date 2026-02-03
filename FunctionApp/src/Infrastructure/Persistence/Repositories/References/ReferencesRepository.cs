@@ -76,9 +76,30 @@ public class ReferencesRepository(IUnitOfWork uow,
         await uow.SaveChangesAsync(ct);
     }
 
-    // // ... private mapping methods to keep the public methods readable ...
-    // private void MapSkillUpdate(Skill db, Skill incoming)
-    // {
-    //     /* ... */
-    // }
+    /// <summary>
+    /// Synchronizes the provided groups with the database, inserting new records and updating existing ones.
+    /// </summary>
+    /// <param name="groups">A read-only collection of group DTOs retrieved from the Genesys API.</param>
+    /// <param name="ct">A token to monitor for cancellation requests during the asynchronous operation.</param>
+    /// <remarks>
+    /// <para>
+    /// This method performs a full synchronization using the "Upsert with Inactivation" pattern:
+    /// <list type="number">
+    /// <item>Maps the incoming DTOs to <see cref="Group"/> entities using AutoMapper.</item>
+    /// <item>Calls <see cref="IUnitOfWork.UpsertRangeAsync{TEntity}"/> to insert new groups or update existing ones based on their unique identifier (Id).</item>
+    /// <item>Applies the inactivation callback (<c>State = Inactive</c>) to all groups in the database that are NOT present in the incoming collection.</item>
+    /// <item>Commits all changes to the database in a single transaction via <see cref="IUnitOfWork.SaveChangesAsync"/>.</item>
+    /// </list>
+    /// </para>
+    /// </remarks>
+    /// <exception cref="OperationCanceledException">Thrown when the operation is cancelled via the <paramref name="ct"/>.</exception>
+    /// <exception cref="PersistenceException">Thrown when a database operation fails (e.g., constraint violations, connection issues).</exception>
+    public async Task UpsertGroupsAsync(IReadOnlyCollection<GroupResponse> groups, CancellationToken ct)
+    {
+        List<Group>? mappedEntities = mapper.Map<List<Group>>(groups);
+
+        await uow.UpsertRangeAsync(mappedEntities, g => g.State = State.Inactive, ct);
+
+        await uow.SaveChangesAsync(ct);
+    }
 }

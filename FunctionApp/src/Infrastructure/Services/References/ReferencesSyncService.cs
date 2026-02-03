@@ -20,7 +20,7 @@ public class ReferencesSyncService(IReferencesClient referencesClient,
     private string LobName => lobContext.LobName;
 
     /// <summary>
-    /// Synchronizes Skills data from Genesys Cloud to the local database for the current LOB.
+    /// Synchronizes Skills data from Genesys Cloud to the database for the current LOB.
     /// </summary>
     /// <param name="ct">A token to monitor for cancellation requests during the asynchronous operation.</param>
     /// <remarks>
@@ -31,17 +31,16 @@ public class ReferencesSyncService(IReferencesClient referencesClient,
     /// <exception cref="OperationCanceledException">Thrown when the operation is cancelled via the <paramref name="ct"/>.</exception>
     /// <exception cref="ExternalServiceHttpException">Thrown when the Genesys API request fails.</exception>
     /// <exception cref="PersistenceException">Thrown when database persistence fails.</exception>
-    public async Task SyncSkillAsync(CancellationToken ct)
+    public async Task SyncSkillsAsync(CancellationToken ct)
     {
-        await SyncReferenceDataAsync(nameof(SyncCategory.Skills),
+        await SyncReferenceDataAsync(nameof(SyncCategory.Skill),
                                      () => referencesClient.GetSkillsAsync(ct),
-                                     skills => referencesRepository.UpsertSkillsAsync(skills, ct),
-                                     ct)
+                                     skills => referencesRepository.UpsertSkillsAsync(skills, ct))
             .ConfigureAwait(false);
     }
 
     /// <summary>
-    /// Synchronizes Presence Definitions data from Genesys Cloud to the local database for the current LOB.
+    /// Synchronizes Presence Definitions data from Genesys Cloud to the database for the current LOB.
     /// </summary>
     /// <param name="ct">A token to monitor for cancellation requests during the asynchronous operation.</param>
     /// <remarks>
@@ -52,13 +51,32 @@ public class ReferencesSyncService(IReferencesClient referencesClient,
     /// <exception cref="OperationCanceledException">Thrown when the operation is cancelled via the <paramref name="ct"/>.</exception>
     /// <exception cref="ExternalServiceHttpException">Thrown when the Genesys API request fails.</exception>
     /// <exception cref="PersistenceException">Thrown when database persistence fails.</exception>
-    public async Task SyncPresenceDefinitionAsync(CancellationToken ct)
+    public async Task SyncPresenceDefinitionsAsync(CancellationToken ct)
     {
-        await SyncReferenceDataAsync(nameof(SyncCategory.PresenceDefinitions),
+        await SyncReferenceDataAsync(nameof(SyncCategory.PresenceDefinition),
                                      () => referencesClient.GetPresenceDefinitionsAsync(ct),
                                      presenceDefinitions =>
-                                         referencesRepository.UpsertPresenceDefinitionsAsync(presenceDefinitions, ct),
-                                     ct)
+                                         referencesRepository.UpsertPresenceDefinitionsAsync(presenceDefinitions, ct))
+            .ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Synchronizes Groups data from Genesys Cloud to the database for the current LOB.
+    /// </summary>
+    /// <param name="ct">A token to monitor for cancellation requests during the asynchronous operation.</param>
+    /// <remarks>
+    /// This method fetches all groups from the Genesys API, validates that data is present,
+    /// and delegates persistence to the repository. If no groups are found, the operation is logged
+    /// as an error and exits early without modifying the database.
+    /// </remarks>
+    /// <exception cref="OperationCanceledException">Thrown when the operation is cancelled via the <paramref name="ct"/>.</exception>
+    /// <exception cref="ExternalServiceHttpException">Thrown when the Genesys API request fails.</exception>
+    /// <exception cref="PersistenceException">Thrown when database persistence fails.</exception>
+    public async Task SyncGroupsAsync(CancellationToken ct)
+    {
+        await SyncReferenceDataAsync(nameof(SyncCategory.Group),
+                                     () => referencesClient.GetGroupsAsync(ct),
+                                     groups => referencesRepository.UpsertGroupsAsync(groups, ct))
             .ConfigureAwait(false);
     }
 
@@ -71,14 +89,12 @@ public class ReferencesSyncService(IReferencesClient referencesClient,
     /// <param name="categoryName">The human-readable category name for logging purposes.</param>
     /// <param name="fetchDataAsync">A delegate that fetches data from the Genesys API.</param>
     /// <param name="persistDataAsync">A delegate that persists the fetched data to the database.</param>
-    /// <param name="ct">A token to monitor for cancellation requests.</param>
     /// <exception cref="OperationCanceledException">Thrown when the operation is cancelled.</exception>
     /// <exception cref="ExternalServiceHttpException">Thrown when the API fetch fails.</exception>
     /// <exception cref="PersistenceException">Thrown when database persistence fails.</exception>
     private async Task SyncReferenceDataAsync<TData>(string categoryName,
                                                      Func<Task<List<TData>>> fetchDataAsync,
-                                                     Func<IReadOnlyCollection<TData>, Task> persistDataAsync,
-                                                     CancellationToken ct)
+                                                     Func<IReadOnlyCollection<TData>, Task> persistDataAsync)
     {
         logger.LogDebug("[LOB: {Lob} Reference \"{Category}\"] Starting synchronization", LobName, categoryName);
 

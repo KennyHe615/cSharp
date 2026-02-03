@@ -18,9 +18,9 @@ public interface IReferencesRepository
     /// </summary>
     Task UpsertPresenceDefinitionsAsync(IReadOnlyCollection<PresenceDefinitionResponse> presenceDefinitions,
                                         CancellationToken ct);
-    //
-    // /// <summary>
-    // /// Synchronizes the provided groups with the database.
-    // /// </summary>
-    // Task UpsertGroupsAsync(IReadOnlyCollection<GroupResponse> groups, CancellationToken ct);
+
+    /// <summary>
+    /// Synchronizes the provided groups with the database.
+    /// </summary>
+    Task UpsertGroupsAsync(IReadOnlyCollection<GroupResponse> groups, CancellationToken ct);
 }

@@ -7,12 +7,19 @@ public interface IReferencesSyncService
     /// </summary>
     /// <param name="ct">The cancellation token.</param>
     /// <returns>A task representing the asynchronous synchronization operation.</returns>
-    Task SyncSkillAsync(CancellationToken ct);
+    Task SyncSkillsAsync(CancellationToken ct);
 
     /// <summary>
     /// Orchestrates the asynchronous synchronization process for presence_definitions.
     /// </summary>
     /// <param name="ct">The cancellation token.</param>
     /// <returns>A task representing the asynchronous synchronization operation.</returns>
-    Task SyncPresenceDefinitionAsync(CancellationToken ct);
+    Task SyncPresenceDefinitionsAsync(CancellationToken ct);
+
+    /// <summary>
+    /// Orchestrates the asynchronous synchronization process for groups.
+    /// </summary>
+    /// <param name="ct">The cancellation token.</param>
+    /// <returns>A task representing the asynchronous synchronization operation.</returns>
+    Task SyncGroupsAsync(CancellationToken ct);
 }
