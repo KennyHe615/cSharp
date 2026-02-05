@@ -5,6 +5,7 @@ using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.Logging;
 
 using Shared.Constants;
+using Shared.Extensions;
 
 
 namespace Functions.Timers.References;
@@ -33,12 +34,9 @@ public sealed class ReferencesCrcTimer(ISyncOrchestrator orchestrator,
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "❌Error in References-Crc-Timer function");
-            logger.LogError("Exception details: {Message}", ex.Message);
-            if (ex.InnerException != null)
-            {
-                logger.LogError("Inner exception: {InnerMessage}", ex.InnerException.Message);
-            }
+            logger.LogErrorWithDetails(ex, "❌ References sync failed for LOB: {Lob}", LobName);
+
+            throw;
         }
     }
 }

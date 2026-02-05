@@ -6,7 +6,7 @@ public class WrapupCode : Audit
 
     public string? Name { get; set; }
 
-    public Guid? DivisionId { get; set; }
+    public string? DivisionId { get; set; }
 
     public string? DivisionName { get; set; }
 
@@ -14,7 +14,7 @@ public class WrapupCode : Audit
 
     public DateTimeOffset? DateModified { get; set; }
 
-    public Guid? CreatedBy { get; set; }
+    public string? CreatedBy { get; set; }
 
-    public Guid? ModifiedBy { get; set; }
+    public string? ModifiedBy { get; set; }
 }

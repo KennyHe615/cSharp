@@ -45,7 +45,7 @@ public class ReferencesProfile : Profile
 
         CreateMap<WrapupCodeResponse, WrapupCode>()
             .ForMember(dest => dest.Name, opt => opt.MapFrom(src => src.Name.Truncate(255)))
-            .ForMember(dest => dest.DivisionId, opt => opt.MapFrom(src => src.Division.GetValue("id").ToGuid()))
+            .ForMember(dest => dest.DivisionId, opt => opt.MapFrom(src => src.Division.GetValue("id")))
             .ForMember(dest => dest.DivisionName, opt => opt.MapFrom(src => src.Division.GetValue("name", 255)))
             .ForMember(dest => dest.DateCreated, opt => opt.MapFromEst(src => src.DateCreated))
             .ForMember(dest => dest.DateModified, opt => opt.MapFromEst(src => src.DateModified));

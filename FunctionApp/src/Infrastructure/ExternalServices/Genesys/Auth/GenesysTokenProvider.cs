@@ -108,10 +108,9 @@ public sealed class GenesysTokenProvider(ILobContext lobContext,
             catch (Exception ex)
             {
                 // Actual Key Vault failures (auth, throttling, network, etc.)
-                logger.LogWarning(ex,
-                                  "[LOB: {Lob}] Non-critical error retrieving Genesys token from Key Vault. Falling back to API. {ExJson}",
-                                  LobName,
-                                  ex.ToJson());
+                logger.LogWarningWithDetails(ex,
+                                             "[LOB: {Lob}] Non-critical error retrieving Genesys token from Key Vault. Falling back to API.",
+                                             LobName);
             }
 
             return await FetchAndCacheTokenAsync(ct).ConfigureAwait(false);
@@ -212,10 +211,7 @@ public sealed class GenesysTokenProvider(ILobContext lobContext,
         catch (Exception ex)
         {
             // Log as warning but don't fail the request; the local cache is still valid
-            logger.LogWarning(ex,
-                              "[LOB: {Lob}] Failed to update Genesys token in Key Vault. {ExJson}",
-                              LobName,
-                              ex.ToJson());
+            logger.LogWarningWithDetails(ex, "[LOB: {Lob}] Failed to update Genesys token in Key Vault.", LobName);
         }
 
         logger.LogInformation("[LOB: {Lob}] Genesys token refreshed and cached successfully. Expires in {ExpiresIn}s",

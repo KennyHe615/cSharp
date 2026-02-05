@@ -149,13 +149,12 @@ public class ReferencesClient(IFlurlHttpClientFactory factory,
         {
             // The base client already logged the HTTP error.
             // We log the high-level pagination context here with full structured details.
-            logger.LogError(ex,
-                            "[LOB: {Lob}] Failed to complete pagination for {EntityName}. Retrieved {Count} entities across {Pages} pages before failure. {ExJson}",
-                            LobContext.LobName,
-                            entityName,
-                            results.Count,
-                            iterationCount,
-                            ex.ToJson());
+            logger.LogErrorWithDetails(ex,
+                                       "[LOB: {Lob}] Failed to complete pagination for {EntityName}. Retrieved {Count} entities across {Pages} pages before failure.",
+                                       LobContext.LobName,
+                                       entityName,
+                                       results.Count,
+                                       iterationCount);
 
             throw;
         }

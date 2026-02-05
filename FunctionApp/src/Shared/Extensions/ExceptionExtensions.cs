@@ -1,101 +1,107 @@
 using System.Collections;
 using System.Diagnostics;
-using System.Reflection;
-using System.Text.Json;
-using System.Text.Json.Serialization;
+using System.Text;
 
 
 namespace Shared.Extensions;
 
+/// <summary>
+/// Provides extension methods for enhanced exception handling and formatting.
+/// </summary>
 public static class ExceptionExtensions
 {
-    private static readonly JsonSerializerOptions LogJsonOptions = new()
-                                                                   {
-                                                                       WriteIndented = true,
-                                                                       DefaultIgnoreCondition =
-                                                                           JsonIgnoreCondition.WhenWritingNull
-                                                                   };
-
-    private static readonly string[] ExceptionPropertyNames = typeof(Exception)
-                                                              .GetProperties(
-                                                                  BindingFlags.Public | BindingFlags.Instance)
-                                                              .Select(p => p.Name)
-                                                              .ToArray();
-
     /// <summary>
-    /// Console-friendly, single-line summary.
+    /// Converts an exception to a concise summary string, including root cause information.
     /// </summary>
+    /// <param name="ex">The exception to summarize.</param>
+    /// <returns>A formatted summary string containing exception type, message, and root cause details.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="ex"/> is null.</exception>
     public static string ToSummary(this Exception ex)
     {
         ArgumentNullException.ThrowIfNull(ex);
 
-        static string ShortType(Exception e)
-        {
-            return e.GetType().FullName ?? e.GetType().Name;
-        }
-
-        // Keep it compact; message may contain newlines.
-        string msg = (ex.Message ?? string.Empty).Replace("\r", " ").Replace("\n", " ").Trim();
+        string msg = ex.Message.Replace("\r", " ").Replace("\n", " ").Trim();
         if (msg.Length > 400) msg = msg[..400] + "...";
 
-        // Include root-cause type if nested.
         Exception root = ex.GetRootCause();
-        if (!ReferenceEquals(root, ex))
-        {
-            string rootMsg = (root.Message ?? string.Empty).Replace("\r", " ").Replace("\n", " ").Trim();
-            if (rootMsg.Length > 200) rootMsg = rootMsg[..200] + "...";
 
-            return $"{ShortType(ex)}: {msg} | Root: {ShortType(root)}: {rootMsg}";
-        }
+        if (ReferenceEquals(root, ex)) return $"{ShortType(ex)}: {msg}";
 
-        return $"{ShortType(ex)}: {msg}";
+        string rootMsg = root.Message.Replace("\r", " ").Replace("\n", " ").Trim();
+        if (rootMsg.Length > 200) rootMsg = rootMsg[..200] + "...";
+
+        return $"{ShortType(ex)}: {msg} | Root: {ShortType(root)}: {rootMsg}";
     }
 
     /// <summary>
-    /// Safe JSON (no raw Exception serialization, no MethodBase, etc.).
-    /// Prefer logging the exception via ILogger and attach this JSON as a string when needed.
+    /// Converts an exception to a detailed, human-readable string format with structured layout.
     /// </summary>
-    public static string ToJson(this Exception ex)
+    /// <param name="ex">The exception to format.</param>
+    /// <param name="includeStackTrace">Whether to include stack trace information in the output. Default is true.</param>
+    /// <returns>A formatted multi-line string containing comprehensive exception details.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="ex"/> is null.</exception>
+    public static string ToReadableString(this Exception ex, bool includeStackTrace = true)
     {
         ArgumentNullException.ThrowIfNull(ex);
-        ExceptionLogDto dto = ExceptionLogDto.From(ex);
 
-        return JsonSerializer.Serialize(dto, LogJsonOptions);
+        StringBuilder sb = new();
+
+        sb.AppendLine("┌─────────────────────────────────────────────────────────────");
+        sb.AppendLine("│ EXCEPTION DETAILS");
+        sb.AppendLine("├─────────────────────────────────────────────────────────────");
+
+        AppendExceptionDetails(sb, ex, includeStackTrace);
+
+        sb.AppendLine("└─────────────────────────────────────────────────────────────");
+
+        return sb.ToString();
     }
 
     /// <summary>
-    /// Structured properties for logging scopes or telemetry properties.
-    /// Use with: using(logger.BeginScope(ex.ToLogScope())) { logger.LogError(ex, "..."); }
+    /// Converts an exception to a structured dictionary suitable for logging scopes.
     /// </summary>
-    public static IReadOnlyDictionary<string, object?> ToLogScope(this Exception ex, string prefix = "exception")
+    /// <param name="ex">The exception to convert.</param>
+    /// <param name="prefix">The prefix to use for dictionary keys. Default is "Exception".</param>
+    /// <returns>A read-only dictionary containing exception properties as key-value pairs.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="ex"/> is null.</exception>
+    public static IReadOnlyDictionary<string, object?> ToLogScope(this Exception ex, string prefix = "Exception")
     {
         ArgumentNullException.ThrowIfNull(ex);
-        if (string.IsNullOrWhiteSpace(prefix)) prefix = "exception";
 
-        ExceptionLogDto dto = ExceptionLogDto.From(ex);
+        Exception root = ex.GetRootCause();
 
-        // Flatten a few key fields for easy querying in Application Insights.
-        return new Dictionary<string, object?>
-               {
-                   [$"{prefix}.type"] = dto.Type,
-                   [$"{prefix}.message"] = dto.Message,
-                   [$"{prefix}.hresult"] = dto.HResult,
-                   [$"{prefix}.source"] = dto.Source,
-                   [$"{prefix}.stackTrace"] = dto.StackTrace,
-                   [$"{prefix}.activityId"] = dto.ActivityId,
-                   [$"{prefix}.inner.type"] = dto.Inner?.Type,
-                   [$"{prefix}.inner.message"] = dto.Inner?.Message,
-                   [$"{prefix}.json"] = JsonSerializer.Serialize(dto, LogJsonOptions)
-               };
+        Dictionary<string, object?> scope = new(StringComparer.OrdinalIgnoreCase)
+                                            {
+                                                [$"{prefix}Type"] = ex.GetType().FullName ?? ex.GetType().Name,
+                                                [$"{prefix}Message"] = ex.Message,
+                                                [$"{prefix}HResult"] = ex.HResult
+                                            };
+
+        if (!string.IsNullOrWhiteSpace(ex.Source)) scope[$"{prefix}Source"] = ex.Source;
+
+        if (Activity.Current?.Id != null) scope[$"{prefix}ActivityId"] = Activity.Current.Id;
+
+        if (ReferenceEquals(root, ex)) return scope;
+
+        scope[$"{prefix}RootType"] = root.GetType().FullName ?? root.GetType().Name;
+        scope[$"{prefix}RootMessage"] = root.Message;
+
+        return scope;
     }
 
+    /// <summary>
+    /// Retrieves the root cause exception by traversing the inner exception chain.
+    /// Handles AggregateException by flattening and selecting the first inner exception.
+    /// </summary>
+    /// <param name="ex">The exception to analyze.</param>
+    /// <returns>The root cause exception at the bottom of the exception chain.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="ex"/> is null.</exception>
     public static Exception GetRootCause(this Exception ex)
     {
         ArgumentNullException.ThrowIfNull(ex);
 
         Exception current = ex;
 
-        // If AggregateException: unwrap to the first inner by default.
         if (current is AggregateException agg)
         {
             AggregateException flat = agg.Flatten();
@@ -113,76 +119,78 @@ public static class ExceptionExtensions
         return current;
     }
 
-    // ---- Internal safe DTO shape ----
+    #region ========== *** Private Methods *** ==========
 
-    private sealed record ExceptionLogDto(string Type,
-                                          string Message,
-                                          string? Source,
-                                          int HResult,
-                                          string? StackTrace,
-                                          string? ActivityId,
-                                          IReadOnlyDictionary<string, string?>? Data,
-                                          IReadOnlyList<ExceptionLogDto>? InnerExceptions,
-                                          ExceptionLogDto? Inner)
+    /// <summary>
+    /// Recursively appends exception details to a StringBuilder with proper indentation.
+    /// </summary>
+    /// <param name="sb">The StringBuilder to append to.</param>
+    /// <param name="ex">The exception to process.</param>
+    /// <param name="includeStackTrace">Whether to include stack trace information.</param>
+    /// <param name="depth">Current recursion depth for indentation purposes.</param>
+    private static void AppendExceptionDetails(StringBuilder sb, Exception ex, bool includeStackTrace, int depth = 0)
     {
-        public static ExceptionLogDto From(Exception ex)
+        string indent = new(' ', depth * 2);
+        string prefix = depth == 0 ? "│ " : $"│ {indent}↳ ";
+
+        sb.AppendLine($"{prefix}Type: {ShortType(ex)}");
+        sb.AppendLine($"{prefix}Message: {ex.Message}");
+
+        if (!string.IsNullOrWhiteSpace(ex.Source)) sb.AppendLine($"{prefix}Source: {ex.Source}");
+
+        if (ex.HResult != 0) sb.AppendLine($"{prefix}HResult: {ex.HResult}");
+
+        if (Activity.Current?.Id != null) sb.AppendLine($"{prefix}ActivityId: {Activity.Current.Id}");
+
+        if (ex.Data.Count > 0)
         {
-            // Note: don’t touch ex.TargetSite (MethodBase) or any reflection-y properties.
-            IReadOnlyDictionary<string, string?>? data = TryExtractData(ex);
+            sb.AppendLine($"{prefix}Data:");
 
-            if (ex is AggregateException agg)
+            foreach (DictionaryEntry entry in ex.Data)
             {
-                AggregateException flat = agg.Flatten();
-                List<ExceptionLogDto> inners = flat.InnerExceptions.Select(From).ToList();
-
-                return new ExceptionLogDto(ex.GetType().FullName ?? ex.GetType().Name,
-                                           ex.Message ?? string.Empty,
-                                           ex.Source,
-                                           ex.HResult,
-                                           ex.StackTrace,
-                                           Activity.Current?.Id,
-                                           data,
-                                           inners,
-                                           ex.InnerException is null ? null : From(ex.InnerException));
+                sb.AppendLine($"{prefix}  - {entry.Key}: {entry.Value}");
             }
-
-            return new ExceptionLogDto(ex.GetType().FullName ?? ex.GetType().Name,
-                                       ex.Message ?? string.Empty,
-                                       ex.Source,
-                                       ex.HResult,
-                                       ex.StackTrace,
-                                       Activity.Current?.Id,
-                                       data,
-                                       null,
-                                       ex.InnerException is null ? null : From(ex.InnerException));
         }
 
-        private static IReadOnlyDictionary<string, string?>? TryExtractData(Exception ex)
+        if (includeStackTrace && !string.IsNullOrWhiteSpace(ex.StackTrace))
         {
-            try
+            sb.AppendLine($"{prefix}Stack Trace:");
+            string[] lines = ex.StackTrace.Split(["\r\n", "\r", "\n"], StringSplitOptions.RemoveEmptyEntries);
+
+            foreach (string line in lines)
             {
-                if (ex.Data is null || ex.Data.Count == 0)
-                {
-                    return null;
-                }
-
-                // Convert Data keys/values to strings only (safe to serialize and query).
-                Dictionary<string, string?> dict = new(StringComparer.OrdinalIgnoreCase);
-
-                foreach (DictionaryEntry entry in ex.Data)
-                {
-                    string key = entry.Key?.ToString() ?? "(null)";
-                    string? value = entry.Value?.ToString();
-                    dict[key] = value;
-                }
-
-                return dict;
+                sb.AppendLine($"{prefix}  {line.Trim()}");
             }
-            catch
-            {
-                // Never let formatting throw.
-                return null;
-            }
+        }
+
+        if (ex.InnerException != null)
+        {
+            sb.AppendLine($"{prefix}");
+            sb.AppendLine($"{prefix}Inner Exception:");
+            AppendExceptionDetails(sb, ex.InnerException, includeStackTrace, depth + 1);
+        }
+
+        if (ex is not AggregateException { InnerExceptions.Count: > 1 } aggregateEx) return;
+
+        sb.AppendLine($"{prefix}");
+        sb.AppendLine($"{prefix}Aggregate Exceptions ({aggregateEx.InnerExceptions.Count}):");
+        for (int i = 0; i < aggregateEx.InnerExceptions.Count; i++)
+        {
+            sb.AppendLine($"{prefix}");
+            sb.AppendLine($"{prefix}[{i + 1}]:");
+            AppendExceptionDetails(sb, aggregateEx.InnerExceptions[i], includeStackTrace, depth + 1);
         }
     }
+
+    /// <summary>
+    /// Gets the short type name of an exception, preferring full name over simple name.
+    /// </summary>
+    /// <param name="e">The exception to get the type name from.</param>
+    /// <returns>The full name or simple name of the exception type.</returns>
+    private static string ShortType(Exception e)
+    {
+        return e.GetType().FullName ?? e.GetType().Name;
+    }
+
+    #endregion
 }

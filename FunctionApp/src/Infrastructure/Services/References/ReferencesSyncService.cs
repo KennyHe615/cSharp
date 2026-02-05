@@ -141,11 +141,10 @@ public class ReferencesSyncService(IReferencesClient referencesClient,
         }
         catch (Exception ex)
         {
-            logger.LogError(ex,
-                            "[LOB: {Lob} Reference \"{Category}\"] Failure during synchronization. Exception: {Exception}",
-                            LobName,
-                            categoryName,
-                            ex.ToJson());
+            logger.LogErrorWithDetails(ex,
+                                       "[LOB: {Lob} Reference \"{Category}\"] Failure during synchronization.",
+                                       LobName,
+                                       categoryName);
 
             throw;
         }
