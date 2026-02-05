@@ -9,6 +9,8 @@ using Application.Shared.Records;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
+using Shared.Extensions;
+
 
 namespace Application.Shared.Services;
 
@@ -113,6 +115,10 @@ public sealed class SyncOrchestrator(IServiceProvider serviceProvider,
         using IServiceScope scope = serviceProvider.CreateScope();
 
         await InitializeLobContextAsync(scope, lobName, token).ConfigureAwait(false);
+
+        ILogger<SyncOrchestrator> scopedLogger = scope.ServiceProvider.GetRequiredService<ILogger<SyncOrchestrator>>();
+
+        using IDisposable loggingScope = scopedLogger.BeginOperationScope($"{category} Sync", lobName);
 
         try
         {

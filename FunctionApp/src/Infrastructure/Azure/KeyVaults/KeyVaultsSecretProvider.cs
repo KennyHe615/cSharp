@@ -58,19 +58,15 @@ public sealed class KeyVaultsSecretProvider(SecretClient secretClient,
         }
         catch (RequestFailedException ex)
         {
-            logger.LogError(ex,
-                            "Failed to retrieve secret '{SecretName}' from Key Vault. Exception: {ExceptionJson}",
-                            secretName,
-                            ex.ToJson());
+            logger.LogErrorWithDetails(ex, "Failed to retrieve secret '{SecretName}' from Key Vault.", secretName);
 
             throw new KeyVaultsException($"Error retrieving secret '{secretName}' from Key Vault.", ex);
         }
         catch (Exception ex)
         {
-            logger.LogError(ex,
-                            "Unexpected failure retrieving secret '{SecretName}' from Key Vault. Exception: {ExceptionJson}",
-                            secretName,
-                            ex.ToJson());
+            logger.LogErrorWithDetails(ex,
+                                       "Unexpected failure retrieving secret '{SecretName}' from Key Vault.",
+                                       secretName);
 
             throw new KeyVaultsException($"Unexpected error retrieving secret '{secretName}' from Key Vault.", ex);
         }
@@ -101,19 +97,13 @@ public sealed class KeyVaultsSecretProvider(SecretClient secretClient,
         }
         catch (RequestFailedException ex)
         {
-            logger.LogError(ex,
-                            "Failed to upsert secret '{SecretName}'. Exception: {ExceptionJson}",
-                            secretName,
-                            ex.ToJson());
+            logger.LogErrorWithDetails(ex, "Failed to upsert secret '{SecretName}'.", secretName);
 
             throw new KeyVaultsException($"Error upserting secret '{secretName}' in Key Vault.", ex);
         }
         catch (Exception ex)
         {
-            logger.LogError(ex,
-                            "Unexpected failure upserting secret '{SecretName}'. Exception: {ExceptionJson}",
-                            secretName,
-                            ex.ToJson());
+            logger.LogErrorWithDetails(ex, "Unexpected failure upserting secret '{SecretName}'.", secretName);
 
             throw new KeyVaultsException($"Unexpected error upserting secret '{secretName}' in Key Vault.", ex);
         }
@@ -141,19 +131,13 @@ public sealed class KeyVaultsSecretProvider(SecretClient secretClient,
         }
         catch (RequestFailedException ex)
         {
-            logger.LogError(ex,
-                            "Failed to delete secret '{SecretName}'. Exception: {ExceptionJson}",
-                            secretName,
-                            ex.ToJson());
+            logger.LogErrorWithDetails(ex, "Failed to delete secret '{SecretName}'.", secretName);
 
             throw new KeyVaultsException($"Error deleting secret '{secretName}' from Key Vault.", ex);
         }
         catch (Exception ex)
         {
-            logger.LogError(ex,
-                            "Unexpected failure deleting secret '{SecretName}'. Exception: {ExceptionJson}",
-                            secretName,
-                            ex.ToJson());
+            logger.LogErrorWithDetails(ex, "Unexpected failure deleting secret '{SecretName}'.", secretName);
 
             throw new KeyVaultsException($"Unexpected error deleting secret '{secretName}' from Key Vault.", ex);
         }

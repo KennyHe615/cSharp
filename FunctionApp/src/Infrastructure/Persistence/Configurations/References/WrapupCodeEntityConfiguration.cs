@@ -1,5 +1,3 @@
-using Application.Enums;
-
 using Infrastructure.Persistence.Entities.References;
 
 using Microsoft.EntityFrameworkCore;
@@ -8,11 +6,11 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace Infrastructure.Persistence.Configurations.References;
 
-public class SkillEntityConfiguration : IEntityTypeConfiguration<Skill>
+public class WrapupCodeEntityConfiguration : IEntityTypeConfiguration<WrapupCode>
 {
-    public void Configure(EntityTypeBuilder<Skill> builder)
+    public void Configure(EntityTypeBuilder<WrapupCode> builder)
     {
-        builder.ToTable("Skills", "ref");
+        builder.ToTable("wrapup_codes", "ref");
 
         builder.HasKey(x => x.Id);
 
@@ -20,20 +18,24 @@ public class SkillEntityConfiguration : IEntityTypeConfiguration<Skill>
 
         builder.Property(x => x.Name).HasMaxLength(255);
 
-        builder.Property(x => x.Version).HasMaxLength(8);
+        builder.Property(x => x.DivisionId).HasMaxLength(36);
 
-        builder.Property(x => x.State)
-               .HasConversion(v => v.HasValue ? v.Value.ToString().ToLowerInvariant() : null,
-                              v => v != null ? Enum.Parse<State>(v, true) : null)
-               .HasMaxLength(8);
+        builder.Property(x => x.DivisionName).HasMaxLength(255);
+
+        builder.Property(x => x.DateCreated).HasColumnType("datetimeoffset(0)");
 
         builder.Property(x => x.DateModified).HasColumnType("datetimeoffset(0)");
+
+        builder.Property(x => x.CreatedBy).HasMaxLength(36);
+
+        builder.Property(x => x.ModifiedBy).HasMaxLength(36);
 
         #endregion
 
         #region ========== *** Non-Clustered Indexes *** ==========
 
         builder.HasIndex(x => x.Name);
+        builder.HasIndex(x => x.DivisionId);
 
         #endregion
     }

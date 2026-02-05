@@ -80,6 +80,16 @@ public static partial class StringExtensions
         return value?.Length > maxLength ? value[..maxLength] : value;
     }
 
+    /// <summary>
+    /// Attempts to parse a string into a <see cref="Guid"/>.
+    /// </summary>
+    /// <param name="value">The string value to parse.</param>
+    /// <returns>A <see cref="Guid"/> if parsing succeeds; otherwise, <see langword="null"/>.</returns>
+    public static Guid? ToGuid(this string? value)
+    {
+        return Guid.TryParse(value, out Guid guid) ? guid : null;
+    }
+
     public static string NormalizeSecretName(this string? secretName)
     {
         if (string.IsNullOrWhiteSpace(secretName))

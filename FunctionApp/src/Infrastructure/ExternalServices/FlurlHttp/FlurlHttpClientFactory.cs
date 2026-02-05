@@ -229,10 +229,9 @@ public sealed class FlurlHttpClientFactory : IFlurlHttpClientFactory
                                           _options.CircuitBreaker.DurationOfBreak,
                                           (exception, duration) =>
                                           {
-                                              _logger.LogError(
-                                                  "Circuit Breaker OPEN for {Duration}s due to {Exception}",
-                                                  duration.TotalSeconds,
-                                                  exception.ToJson());
+                                              _logger.LogErrorWithDetails(exception,
+                                                                          "Circuit Breaker OPEN for {Duration}s.",
+                                                                          duration.TotalSeconds);
                                           },
                                           () =>
                                           {

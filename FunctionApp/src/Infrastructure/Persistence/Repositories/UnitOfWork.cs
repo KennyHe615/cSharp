@@ -1,7 +1,9 @@
+using Application.References;
 using Application.Shared.Repositories;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.Extensions.DependencyInjection;
 
 
 namespace Infrastructure.Persistence.Repositories;
@@ -10,59 +12,89 @@ namespace Infrastructure.Persistence.Repositories;
 /// Implementation of the Unit of Work pattern using Entity Framework Core.
 /// </summary>
 /// <param name="dbContext">The database context used for tracking changes and persistence.</param>
-public class UnitOfWork(FunctionAppDbContext.FunctionAppDbContext dbContext) : IUnitOfWork
+public class UnitOfWork(FunctionAppDbContext.FunctionAppDbContext dbContext,
+                        IServiceProvider serviceProvider) : IUnitOfWork
 {
     /// <inheritdoc />
-    public async Task UpsertAsync<TEntity>(TEntity entity, CancellationToken ct = default) where TEntity : class
+    public IReferencesRepository References => serviceProvider.GetRequiredService<IReferencesRepository>();
+
+    /// <inheritdoc />
+    public async Task UpsertAsync<TEntity>(TEntity entity,
+                                           Action<TEntity>? onMissingFromIncoming = null,
+                                           CancellationToken ct = default) where TEntity : class
     {
-        await UpsertRangeAsync([entity], ct).ConfigureAwait(false);
+        await UpsertRangeAsync([entity], onMissingFromIncoming, ct).ConfigureAwait(false);
     }
 
     /// <inheritdoc />
     /// <exception cref="EntityOperationException">Thrown when the entity type is not configured or a database error occurs.</exception>
-    public async Task UpsertRangeAsync<TEntity>(IEnumerable<TEntity> entities, CancellationToken ct = default)
-        where TEntity : class
+    public async Task UpsertRangeAsync<TEntity>(IEnumerable<TEntity> incomingMappedEntities,
+                                                Action<TEntity>? onMissingFromIncoming = null,
+                                                CancellationToken ct = default) where TEntity : class
     {
-        string entityName = typeof(TEntity).Name;
+        List<TEntity> incomingList = incomingMappedEntities.ToList();
 
+        if (incomingList.Count == 0 && onMissingFromIncoming == null) return;
+
+        string entityName = typeof(TEntity).Name;
         try
         {
             IEntityType entityType = dbContext.Model.FindEntityType(typeof(TEntity)) ??
                                      throw new EntityOperationException(
                                          $"Entity type '{entityName}' is not configured in the DbContext model.",
                                          entityName);
-
             IKey primaryKey = entityType.FindPrimaryKey() ??
                               throw new EntityOperationException(
                                   $"Primary key is not defined for entity '{entityName}'.",
                                   entityName);
 
-            DbSet<TEntity> dbSet = dbContext.Set<TEntity>();
+            // Helper to extract the primary key value from an entity
+            IProperty pkProperty = primaryKey.Properties[0];
 
-            foreach (TEntity entity in entities)
+            object? IdSelector(TEntity e)
             {
-                object?[] keyValues = primaryKey.Properties
-                                                .Select(p => entityType.FindProperty(p.Name)!.GetGetter()
-                                                                       .GetClrValue(entity))
-                                                .ToArray();
+                return entityType.FindProperty(pkProperty.Name)!.GetGetter().GetClrValue(e);
+            }
 
-                TEntity? existing = await dbSet.FindAsync(keyValues, ct).ConfigureAwait(false);
+            // 1. Fetch existing entities in bulk to avoid N+1 FindAsync calls
+            List<TEntity> dbEntities = await dbContext.Set<TEntity>().ToListAsync(ct).ConfigureAwait(false);
+            Dictionary<object, TEntity> dbById = dbEntities.Select(e => (Id: IdSelector(e), Entity: e))
+                                                           .Where(x => x.Id != null)
+                                                           .ToDictionary(x => x.Id!, x => x.Entity);
 
-                if (existing == null)
+            HashSet<object> incomingIds = [];
+
+            // 2. Process Add and Update
+            foreach (TEntity incoming in incomingList)
+            {
+                object? id = IdSelector(incoming);
+
+                if (id == null) continue;
+                incomingIds.Add(id);
+
+                if (dbById.TryGetValue(id, out TEntity? existing))
                 {
-                    await dbSet.AddAsync(entity, ct).ConfigureAwait(false);
+                    // Update: Copy values from incoming to existing tracked entity
+                    dbContext.Entry(existing).CurrentValues.SetValues(incoming);
                 }
                 else
                 {
-                    dbContext.Entry(existing).CurrentValues.SetValues(entity);
+                    // Add: New entity
+                    await dbContext.Set<TEntity>().AddAsync(incoming, ct).ConfigureAwait(false);
+                }
+            }
+
+            // 3. Process Missing (Inactivation/Sync)
+            if (onMissingFromIncoming != null)
+            {
+                foreach (TEntity dbEntity in dbEntities.Where(e => IdSelector(e) != null &&
+                                                                   !incomingIds.Contains(IdSelector(e)!)))
+                {
+                    onMissingFromIncoming(dbEntity);
                 }
             }
         }
-        catch (EntityOperationException)
-        {
-            throw;
-        }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not PersistenceException)
         {
             throw new EntityOperationException($"Failed to upsert entities of type '{entityName}'.", ex, entityName);
         }

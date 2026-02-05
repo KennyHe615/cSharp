@@ -83,7 +83,7 @@ public class GenesysTokenClient(IFlurlHttpClientFactory factory,
         {
             // The engine (FlurlHttpClient) already logged the raw response and exception.
             // Log a high-level OAuth-specific failure signal here.
-            logger.LogError(ex, "Genesys OAuth token request failed fundamentally. {ErrorMessage}", ex.ToJson());
+            logger.LogErrorWithDetails(ex, "Genesys OAuth token request failed fundamentally.");
 
             throw;
         }

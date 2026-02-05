@@ -10,13 +10,13 @@ using Shared.Extensions;
 
 namespace Functions.Timers.References;
 
-public sealed class ReferencesNttTimer(ISyncOrchestrator orchestrator,
-                                       ILogger<ReferencesNttTimer> logger)
+public sealed class ReferencesLclTimer(ISyncOrchestrator orchestrator,
+                                       ILogger<ReferencesLclTimer> logger)
 {
     private const string TimerTriggerExpression = "0 */1 * * * *";
-    private const string LobName = GenesysConstants.NttOrg;
+    private const string LobName = GenesysConstants.LclOrg;
 
-    [Function("References-Ntt-Timer")]
+    [Function("References-Lcl-Timer")]
     public async Task RunAsync([TimerTrigger(TimerTriggerExpression)] TimerInfo myTimer,
                                FunctionContext context,
                                CancellationToken ct)

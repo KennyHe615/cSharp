@@ -396,23 +396,30 @@ public class FlurlHttpClient : IFlurlHttpClient
                                                          ex,
                                                          responseBody);
 
-                                                     _logger.LogError(wrappedEx,
-                                                                      "[LOB: {Lob}] {Method} failed | Status: {Status} | Response: {Body} | Exception: {ExJson}",
-                                                                      LobContext.LobName,
-                                                                      methodStr,
-                                                                      statusCode,
-                                                                      responseBody,
-                                                                      wrappedEx.ToJson());
+                                                     if (statusCode == HttpStatusCode.Unauthorized)
+                                                     {
+                                                         _logger.LogDebug(
+                                                             "[LOB: {Lob}] Token expired, invoking refresh handler.",
+                                                             LobContext.LobName);
+                                                     }
+                                                     else
+                                                     {
+                                                         _logger.LogErrorWithDetails(wrappedEx,
+                                                             "[LOB: {Lob}] {Method} failed | Status: {Status} | Response: {Body}",
+                                                             LobContext.LobName,
+                                                             methodStr,
+                                                             statusCode,
+                                                             responseBody);
+                                                     }
 
                                                      throw wrappedEx;
                                                  }
                                                  catch (Exception ex)
                                                  {
-                                                     _logger.LogError(ex,
-                                                                      "[LOB: {Lob}] {Method} failed | Exception: {ExJson}",
-                                                                      LobContext.LobName,
-                                                                      methodStr,
-                                                                      ex.ToJson());
+                                                     _logger.LogErrorWithDetails(ex,
+                                                         "[LOB: {Lob}] {Method} failed",
+                                                         LobContext.LobName,
+                                                         methodStr);
 
                                                      throw;
                                                  }

@@ -13,8 +13,18 @@ namespace Infrastructure.Azure.KeyVaults;
 /// A caching decorator for <see cref="KeyVaultsSecretProvider"/> that implements <see cref="ISecretProvider"/>.
 /// </summary>
 /// <remarks>
+/// <para>
 /// This class reduces the number of calls to Azure Key Vault by storing secret values in an <see cref="IMemoryCache"/>.
 /// It ensures that any updates or deletions invalidate the corresponding cache entries.
+/// </para>
+/// <para>
+/// <b>Concurrency Management:</b>
+/// To prevent "Thundering Herd" issues when multiple parallel synchronization tasks (e.g., for different LOBs or categories)
+/// start simultaneously and request the same secrets, this cache uses a static <see cref="SemaphoreSlim"/> with
+/// double-check locking. The static nature ensures that even though the cache is resolved in different dependency injection
+/// scopes, all instances coordinate access to Azure Key Vault. This prevents redundant API calls and reduces load on
+/// the Key Vault service during high-concurrency scenarios (e.g., parallel timer triggers).
+/// </para>
 /// </remarks>
 internal sealed class KeyVaultsSecretCache : ISecretProvider
 {
@@ -22,6 +32,13 @@ internal sealed class KeyVaultsSecretCache : ISecretProvider
     private readonly IMemoryCache _cache;
     private readonly ILogger<KeyVaultsSecretCache> _logger;
     private readonly KeyVaultsOptions _options;
+
+    /// <summary>
+    /// A static semaphore to serialize Azure Key Vault access across all instances and scopes.
+    /// This prevents multiple threads from simultaneously fetching the same secret when the cache is empty,
+    /// ensuring only the first thread performs the actual Key Vault call while others wait and then retrieve from cache.
+    /// </summary>
+    private static readonly SemaphoreSlim CacheLock = new(1, 1);
 
     /// <summary>
     /// Initializes a new instance of the <see cref="KeyVaultsSecretCache"/> class.
@@ -46,6 +63,11 @@ internal sealed class KeyVaultsSecretCache : ISecretProvider
     /// <inheritdoc />
     /// <exception cref="ArgumentException">Thrown when <paramref name="secretName"/> is <c>null</c> or whitespace.</exception>
     /// <exception cref="KeyVaultsException">Thrown when an error occurs during secret retrieval.</exception>
+    /// <remarks>
+    /// This method implements double-check locking: it first checks the cache without acquiring the lock (fast path).
+    /// If the value is not cached, it acquires the static semaphore, checks the cache again (in case another thread
+    /// populated it while waiting), and only then fetches from Azure Key Vault if still necessary.
+    /// </remarks>
     public async Task<string?> TryGetSecretAsync(string secretName, CancellationToken ct = default)
     {
         ct.ThrowIfCancellationRequested();
@@ -57,6 +79,7 @@ internal sealed class KeyVaultsSecretCache : ISecretProvider
 
         string cacheKey = GetCacheKey(secretName);
 
+        // 1. Fast check (No lock)
         if (_cache.TryGetValue(cacheKey, out string? cached) && !string.IsNullOrWhiteSpace(cached))
         {
             _logger.LogDebug("Using cached value for secret '{SecretName}'", secretName);
@@ -64,36 +87,53 @@ internal sealed class KeyVaultsSecretCache : ISecretProvider
             return cached;
         }
 
-        string? secret;
+        // 2. Acquire lock for population
+        await CacheLock.WaitAsync(ct).ConfigureAwait(false);
+
         try
         {
-            secret = await _innerProvider.TryGetSecretAsync(secretName, ct).ConfigureAwait(false);
-        }
-        catch (KeyVaultsException)
-        {
-            throw;
-        }
-        catch (Exception ex)
-        {
-            throw new KeyVaultsException($"Failed to try-get Key Vault secret '{secretName}'.", ex);
-        }
-
-        if (string.IsNullOrWhiteSpace(secret))
-        {
-            // Not found (null) or empty value: do not cache.
-            if (secret is not null)
+            // 3. Double-check after acquiring lock
+            if (_cache.TryGetValue(cacheKey, out cached) && !string.IsNullOrWhiteSpace(cached))
             {
-                _logger.LogWarning("Secret '{SecretName}' resolved to an empty value; skipping cache.", secretName);
+                return cached;
             }
+
+            string? secret;
+            try
+            {
+                secret = await _innerProvider.TryGetSecretAsync(secretName, ct).ConfigureAwait(false);
+            }
+            catch (KeyVaultsException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                throw new KeyVaultsException($"Failed to try-get Key Vault secret '{secretName}'.", ex);
+            }
+
+            if (string.IsNullOrWhiteSpace(secret))
+            {
+                // Not found (null) or empty value: do not cache.
+                if (secret is not null)
+                {
+                    _logger.LogWarning("Secret '{SecretName}' resolved to an empty value; skipping cache.", secretName);
+                }
+
+                return secret;
+            }
+
+            MemoryCacheEntryOptions cacheEntryOptions =
+                new MemoryCacheEntryOptions().SetAbsoluteExpiration(GetCacheTtl());
+
+            _cache.Set(cacheKey, secret, cacheEntryOptions);
 
             return secret;
         }
-
-        MemoryCacheEntryOptions cacheEntryOptions = new MemoryCacheEntryOptions().SetAbsoluteExpiration(GetCacheTtl());
-
-        _cache.Set(cacheKey, secret, cacheEntryOptions);
-
-        return secret;
+        finally
+        {
+            CacheLock.Release();
+        }
     }
 
     /// <inheritdoc />
