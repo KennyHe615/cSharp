@@ -1,5 +1,5 @@
-using Application.Shared.Enums;
-using Application.Shared.Interfaces;
+using Application.Common.Abstractions.Sync;
+using Application.Common.Enums;
 
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.Logging;

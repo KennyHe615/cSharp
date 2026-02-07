@@ -1,7 +1,7 @@
 using System.Collections.Concurrent;
 
-using Application.Shared.Context;
-using Application.Shared.Providers;
+using Application.Common.Abstractions.Context;
+using Application.Common.Abstractions.Providers;
 
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;

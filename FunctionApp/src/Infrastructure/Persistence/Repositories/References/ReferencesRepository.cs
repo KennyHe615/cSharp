@@ -1,7 +1,7 @@
-using Application.Dtos.References;
-using Application.Enums;
+using Application.Common.Abstractions.Persistence;
+using Application.Contracts.Enums;
+using Application.Contracts.References;
 using Application.References;
-using Application.Shared.Repositories;
 
 using AutoMapper;
 

@@ -1,8 +1,8 @@
-using Application.Dtos.References;
+using Application.Common.Abstractions.Context;
+using Application.Common.Abstractions.Providers;
+using Application.Common.Enums;
+using Application.Contracts.References;
 using Application.References;
-using Application.Shared.Context;
-using Application.Shared.Enums;
-using Application.Shared.Providers;
 
 using Infrastructure.ExternalServices.FlurlHttp;
 

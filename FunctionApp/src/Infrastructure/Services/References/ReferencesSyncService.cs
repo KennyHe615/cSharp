@@ -1,6 +1,6 @@
+using Application.Common.Abstractions.Context;
+using Application.Common.Enums;
 using Application.References;
-using Application.Shared.Context;
-using Application.Shared.Enums;
 
 using Infrastructure.ExternalServices;
 using Infrastructure.Persistence;

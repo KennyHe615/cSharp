@@ -1,5 +1,5 @@
+using Application.Common.Abstractions.Providers;
 using Application.References;
-using Application.Shared.Providers;
 
 using Infrastructure.ExternalServices.FlurlHttp;
 using Infrastructure.ExternalServices.Genesys.Auth;

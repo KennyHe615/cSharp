@@ -1,4 +1,4 @@
-using Application.Shared.Providers;
+using Application.Common.Abstractions.Providers;
 
 using Azure;
 using Azure.Security.KeyVault.Secrets;

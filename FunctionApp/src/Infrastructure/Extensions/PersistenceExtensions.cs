@@ -1,4 +1,4 @@
-using Application.Shared.Repositories;
+using Application.Common.Abstractions.Persistence;
 
 using Infrastructure.Persistence.FunctionAppDbContext;
 using Infrastructure.Persistence.Interceptors;

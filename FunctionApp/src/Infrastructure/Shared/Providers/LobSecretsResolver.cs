@@ -1,5 +1,5 @@
-using Application.Shared.Context;
-using Application.Shared.Providers;
+using Application.Common.Abstractions.Context;
+using Application.Common.Abstractions.Providers;
 
 using Microsoft.Extensions.Logging;
 

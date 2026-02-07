@@ -1,6 +1,6 @@
 ﻿using System.Net;
 
-using Application.Shared.Context;
+using Application.Common.Abstractions.Context;
 
 using Flurl.Http;
 
@@ -348,6 +348,8 @@ public class FlurlHttpClient : IFlurlHttpClient
             throw new ArgumentException("Endpoint must be provided.", nameof(endpoint));
         }
 
+        _logger.LogCritical("Lob Name {LobName}", LobContext.LobName);
+
         Context context = new()
                           {
                               ["Lob"] = LobContext.LobName,
@@ -394,7 +396,7 @@ public class FlurlHttpClient : IFlurlHttpClient
                                                          fullUrl,
                                                          $"External service request failed: {methodStr} {fullUrl}",
                                                          ex,
-                                                         responseBody);
+                                                         responseBody?[..255]);
 
                                                      if (statusCode == HttpStatusCode.Unauthorized)
                                                      {
@@ -409,7 +411,7 @@ public class FlurlHttpClient : IFlurlHttpClient
                                                              LobContext.LobName,
                                                              methodStr,
                                                              statusCode,
-                                                             responseBody);
+                                                             responseBody?[..255]);
                                                      }
 
                                                      throw wrappedEx;

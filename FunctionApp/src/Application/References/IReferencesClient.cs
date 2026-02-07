@@ -1,4 +1,4 @@
-using Application.Dtos.References;
+using Application.Contracts.References;
 
 
 namespace Application.References;

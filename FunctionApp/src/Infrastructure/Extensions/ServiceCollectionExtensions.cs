@@ -1,4 +1,4 @@
-﻿using Application.Shared.Context;
+﻿using Application.Common.Abstractions.Context;
 
 using Infrastructure.Azure.ApplicationInsights;
 using Infrastructure.Azure.KeyVaults;

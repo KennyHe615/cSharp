@@ -10,8 +10,6 @@ namespace Shared.Extensions;
 /// </summary>
 public static class LoggerExtensions
 {
-    private const string CallerMessageTemplate = "{CallerMessage}";
-
     /// <summary>
     /// Creates a logging scope with operation context and distributed tracing information.
     /// Automatically starts a new Activity if one is not already present.
@@ -113,8 +111,9 @@ public static class LoggerExtensions
     {
         using (logger.BeginScope(exception.ToLogScope()))
         {
-            // Keep the template constant; store caller message + args as structured data.
-            logger.Log(level, exception, CallerMessageTemplate, message);
+#pragma warning disable CA2254
+            logger.Log(level, exception, message, args);
+#pragma warning restore CA2254
 
             if (args is { Length: > 0 })
             {
