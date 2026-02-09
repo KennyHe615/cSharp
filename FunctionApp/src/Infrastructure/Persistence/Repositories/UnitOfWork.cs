@@ -1,22 +1,23 @@
-using Application.References;
-using Application.Shared.Repositories;
+using Application.Common.Abstractions.Context;
+using Application.Common.Abstractions.Persistence;
+using Application.Common.Enums;
+
+using Infrastructure.Persistence.Repositories.UnitOfWorkCore;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata;
-using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+
+using Shared.Constants;
 
 
 namespace Infrastructure.Persistence.Repositories;
 
-/// <summary>
-/// Implementation of the Unit of Work pattern using Entity Framework Core.
-/// </summary>
-/// <param name="dbContext">The database context used for tracking changes and persistence.</param>
 public class UnitOfWork(FunctionAppDbContext.FunctionAppDbContext dbContext,
-                        IServiceProvider serviceProvider) : IUnitOfWork
+                        ILobContext lobContext,
+                        ILogger<UnitOfWork> logger) : IUnitOfWork
 {
-    /// <inheritdoc />
-    public IReferencesRepository References => serviceProvider.GetRequiredService<IReferencesRepository>();
+    private string _lobName = lobContext.LobName;
 
     /// <inheritdoc />
     public async Task UpsertAsync<TEntity>(TEntity entity,
@@ -27,7 +28,9 @@ public class UnitOfWork(FunctionAppDbContext.FunctionAppDbContext dbContext,
     }
 
     /// <inheritdoc />
-    /// <exception cref="EntityOperationException">Thrown when the entity type is not configured or a database error occurs.</exception>
+    /// <exception cref="EntityOperationException">
+    /// Thrown when the entity type is not configured or a database error occurs.
+    /// </exception>
     public async Task UpsertRangeAsync<TEntity>(IEnumerable<TEntity> incomingMappedEntities,
                                                 Action<TEntity>? onMissingFromIncoming = null,
                                                 CancellationToken ct = default) where TEntity : class
@@ -37,72 +40,53 @@ public class UnitOfWork(FunctionAppDbContext.FunctionAppDbContext dbContext,
         if (incomingList.Count == 0 && onMissingFromIncoming == null) return;
 
         string entityName = typeof(TEntity).Name;
+
         try
         {
-            IEntityType entityType = dbContext.Model.FindEntityType(typeof(TEntity)) ??
-                                     throw new EntityOperationException(
-                                         $"Entity type '{entityName}' is not configured in the DbContext model.",
-                                         entityName);
-            IKey primaryKey = entityType.FindPrimaryKey() ??
-                              throw new EntityOperationException(
-                                  $"Primary key is not defined for entity '{entityName}'.",
-                                  entityName);
+            EntityMetadata<TEntity> metadata = GetEntityMetadata<TEntity>(entityName);
 
-            // Helper to extract the primary key value from an entity
-            IProperty pkProperty = primaryKey.Properties[0];
+            EntityValidator.ValidateIncomingData(incomingList, metadata, entityName, logger);
 
-            object? IdSelector(TEntity e)
-            {
-                return entityType.FindProperty(pkProperty.Name)!.GetGetter().GetClrValue(e);
-            }
+            List<TEntity> dbEntities = await EntityQueryBuilder
+                                             .FetchMatchingEntitiesAsync(dbContext, incomingList, metadata, ct)
+                                             .ConfigureAwait(false);
 
-            // 1. Fetch existing entities in bulk to avoid N+1 FindAsync calls
-            List<TEntity> dbEntities = await dbContext.Set<TEntity>().ToListAsync(ct).ConfigureAwait(false);
-            Dictionary<object, TEntity> dbById = dbEntities.Select(e => (Id: IdSelector(e), Entity: e))
-                                                           .Where(x => x.Id != null)
-                                                           .ToDictionary(x => x.Id!, x => x.Entity);
+            Dictionary<object, TEntity> dbById = EntityValidator.BuildEntityDictionary(dbEntities, metadata);
 
-            HashSet<object> incomingIds = [];
+            UpsertResult result =
+                EntityUpdateHandler.ProcessUpsertOperations(dbContext, incomingList, dbById, metadata);
 
-            // 2. Process Add and Update
-            foreach (TEntity incoming in incomingList)
-            {
-                object? id = IdSelector(incoming);
+            logger.LogInformation(
+                CommonConstants.LobCategoryEntityLogPrefix +
+                "Processed: {AddedCount} added, {UpdatedCount} updated (Fetched {FetchedCount} existing from DB)",
+                _lobName,
+                SyncCategory.UserDetails,
+                entityName,
+                result.AddedCount,
+                result.UpdatedCount,
+                dbEntities.Count);
 
-                if (id == null) continue;
-                incomingIds.Add(id);
-
-                if (dbById.TryGetValue(id, out TEntity? existing))
-                {
-                    // Update: Copy values from incoming to existing tracked entity
-                    dbContext.Entry(existing).CurrentValues.SetValues(incoming);
-                }
-                else
-                {
-                    // Add: New entity
-                    await dbContext.Set<TEntity>().AddAsync(incoming, ct).ConfigureAwait(false);
-                }
-            }
-
-            // 3. Process Missing (Inactivation/Sync)
             if (onMissingFromIncoming != null)
             {
-                foreach (TEntity dbEntity in dbEntities.Where(e => IdSelector(e) != null &&
-                                                                   !incomingIds.Contains(IdSelector(e)!)))
-                {
-                    onMissingFromIncoming(dbEntity);
-                }
+                EntityUpdateHandler.ProcessMissingEntities(dbEntities,
+                                                           result.IncomingKeys,
+                                                           metadata,
+                                                           onMissingFromIncoming);
             }
         }
         catch (Exception ex) when (ex is not PersistenceException)
         {
-            throw new EntityOperationException($"Failed to upsert entities of type '{entityName}'.", ex, entityName);
+            throw new EntityOperationException($"[Lob:{_lobName} - User Details \"{entityName}]\" Failed to upsert.",
+                                               ex,
+                                               entityName);
         }
     }
 
     /// <inheritdoc />
     /// <exception cref="DbConcurrencyException">Thrown when a concurrency conflict is detected.</exception>
-    /// <exception cref="DbConstraintViolationException">Thrown when a database constraint (e.g., Foreign Key, Unique) is violated.</exception>
+    /// <exception cref="DbConstraintViolationException">
+    /// Thrown when a database constraint (e.g., Foreign Key, Unique) is violated.
+    /// </exception>
     public async Task<int> SaveChangesAsync(CancellationToken ct = default)
     {
         try
@@ -130,6 +114,22 @@ public class UnitOfWork(FunctionAppDbContext.FunctionAppDbContext dbContext,
         }
     }
 
+    #region ========== *** Private Methods *** ==========
+
+    private EntityMetadata<TEntity> GetEntityMetadata<TEntity>(string entityName) where TEntity : class
+    {
+        IEntityType entityType = dbContext.Model.FindEntityType(typeof(TEntity)) ??
+                                 throw new EntityOperationException(
+                                     $"Entity type '{entityName}' is not configured in the DbContext model.",
+                                     entityName);
+
+        IKey primaryKey = entityType.FindPrimaryKey() ??
+                          throw new EntityOperationException($"Primary key is not defined for entity '{entityName}'.",
+                                                             entityName);
+
+        return new EntityMetadata<TEntity>(entityType, primaryKey);
+    }
+
     /// <summary>
     /// Attempts to extract the name of the violated database constraint from the exception message.
     /// </summary>
@@ -141,13 +141,34 @@ public class UnitOfWork(FunctionAppDbContext.FunctionAppDbContext dbContext,
 
         if (string.IsNullOrEmpty(message)) return null;
 
-        int startIndex = message.IndexOf("constraint '", StringComparison.OrdinalIgnoreCase);
+        string[] patterns =
+        [
+            "constraint '",
+            "constraint \"",
+            "CONSTRAINT '",
+            "CONSTRAINT \"",
+            "violates foreign key constraint \"",
+            "violates unique constraint \""
+        ];
 
-        if (startIndex == -1) return null;
+        foreach (string pattern in patterns)
+        {
+            int startIndex = message.IndexOf(pattern, StringComparison.OrdinalIgnoreCase);
 
-        startIndex += 12;
-        int endIndex = message.IndexOf('\'', startIndex);
+            if (startIndex == -1) continue;
 
-        return endIndex > startIndex ? message.Substring(startIndex, endIndex - startIndex) : null;
+            startIndex += pattern.Length;
+            char endChar = pattern.Contains('\'') ? '\'' : '\"';
+            int endIndex = message.IndexOf(endChar, startIndex);
+
+            if (endIndex > startIndex)
+            {
+                return message.Substring(startIndex, endIndex - startIndex);
+            }
+        }
+
+        return null;
     }
+
+    #endregion
 }

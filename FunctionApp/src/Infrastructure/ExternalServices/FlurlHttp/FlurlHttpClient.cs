@@ -8,6 +8,7 @@ using Microsoft.Extensions.Logging;
 
 using Polly;
 
+using Shared.Constants;
 using Shared.Extensions;
 
 
@@ -348,11 +349,9 @@ public class FlurlHttpClient : IFlurlHttpClient
             throw new ArgumentException("Endpoint must be provided.", nameof(endpoint));
         }
 
-        _logger.LogCritical("Lob Name {LobName}", LobContext.LobName);
-
         Context context = new()
                           {
-                              ["Lob"] = LobContext.LobName,
+                              ["LobName"] = LobContext.LobName,
                               [FlurlHttpClientFactory.RefreshFuncKey] = onUnauthorized
                           };
 
@@ -396,22 +395,24 @@ public class FlurlHttpClient : IFlurlHttpClient
                                                          fullUrl,
                                                          $"External service request failed: {methodStr} {fullUrl}",
                                                          ex,
-                                                         responseBody?[..255]);
+                                                         responseBody?[..Math.Min(responseBody.Length, 255)]);
 
                                                      if (statusCode == HttpStatusCode.Unauthorized)
                                                      {
                                                          _logger.LogDebug(
-                                                             "[LOB: {Lob}] Token expired, invoking refresh handler.",
+                                                             CommonConstants.LobLogPrefix +
+                                                             "Token expired, invoking refresh handler.",
                                                              LobContext.LobName);
                                                      }
                                                      else
                                                      {
                                                          _logger.LogErrorWithDetails(wrappedEx,
-                                                             "[LOB: {Lob}] {Method} failed | Status: {Status} | Response: {Body}",
+                                                             CommonConstants.LobLogPrefix +
+                                                             "{Method} failed | Status: {Status} | Response: {Body}",
                                                              LobContext.LobName,
                                                              methodStr,
                                                              statusCode,
-                                                             responseBody?[..255]);
+                                                             responseBody?[..Math.Min(responseBody.Length, 255)]);
                                                      }
 
                                                      throw wrappedEx;
@@ -419,7 +420,7 @@ public class FlurlHttpClient : IFlurlHttpClient
                                                  catch (Exception ex)
                                                  {
                                                      _logger.LogErrorWithDetails(ex,
-                                                         "[LOB: {Lob}] {Method} failed",
+                                                         CommonConstants.LobLogPrefix + "{Method} failed",
                                                          LobContext.LobName,
                                                          methodStr);
 
@@ -481,12 +482,17 @@ public class FlurlHttpClient : IFlurlHttpClient
 
     private void LogRequest(string method, string url)
     {
-        _logger.LogDebug("HTTP Request | Method: {Method} | Url: {Url}", method, url);
+        _logger.LogDebug(CommonConstants.LobLogPrefix + "HTTP Request | Method: {Method} | Url: {Url}",
+                         LobContext.LobName,
+                         method,
+                         url);
     }
 
     private void LogResponse(int? statusCode, string method, string url)
     {
-        _logger.LogDebug("HTTP Response | Status: {StatusCode} | Method: {Method} | Url: {Url}",
+        _logger.LogDebug(CommonConstants.LobLogPrefix +
+                         "HTTP Response | Status: {StatusCode} | Method: {Method} | Url: {Url}",
+                         LobContext.LobName,
                          statusCode,
                          method,
                          url);

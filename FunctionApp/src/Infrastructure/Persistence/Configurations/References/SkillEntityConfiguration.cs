@@ -1,9 +1,12 @@
-using Application.Enums;
+using Application.Contracts.Enums;
 
 using Infrastructure.Persistence.Entities.References;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
+
+using Shared.Extensions;
 
 
 namespace Infrastructure.Persistence.Configurations.References;
@@ -12,7 +15,14 @@ public class SkillEntityConfiguration : IEntityTypeConfiguration<Skill>
 {
     public void Configure(EntityTypeBuilder<Skill> builder)
     {
-        builder.ToTable("Skills", "ref");
+        #region ========== *** Converters *** ==========
+
+        ValueConverter<State, string> converter = new(toProvider => toProvider.WriteEnumSnakeUpper(),
+                                                      fromProvider => fromProvider.ReadEnum<State>());
+
+        #endregion
+
+        builder.ToTable("skills", "ref");
 
         builder.HasKey(x => x.Id);
 
@@ -22,10 +32,7 @@ public class SkillEntityConfiguration : IEntityTypeConfiguration<Skill>
 
         builder.Property(x => x.Version).HasMaxLength(8);
 
-        builder.Property(x => x.State)
-               .HasConversion(v => v.HasValue ? v.Value.ToString().ToLowerInvariant() : null,
-                              v => v != null ? Enum.Parse<State>(v, true) : null)
-               .HasMaxLength(8);
+        builder.Property(x => x.State).HasConversion(converter).HasMaxLength(8);
 
         builder.Property(x => x.DateModified).HasColumnType("datetimeoffset(0)");
 

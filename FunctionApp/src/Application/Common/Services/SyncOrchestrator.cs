@@ -9,6 +9,7 @@ using Application.Common.Models;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
+using Shared.Constants;
 using Shared.Extensions;
 
 
@@ -39,7 +40,7 @@ public sealed class SyncOrchestrator(IServiceProvider serviceProvider,
 
         SyncKey key = new(lobName, category);
 
-        logger.LogDebug("[LOB: {Lob}] [Category: {Category}] Orchestration started.", lobName, category);
+        logger.LogDebug(CommonConstants.LobCategoryLogPrefix + "Orchestration started", lobName, category);
 
         using CancellationTokenSource cts =
             await PrepareCancellationTokenSourceAsync(key, externalToken).ConfigureAwait(false);
@@ -82,7 +83,8 @@ public sealed class SyncOrchestrator(IServiceProvider serviceProvider,
                     if (!oldCts.IsCancellationRequested)
                     {
                         logger.LogWarning(
-                            "[LOB: {Lob}] [Category: {Category}] New job arrived. Signaling cancellation to previous job.",
+                            CommonConstants.LobCategoryLogPrefix +
+                            "New job arrived. Signaling cancellation to previous job.",
                             key.LobName,
                             key.Category);
 
@@ -118,7 +120,7 @@ public sealed class SyncOrchestrator(IServiceProvider serviceProvider,
 
         ILogger<SyncOrchestrator> scopedLogger = scope.ServiceProvider.GetRequiredService<ILogger<SyncOrchestrator>>();
 
-        using IDisposable loggingScope = scopedLogger.BeginOperationScope($"{category} Sync", lobName);
+        using IDisposable loggingScope = scopedLogger.BeginOperationScope(nameof(category), lobName);
 
         try
         {
@@ -128,13 +130,16 @@ public sealed class SyncOrchestrator(IServiceProvider serviceProvider,
         }
         catch (OperationCanceledException)
         {
-            logger.LogWarning("[LOB: {Lob}] [Category: {Category}] Sync job was successfully suspended/cancelled.",
+            logger.LogWarning(CommonConstants.LobCategoryLogPrefix + "Sync job was successfully suspended/cancelled.",
                               lobName,
                               category);
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "[LOB: {Lob}] [Category: {Category}] Critical failure in sync job.", lobName, category);
+            logger.LogError(ex,
+                            CommonConstants.LobCategoryLogPrefix + "Critical failure in sync job.",
+                            lobName,
+                            category);
 
             throw;
         }

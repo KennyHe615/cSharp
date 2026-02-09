@@ -23,7 +23,7 @@ public sealed class ReferencesLclTimer(ISyncOrchestrator orchestrator,
     {
         try
         {
-            logger.LogInformation("Starting references sync for LOB {Lob}", LobName);
+            logger.LogInformation(CommonConstants.LobCategoryLogPrefix + "Start", LobName, SyncCategory.References);
 
             Task skillsTask = orchestrator.ExecuteAsync(LobName, SyncCategory.Skill, ct);
             Task presenceTask = orchestrator.ExecuteAsync(LobName, SyncCategory.PresenceDefinition, ct);
@@ -34,7 +34,10 @@ public sealed class ReferencesLclTimer(ISyncOrchestrator orchestrator,
         }
         catch (Exception ex)
         {
-            logger.LogErrorWithDetails(ex, "❌ References sync failed for LOB: {Lob}", LobName);
+            logger.LogErrorWithDetails(ex,
+                                       $"❌{CommonConstants.LobCategoryLogPrefix} Error",
+                                       LobName,
+                                       SyncCategory.References);
 
             throw;
         }

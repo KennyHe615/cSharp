@@ -4,6 +4,7 @@ public enum SyncCategory
 {
     #region References
 
+    References,
     Skill,
     PresenceDefinition,
     Group,

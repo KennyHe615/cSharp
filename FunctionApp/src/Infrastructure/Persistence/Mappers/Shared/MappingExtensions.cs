@@ -1,9 +1,4 @@
-using System.Linq.Expressions;
-
-using AutoMapper;
-
 using Shared.Extensions;
-using Shared.Providers;
 
 
 namespace Infrastructure.Persistence.Mappers.Shared;
@@ -13,19 +8,6 @@ namespace Infrastructure.Persistence.Mappers.Shared;
 /// </summary>
 public static class MappingExtensions
 {
-    /// <summary>
-    /// Configures a mapping from a source DateTimeOffset? to a destination DateTimeOffset? converting it to EST using <see cref="IDateTimeProvider"/>.
-    /// </summary>
-    /// <remarks>
-    /// Resolves <see cref="IDateTimeProvider"/> via DI, avoiding standalone resolver classes.
-    /// </remarks>
-    public static void MapFromEst<TSource, TDestination>(
-        this IMemberConfigurationExpression<TSource, TDestination, DateTimeOffset?> opt,
-        Expression<Func<TSource, DateTimeOffset?>> sourceMember)
-    {
-        opt.MapFrom<InlineEstResolver<TSource, TDestination>, DateTimeOffset?>(sourceMember);
-    }
-
     /// <summary>
     /// Retrieves a value from a nested dictionary structure using dot-notation path traversal.
     /// </summary>
@@ -77,21 +59,4 @@ public static class MappingExtensions
 
         return truncate.HasValue ? result.Truncate(truncate.Value) : result;
     }
-
-    #region ========== *** Private Classes *** ==========
-
-    private sealed class InlineEstResolver<TSource, TDestination>(IDateTimeProvider dateTimeProvider)
-        : IMemberValueResolver<TSource, TDestination, DateTimeOffset?, DateTimeOffset?>
-    {
-        public DateTimeOffset? Resolve(TSource source,
-                                       TDestination destination,
-                                       DateTimeOffset? sourceMember,
-                                       DateTimeOffset? destMember,
-                                       ResolutionContext context)
-        {
-            return sourceMember is null ? null : dateTimeProvider.ConvertToEst(sourceMember.Value);
-        }
-    }
-
-    #endregion
 }
