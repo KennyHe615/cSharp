@@ -1,4 +1,4 @@
-using Application.Common.Abstractions.Sync;
+using Application.Common.Abstractions.Services;
 using Application.Common.Enums;
 
 using Microsoft.Azure.Functions.Worker;
@@ -23,7 +23,9 @@ public sealed class ReferencesLclTimer(ISyncOrchestrator orchestrator,
     {
         try
         {
-            logger.LogInformation(CommonConstants.LobCategoryLogPrefix + "Start", LobName, SyncCategory.References);
+            logger.LogInformation(CommonConstants.LobCategoryLogPrefix + "Start",
+                                  LobName,
+                                  nameof(SyncCategory.References));
 
             Task skillsTask = orchestrator.ExecuteAsync(LobName, SyncCategory.Skill, ct);
             Task presenceTask = orchestrator.ExecuteAsync(LobName, SyncCategory.PresenceDefinition, ct);
@@ -37,7 +39,7 @@ public sealed class ReferencesLclTimer(ISyncOrchestrator orchestrator,
             logger.LogErrorWithDetails(ex,
                                        $"❌{CommonConstants.LobCategoryLogPrefix} Error",
                                        LobName,
-                                       SyncCategory.References);
+                                       nameof(SyncCategory.References));
 
             throw;
         }

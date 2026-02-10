@@ -90,7 +90,7 @@ public class FunctionAppDbContext(DbContextOptions<FunctionAppDbContext> options
         // This automatically finds all classes in this assembly that implement IEntityTypeConfiguration
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(FunctionAppDbContext).Assembly);
 
-        ApplyEstSecondPrecisionConvention(modelBuilder);
+        ApplyEstConvention(modelBuilder);
 
         // Apply naming convention for all entities and properties
         foreach (IMutableEntityType entity in modelBuilder.Model.GetEntityTypes())
@@ -157,15 +157,15 @@ public class FunctionAppDbContext(DbContextOptions<FunctionAppDbContext> options
     }
 
     // For EF ValueConverter, use static methods to avoid expression-tree closure issues.
-    private static void ApplyEstSecondPrecisionConvention(ModelBuilder modelBuilder)
+    private static void ApplyEstConvention(ModelBuilder modelBuilder)
     {
         ValueConverter<DateTimeOffset, DateTimeOffset> dtoConverter = new(
-            v => DateTimeResolver.ConvertToEstAndRoundToSecond(v),
-            v => DateTimeResolver.ConvertToEstAndRoundToSecond(v));
+            v => DateTimeResolver.ConvertToEst(v),
+            v => DateTimeResolver.ConvertToEst(v));
 
         ValueConverter<DateTimeOffset?, DateTimeOffset?> dtoNullableConverter = new(
-            v => v.HasValue ? DateTimeResolver.ConvertToEstAndRoundToSecond(v.Value) : null,
-            v => v.HasValue ? DateTimeResolver.ConvertToEstAndRoundToSecond(v.Value) : null);
+            v => v.HasValue ? DateTimeResolver.ConvertToEst(v.Value) : null,
+            v => v.HasValue ? DateTimeResolver.ConvertToEst(v.Value) : null);
 
         foreach (IMutableEntityType entityType in modelBuilder.Model.GetEntityTypes())
         {
@@ -188,13 +188,13 @@ public class FunctionAppDbContext(DbContextOptions<FunctionAppDbContext> options
             {
                 foreach (IMutableProperty keyProp in key.Properties.Where(p => p.ClrType == typeof(DateTimeOffset)))
                 {
-                    keyProp.SetColumnType("datetimeoffset(0)");
+                    keyProp.SetColumnType("datetimeoffset(3)");
                     keyProp.SetValueConverter(dtoConverter);
                 }
 
                 foreach (IMutableProperty keyProp in key.Properties.Where(p => p.ClrType == typeof(DateTimeOffset?)))
                 {
-                    keyProp.SetColumnType("datetimeoffset(0)");
+                    keyProp.SetColumnType("datetimeoffset(3)");
                     keyProp.SetValueConverter(dtoNullableConverter);
                 }
             }

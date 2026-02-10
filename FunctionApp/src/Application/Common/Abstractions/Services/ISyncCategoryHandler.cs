@@ -1,7 +1,7 @@
 using Application.Common.Enums;
 
 
-namespace Application.Common.Abstractions.Sync;
+namespace Application.Common.Abstractions.Services;
 
 /// <summary>
 /// Defines a handler for a specific synchronization category.

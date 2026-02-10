@@ -122,17 +122,12 @@ internal sealed class EntityMetadata<TEntity>(IEntityType entityType,
     /// <returns>
     /// The normalized value. Transformations applied:
     /// <list type="bullet">
-    /// <item><see cref="DateTimeOffset"/>: Converted to EST timezone and rounded to the nearest second</item>
-    /// <item><see langword="null"/>: Converted to <see cref="DBNull.Value"/></item>
+    /// <item><see cref="DateTimeOffset"/>: Converted to EST timezone</item>
+    /// <item><c>null</c>: Converted to <see cref="DBNull.Value"/></item>
     /// <item>All other types: Returned unchanged</item>
     /// </list>
     /// </returns>
     /// <remarks>
-    /// <para>
-    /// DateTimeOffset normalization: Database timestamp columns often have second-level precision,
-    /// while .NET <see cref="DateTimeOffset"/> includes ticks. Rounding to seconds ensures that keys match
-    /// between in-memory entities and database-fetched entities.
-    /// </para>
     /// <para>
     /// Null handling: <see cref="DBNull.Value"/> is used instead of null to prevent issues
     /// with null keys in collections and to provide a consistent non-null representation.
@@ -142,7 +137,7 @@ internal sealed class EntityMetadata<TEntity>(IEntityType entityType,
     {
         return value switch
         {
-            DateTimeOffset dto => DateTimeResolver.ConvertToEstAndRoundToSecond(dto),
+            DateTimeOffset dto => DateTimeResolver.ConvertToEst(dto),
             null => DBNull.Value,
             _ => value
         };

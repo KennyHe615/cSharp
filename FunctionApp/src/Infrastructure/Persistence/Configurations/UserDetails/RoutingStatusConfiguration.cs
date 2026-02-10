@@ -32,9 +32,9 @@ public class RoutingStatusConfiguration : IEntityTypeConfiguration<RoutingStatus
 
         #region ========== *** Properties *** ==========
 
-        builder.Property(x => x.StartTime).HasColumnType("datetimeoffset(0)");
+        builder.Property(x => x.StartTime).HasColumnType("datetimeoffset(3)");
 
-        builder.Property(x => x.EndTime).HasColumnType("datetimeoffset(0)");
+        builder.Property(x => x.EndTime).HasColumnType("datetimeoffset(3)");
 
         builder.Property(x => x.DurationInSeconds).HasColumnType("bigint");
 

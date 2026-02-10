@@ -188,8 +188,8 @@ IF OBJECT_ID(N'dbo.user_details_primary_presence_stg', N'U') IS NULL
         CREATE TABLE [dbo].[user_details_primary_presence_stg]
         (
             [user_id]                  UNIQUEIDENTIFIER  NOT NULL,
-            [start_time]               DATETIMEOFFSET(0) NOT NULL,
-            [end_time]                 DATETIMEOFFSET(0) NULL,
+            [start_time]               DATETIMEOFFSET(3) NOT NULL,
+            [end_time]                 DATETIMEOFFSET(3) NULL,
             [duration_in_seconds]      BIGINT            NULL,
             [system_presence]          NVARCHAR(9)       NOT NULL,
             [organization_presence_id] NVARCHAR(255)     NULL,
@@ -228,8 +228,8 @@ IF OBJECT_ID(N'dbo.user_details_routing_status_stg', N'U') IS NULL
         CREATE TABLE [dbo].[user_details_routing_status_stg]
         (
             [user_id]             UNIQUEIDENTIFIER  NOT NULL,
-            [start_time]          DATETIMEOFFSET(0) NOT NULL,
-            [end_time]            DATETIMEOFFSET(0) NULL,
+            [start_time]          DATETIMEOFFSET(3) NOT NULL,
+            [end_time]            DATETIMEOFFSET(3) NULL,
             [duration_in_seconds] BIGINT            NULL,
             [routing_status]      NVARCHAR(15)      NOT NULL,
             [app_created_at]      DATETIMEOFFSET(0) NOT NULL

@@ -1,4 +1,4 @@
-using Application.Common.Abstractions.Sync;
+using Application.Common.Abstractions.Services;
 using Application.Common.Enums;
 
 

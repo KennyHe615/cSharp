@@ -2,7 +2,7 @@ using System.Collections.Concurrent;
 
 using Application.Common.Abstractions.Context;
 using Application.Common.Abstractions.Providers;
-using Application.Common.Abstractions.Sync;
+using Application.Common.Abstractions.Services;
 using Application.Common.Enums;
 using Application.Common.Models;
 

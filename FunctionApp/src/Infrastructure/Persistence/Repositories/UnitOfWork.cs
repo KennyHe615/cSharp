@@ -56,11 +56,11 @@ public class UnitOfWork(FunctionAppDbContext.FunctionAppDbContext dbContext,
             UpsertResult result =
                 EntityUpdateHandler.ProcessUpsertOperations(dbContext, incomingList, dbById, metadata);
 
-            logger.LogInformation(
+            logger.LogDebug(
                 CommonConstants.LobCategoryEntityLogPrefix +
                 "Processed: {AddedCount} added, {UpdatedCount} updated (Fetched {FetchedCount} existing from DB)",
                 _lobName,
-                SyncCategory.UserDetails,
+                nameof(SyncCategory.UserDetails),
                 entityName,
                 result.AddedCount,
                 result.UpdatedCount,

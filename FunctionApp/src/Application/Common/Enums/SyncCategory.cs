@@ -4,7 +4,7 @@ public enum SyncCategory
 {
     #region References
 
-    References,
+    References, // For logging use
     Skill,
     PresenceDefinition,
     Group,
@@ -14,7 +14,8 @@ public enum SyncCategory
 
     #region Analytics
 
-    UserDetails
+    UserDetails,
+    ConversationDetails
 
     #endregion
 }

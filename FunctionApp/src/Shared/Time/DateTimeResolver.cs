@@ -12,6 +12,11 @@ public static class DateTimeResolver
         return TimeZoneInfo.ConvertTime(utc.Value, GetEasternTimeZone());
     }
 
+    public static DateTimeOffset ConvertToEst(DateTimeOffset utc)
+    {
+        return TimeZoneInfo.ConvertTime(utc, GetEasternTimeZone());
+    }
+
     public static DateTimeOffset ConvertToEstAndRoundToSecond(DateTimeOffset utc)
     {
         DateTimeOffset est = ConvertToEst(utc);
@@ -31,12 +36,19 @@ public static class DateTimeResolver
         return TimeZoneInfo.FindSystemTimeZoneById(id);
     }
 
-    #region ========== *** Private Methods *** ==========
-
-    private static DateTimeOffset ConvertToEst(DateTimeOffset utc)
+    public static DateTimeOffset NormalizeToMinute(DateTimeOffset dateTime)
     {
-        return TimeZoneInfo.ConvertTime(utc, GetEasternTimeZone());
+        return new DateTimeOffset(dateTime.Year,
+                                  dateTime.Month,
+                                  dateTime.Day,
+                                  dateTime.Hour,
+                                  dateTime.Minute,
+                                  0,
+                                  0,
+                                  dateTime.Offset);
     }
+
+    #region ========== *** Private Methods *** ==========
 
     private static DateTimeOffset RoundToSeconds(DateTimeOffset dateTime)
     {

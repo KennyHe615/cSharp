@@ -89,6 +89,9 @@ public static class ApplicationInsightsExtension
         // Ensure app logs (your categories under "FunctionApp") remain visible locally.
         options.Rules.Add(new LoggerFilterRule(null, "FunctionApp", LogLevel.Debug, null));
 
+        // Ensure Infrastructure logs remain visible locally (for Console).
+        // options.Rules.Add(new LoggerFilterRule(null, "Infrastructure", LogLevel.Debug, null));
+
         foreach (string provider in ApplicationInsightsProviders)
         {
             // Provider-wide minimum for AI (increase to Information/Warning if telemetry volume is too high).

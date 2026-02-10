@@ -397,22 +397,24 @@ public class FlurlHttpClient : IFlurlHttpClient
                                                          ex,
                                                          responseBody?[..Math.Min(responseBody.Length, 255)]);
 
-                                                     if (statusCode == HttpStatusCode.Unauthorized)
+                                                     // ReSharper disable once SwitchStatementHandlesSomeKnownEnumValuesWithDefault
+                                                     switch (statusCode)
                                                      {
-                                                         _logger.LogDebug(
-                                                             CommonConstants.LobLogPrefix +
-                                                             "Token expired, invoking refresh handler.",
-                                                             LobContext.LobName);
-                                                     }
-                                                     else
-                                                     {
-                                                         _logger.LogErrorWithDetails(wrappedEx,
-                                                             CommonConstants.LobLogPrefix +
-                                                             "{Method} failed | Status: {Status} | Response: {Body}",
-                                                             LobContext.LobName,
-                                                             methodStr,
-                                                             statusCode,
-                                                             responseBody?[..Math.Min(responseBody.Length, 255)]);
+                                                         case HttpStatusCode.Unauthorized:
+                                                         case HttpStatusCode.TooManyRequests:
+                                                             // Unknown issues, skipped
+                                                             break;
+
+                                                         default:
+                                                             _logger.LogErrorWithDetails(wrappedEx,
+                                                                 CommonConstants.LobLogPrefix +
+                                                                 "{Method} failed | Status: {Status} | Response: {Body}",
+                                                                 LobContext.LobName,
+                                                                 methodStr,
+                                                                 statusCode,
+                                                                 responseBody?[..Math.Min(responseBody.Length, 255)]);
+
+                                                             break;
                                                      }
 
                                                      throw wrappedEx;

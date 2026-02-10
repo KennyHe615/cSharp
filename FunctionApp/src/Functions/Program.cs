@@ -78,6 +78,8 @@ IHost builder = new HostBuilder().ConfigureFunctionsWorkerDefaults()
                                                                                       type.Name !=
                                                                                       "GenesysTokenProvider" &&
                                                                                       type.Name != "Interval" &&
+                                                                                      type.Name !=
+                                                                                      "IntervalWithPages" &&
                                                                                       type.Name != "CompositeKey" &&
                                                                                       type.Name != "EntityMetadata`1" &&
                                                                                       type.Name != "UpsertResult" &&

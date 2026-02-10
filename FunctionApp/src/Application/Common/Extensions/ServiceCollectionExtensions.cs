@@ -1,4 +1,4 @@
-using Application.Common.Abstractions.Sync;
+using Application.Common.Abstractions.Services;
 using Application.Common.Services;
 
 using Microsoft.Extensions.DependencyInjection;
@@ -14,9 +14,6 @@ public static class ServiceCollectionExtensions
         // active LOB sync jobs across function invocations.
         services.AddSingleton<ISyncOrchestrator, SyncOrchestrator>();
 
-        // Category handlers
-        // services.AddScoped<ISyncCategoryHandler, SkillSyncHandler>();
-        // services.AddScoped<ISyncCategoryHandler, PresenceDefinitionSyncHandler>();
-        // services.AddScoped<ISyncCategoryHandler, ReferencesSyncHandler>();
+        services.AddScoped<IIntervalSubdivisionService, IntervalSubdivisionService>();
     }
 }

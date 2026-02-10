@@ -1,7 +1,7 @@
 using Application.Common.Enums;
 
 
-namespace Application.Common.Abstractions.Sync;
+namespace Application.Common.Abstractions.Services;
 
 /// <summary>
 /// Defines an orchestrator responsible for managing the synchronization workflow across different Lines of Business (LOBs).
