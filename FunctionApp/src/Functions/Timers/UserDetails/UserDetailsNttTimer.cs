@@ -8,15 +8,15 @@ using Shared.Constants;
 using Shared.Extensions;
 
 
-namespace Functions.Timers.References;
+namespace Functions.Timers.UserDetails;
 
-public sealed class ReferencesNttTimer(ISyncOrchestrator orchestrator,
-                                       ILogger<ReferencesNttTimer> logger)
+public class UserDetailsNttTimer(ISyncOrchestrator orchestrator,
+                                 ILogger<UserDetailsNttTimer> logger)
 {
     private const string TimerTriggerExpression = "0 */1 * * * *";
     private const string LobName = GenesysConstants.NttOrg;
 
-    [Function("References-Ntt-Timer")]
+    [Function("UserDetails-Ntt-Timer")]
     public async Task RunAsync([TimerTrigger(TimerTriggerExpression)] TimerInfo myTimer,
                                FunctionContext context,
                                CancellationToken ct)
@@ -25,21 +25,16 @@ public sealed class ReferencesNttTimer(ISyncOrchestrator orchestrator,
         {
             logger.LogInformation(CommonConstants.LobCategoryLogPrefix + "Timer trigger start",
                                   LobName,
-                                  nameof(SyncCategory.References));
+                                  SyncCategory.UserDetails);
 
-            Task skillsTask = orchestrator.ExecuteAsync(LobName, SyncCategory.Skill, ct);
-            Task presenceTask = orchestrator.ExecuteAsync(LobName, SyncCategory.PresenceDefinition, ct);
-            Task groupTask = orchestrator.ExecuteAsync(LobName, SyncCategory.Group, ct);
-            Task wrapupCodeTask = orchestrator.ExecuteAsync(LobName, SyncCategory.WrapupCode, ct);
-
-            await Task.WhenAll(skillsTask, presenceTask, groupTask, wrapupCodeTask).ConfigureAwait(false);
+            await orchestrator.ExecuteAsync(LobName, SyncCategory.UserDetails, ct).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
             logger.LogErrorWithDetails(ex,
                                        $"❌{CommonConstants.LobCategoryLogPrefix} Error",
                                        LobName,
-                                       nameof(SyncCategory.References));
+                                       SyncCategory.UserDetails);
 
             throw;
         }

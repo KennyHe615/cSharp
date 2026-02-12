@@ -48,6 +48,11 @@ public static class DateTimeResolver
                                   dateTime.Offset);
     }
 
+    public static long? CalculateDuration(DateTimeOffset startTime, DateTimeOffset? endTime)
+    {
+        return endTime.HasValue ? (long?)(endTime.Value - startTime).TotalSeconds : null;
+    }
+
     #region ========== *** Private Methods *** ==========
 
     private static DateTimeOffset RoundToSeconds(DateTimeOffset dateTime)

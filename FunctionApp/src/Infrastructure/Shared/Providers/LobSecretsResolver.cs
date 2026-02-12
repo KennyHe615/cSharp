@@ -41,7 +41,7 @@ public sealed class LobSecretsResolver(ISecretProvider secretProvider,
         accessor.GenesysClientSecret = clientSecretTask.Result;
         accessor.DbConnStr = dbConnTask.Result;
 
-        logger.LogInformation(CommonConstants.LobLogPrefix + "✅Secrets populated successfully", lob);
+        logger.LogDebug(CommonConstants.LobLogPrefix + "✅ Secrets populated successfully", lob);
     }
 
     #region ========== *** Private Methods *** ==========

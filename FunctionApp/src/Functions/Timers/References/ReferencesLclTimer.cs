@@ -23,7 +23,7 @@ public sealed class ReferencesLclTimer(ISyncOrchestrator orchestrator,
     {
         try
         {
-            logger.LogInformation(CommonConstants.LobCategoryLogPrefix + "Start",
+            logger.LogInformation(CommonConstants.LobCategoryLogPrefix + "Timer trigger start",
                                   LobName,
                                   nameof(SyncCategory.References));
 
