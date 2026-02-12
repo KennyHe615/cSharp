@@ -141,8 +141,6 @@ public sealed class GenesysTokenProvider(ILobContext lobContext,
 
         try
         {
-            logger.LogInformation(CommonConstants.LobLogPrefix + "Refreshing Genesys OAuth token due to 401", LobName);
-
             // Always invalidate first: a 401 means the current token is not usable even if it exists in cache.
             cache.Remove(TokenCacheKey);
 
