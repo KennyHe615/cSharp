@@ -19,7 +19,8 @@ public class HitCountProviderFactory(IServiceProvider serviceProvider) : IHitCou
         // ReSharper disable once SwitchExpressionHandlesSomeKnownEnumValuesWithExceptionInDefault
         return category switch
         {
-            SyncCategory.UserDetails => serviceProvider.GetRequiredService<UserDetailsHitCountProvider>(),
+            SyncCategory.UserDetailsIncremental => serviceProvider.GetRequiredService<UserDetailsHitCountProvider>(),
+            SyncCategory.UserDetailsBackfill => serviceProvider.GetRequiredService<UserDetailsHitCountProvider>(),
             // SyncCategory.ConversationDetails => serviceProvider.GetRequiredService<ConversationHitCountProvider>(),
             _ => throw new NotSupportedException($"Sync category '{category}' does not support hit count queries.")
         };

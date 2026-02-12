@@ -25,16 +25,16 @@ public class UserDetailsNttTimer(ISyncOrchestrator orchestrator,
         {
             logger.LogInformation(CommonConstants.LobCategoryLogPrefix + "Timer trigger start",
                                   LobName,
-                                  SyncCategory.UserDetails);
+                                  SyncCategory.UserDetailsIncremental);
 
-            await orchestrator.ExecuteAsync(LobName, SyncCategory.UserDetails, ct).ConfigureAwait(false);
+            await orchestrator.ExecuteAsync(LobName, SyncCategory.UserDetailsIncremental, ct).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
             logger.LogErrorWithDetails(ex,
                                        $"❌{CommonConstants.LobCategoryLogPrefix} Error",
                                        LobName,
-                                       SyncCategory.UserDetails);
+                                       SyncCategory.UserDetailsIncremental);
 
             throw;
         }

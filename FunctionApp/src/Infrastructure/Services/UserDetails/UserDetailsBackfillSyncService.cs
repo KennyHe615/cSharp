@@ -10,18 +10,18 @@ using Microsoft.Extensions.Logging;
 
 namespace Infrastructure.Services.UserDetails;
 
-public class UserDetailsRecoveryService : UserDetailsSyncServiceBase
+public class UserDetailsBackfillSyncService : UserDetailsSyncServiceBase
 {
     private readonly IIntervalSubdivisionService _subdivisionService;
     private readonly UserDetailsHitCountProvider _hitCountProvider;
 
-    public UserDetailsRecoveryService(IUserDetailsClient client,
-                                      IIntervalSubdivisionService subdivisionService,
-                                      IUserDetailsNormalizer normalizer,
-                                      UserDetailsHitCountProvider hitCountProvider,
-                                      IUserDetailsRepository repository,
-                                      ILobContext lobContext,
-                                      ILogger<UserDetailsRecoveryService> logger) : base(
+    public UserDetailsBackfillSyncService(IUserDetailsClient client,
+                                          IIntervalSubdivisionService subdivisionService,
+                                          IUserDetailsNormalizer normalizer,
+                                          UserDetailsHitCountProvider hitCountProvider,
+                                          IUserDetailsRepository repository,
+                                          ILobContext lobContext,
+                                          ILogger<UserDetailsBackfillSyncService> logger) : base(
         client,
         normalizer,
         repository,

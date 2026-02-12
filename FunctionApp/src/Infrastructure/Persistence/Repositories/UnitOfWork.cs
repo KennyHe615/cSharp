@@ -1,6 +1,5 @@
 using Application.Common.Abstractions.Context;
 using Application.Common.Abstractions.Persistence;
-using Application.Common.Enums;
 
 using Infrastructure.Persistence.Repositories.UnitOfWorkCore;
 
@@ -17,7 +16,7 @@ public class UnitOfWork(FunctionAppDbContext.FunctionAppDbContext dbContext,
                         ILobContext lobContext,
                         ILogger<UnitOfWork> logger) : IUnitOfWork
 {
-    private string _lobName = lobContext.LobName;
+    private readonly string _lobName = lobContext.LobName;
 
     /// <inheritdoc />
     public async Task UpsertAsync<TEntity>(TEntity entity,
@@ -57,10 +56,9 @@ public class UnitOfWork(FunctionAppDbContext.FunctionAppDbContext dbContext,
                 EntityUpdateHandler.ProcessUpsertOperations(dbContext, incomingList, dbById, metadata);
 
             logger.LogDebug(
-                CommonConstants.LobCategoryEntityLogPrefix +
+                CommonConstants.LobEntityLogPrefix +
                 "Processed: {AddedCount} added, {UpdatedCount} updated (Fetched {FetchedCount} existing from DB)",
                 _lobName,
-                nameof(SyncCategory.UserDetails),
                 entityName,
                 result.AddedCount,
                 result.UpdatedCount,
@@ -76,9 +74,10 @@ public class UnitOfWork(FunctionAppDbContext.FunctionAppDbContext dbContext,
         }
         catch (Exception ex) when (ex is not PersistenceException)
         {
-            throw new EntityOperationException($"[Lob:{_lobName} - User Details \"{entityName}]\" Failed to upsert.",
-                                               ex,
-                                               entityName);
+            string prefix = CommonConstants.LobEntityLogPrefix.Replace("{LobName}", _lobName)
+                                           .Replace("{EntityName}", entityName);
+
+            throw new EntityOperationException($"{prefix}Failed to upsert.", ex, entityName);
         }
     }
 
@@ -118,14 +117,15 @@ public class UnitOfWork(FunctionAppDbContext.FunctionAppDbContext dbContext,
 
     private EntityMetadata<TEntity> GetEntityMetadata<TEntity>(string entityName) where TEntity : class
     {
+        string prefix = CommonConstants.LobEntityLogPrefix.Replace("{LobName}", _lobName)
+                                       .Replace("{EntityName}", entityName);
+
         IEntityType entityType = dbContext.Model.FindEntityType(typeof(TEntity)) ??
                                  throw new EntityOperationException(
-                                     $"Entity type '{entityName}' is not configured in the DbContext model.",
-                                     entityName);
+                                     $"{prefix} Is not configured in the DbContext model.");
 
         IKey primaryKey = entityType.FindPrimaryKey() ??
-                          throw new EntityOperationException($"Primary key is not defined for entity '{entityName}'.",
-                                                             entityName);
+                          throw new EntityOperationException($"{prefix} Primary key is not defined.");
 
         return new EntityMetadata<TEntity>(entityType, primaryKey);
     }
