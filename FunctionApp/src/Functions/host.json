@@ -26,5 +26,5 @@
             "includeScopes": true
         }
     },
-    "functionTimeout": "00:05:00"
+    "functionTimeout": "01:00:00"
 }

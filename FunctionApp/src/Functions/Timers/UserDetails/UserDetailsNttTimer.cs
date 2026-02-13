@@ -13,7 +13,8 @@ namespace Functions.Timers.UserDetails;
 public class UserDetailsNttTimer(ISyncOrchestrator orchestrator,
                                  ILogger<UserDetailsNttTimer> logger)
 {
-    private const string TimerTriggerExpression = "0 */1 * * * *";
+    // private const string TimerTriggerExpression = "0 */1 * * * *";
+    private const string TimerTriggerExpression = "0 32 10 * * *";
     private const string LobName = GenesysConstants.NttOrg;
 
     [Function("UserDetails-Ntt-Timer")]

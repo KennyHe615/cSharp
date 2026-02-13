@@ -30,7 +30,7 @@ public class UserDetailsIncrementalSyncService(IUserDetailsClient client,
         const string category = nameof(SyncCategory.UserDetailsIncremental);
 
         // TODO: Getting interval from database
-        const string intervalString = "2026-01-01T00:00Z/2026-01-02T05:00Z";
+        const string intervalString = "2026-01-01T00:00Z/2026-01-11T05:00Z";
         Logger.LogInformation(CommonConstants.LobCategoryLogPrefix + "Starting sync for interval **{Interval}**",
                               lobName,
                               category,
