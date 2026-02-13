@@ -1,6 +1,6 @@
 using System.Text;
 
-using Application.Shared.Context;
+using Application.Common.Abstractions.Context;
 
 using Infrastructure.ExternalServices.FlurlHttp;
 

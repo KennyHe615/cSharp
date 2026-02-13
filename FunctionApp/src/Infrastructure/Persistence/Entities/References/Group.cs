@@ -1,4 +1,4 @@
-using Application.Enums;
+using Application.Contracts.Enums;
 
 
 namespace Infrastructure.Persistence.Entities.References;

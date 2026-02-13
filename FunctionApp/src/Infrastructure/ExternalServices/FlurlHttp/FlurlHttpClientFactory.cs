@@ -2,6 +2,8 @@ using System.Collections.Concurrent;
 using System.Security.Cryptography;
 using System.Text.Json;
 
+using Application.Common.Abstractions.Context;
+
 using Configuration.Options;
 
 using Flurl.Http;
@@ -13,6 +15,7 @@ using Microsoft.Extensions.Options;
 using Polly;
 using Polly.CircuitBreaker;
 
+using Shared.Constants;
 using Shared.Extensions;
 
 
@@ -29,6 +32,8 @@ public sealed class FlurlHttpClientFactory : IFlurlHttpClientFactory
     private readonly ConcurrentDictionary<string, FlurlClient> _clients = new();
     private readonly IAsyncPolicy _safeMethodPolicy;
     private readonly IAsyncPolicy _unsafeMethodPolicy;
+    private readonly Lazy<JsonSerializerOptions> _jsonOptions;
+    private readonly ILobContext _lobContext;
 
     /// <summary>
     /// Policy context key used to pass a token refresh callback for handling HTTP 401 during retries.
@@ -40,15 +45,31 @@ public sealed class FlurlHttpClientFactory : IFlurlHttpClientFactory
     /// shared resiliency policies for the application lifetime.
     /// </summary>
     /// <param name="options">Flurl client and policy options.</param>
+    /// <param name="lobContext">Context of the current Line of Business, used for tenant-specific logging and isolation.</param>
     /// <param name="logger">Logger used for policy diagnostics.</param>
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="options"/> or <paramref name="logger"/> is null.</exception>
-    public FlurlHttpClientFactory(IOptions<FlurlClientOptions> options, ILogger<FlurlHttpClientFactory> logger)
+    public FlurlHttpClientFactory(IOptions<FlurlClientOptions> options,
+                                  ILobContext lobContext,
+                                  ILogger<FlurlHttpClientFactory> logger)
     {
         ArgumentNullException.ThrowIfNull(options);
         ArgumentNullException.ThrowIfNull(logger);
 
         _options = options.Value ?? throw new ArgumentNullException(nameof(options));
+        _lobContext = lobContext ?? throw new ArgumentNullException(nameof(lobContext));
         _logger = logger;
+
+        _jsonOptions = new Lazy<JsonSerializerOptions>(() =>
+                                                       {
+                                                           JsonSerializerOptions opts = new()
+                                                               {
+                                                                   PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+                                                                   PropertyNameCaseInsensitive = true
+                                                               };
+                                                           opts.AddFlexibleSnakeUpperEnums();
+
+                                                           return opts;
+                                                       });
 
         // 1. Build Shared Policies once for the application lifetime
         AsyncCircuitBreakerPolicy circuitBreaker = BuildCircuitBreaker();
@@ -123,14 +144,8 @@ public sealed class FlurlHttpClientFactory : IFlurlHttpClientFactory
     private void ConfigureClient(FlurlClient client)
     {
         // Only configure if not already configured (prevent duplicate settings)
-        if (client.Settings.JsonSerializer is not null) return;
+        client.Settings.JsonSerializer = new DefaultJsonSerializer(_jsonOptions.Value);
 
-        client.Settings.JsonSerializer = new DefaultJsonSerializer(new JsonSerializerOptions
-                                                                   {
-                                                                       PropertyNamingPolicy =
-                                                                           JsonNamingPolicy.CamelCase,
-                                                                       PropertyNameCaseInsensitive = true
-                                                                   });
         client.Settings.Timeout = TimeSpan.FromSeconds(_options.TimeoutSeconds);
     }
 
@@ -187,7 +202,9 @@ public sealed class FlurlHttpClientFactory : IFlurlHttpClientFactory
                                                 funcObj is Func<CancellationToken, Task>;
 
                                             _logger.LogWarning(
+                                                CommonConstants.LobLogPrefix +
                                                 "[{Type}] onRetry {Count}/{Max} after {Delay}ms | status={Status} | hasRefresh={HasRefresh} | exType={ExType} | msg = {Msg}",
+                                                _lobContext.LobName,
                                                 type,
                                                 count,
                                                 strategy.MaxAttempts,
@@ -204,7 +221,9 @@ public sealed class FlurlHttpClientFactory : IFlurlHttpClientFactory
                                                 funcObj is Func<CancellationToken, Task> refreshFunc)
                                             {
                                                 _logger.LogDebug(
+                                                    CommonConstants.LobLogPrefix +
                                                     "[{Type}] 401 Unauthorized - Triggering token refresh.",
+                                                    _lobContext.LobName,
                                                     type);
 
                                                 // Intentionally decoupled from request cancellation to allow refresh to complete.
@@ -230,17 +249,24 @@ public sealed class FlurlHttpClientFactory : IFlurlHttpClientFactory
                                           (exception, duration) =>
                                           {
                                               _logger.LogErrorWithDetails(exception,
+                                                                          CommonConstants.LobLogPrefix +
                                                                           "Circuit Breaker OPEN for {Duration}s.",
+                                                                          _lobContext.LobName,
                                                                           duration.TotalSeconds);
                                           },
                                           () =>
                                           {
-                                              _logger.LogInformation("Circuit Breaker CLOSED (Normal operation)");
+                                              _logger.LogInformation(
+                                                  CommonConstants.LobLogPrefix +
+                                                  "Circuit Breaker CLOSED (Normal operation)",
+                                                  _lobContext.LobName);
                                           },
                                           () =>
                                           {
                                               _logger.LogInformation(
-                                                  "Circuit Breaker HALF-OPEN (Testing connectivity)");
+                                                  CommonConstants.LobLogPrefix +
+                                                  "Circuit Breaker HALF-OPEN (Testing connectivity)",
+                                                  _lobContext.LobName);
                                           });
     }
 

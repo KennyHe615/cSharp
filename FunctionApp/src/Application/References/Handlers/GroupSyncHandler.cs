@@ -1,5 +1,5 @@
-using Application.Shared.Enums;
-using Application.Shared.Interfaces;
+using Application.Common.Abstractions.Services;
+using Application.Common.Enums;
 
 
 namespace Application.References.Handlers;

@@ -1,7 +1,8 @@
-﻿using Application.Shared.Context;
+﻿using Application.Common.Abstractions.Context;
 
 using Infrastructure.Azure.ApplicationInsights;
 using Infrastructure.Azure.KeyVaults;
+using Infrastructure.ExternalServices;
 using Infrastructure.Shared.Context;
 
 using Microsoft.Extensions.DependencyInjection;

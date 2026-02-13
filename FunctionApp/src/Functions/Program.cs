@@ -1,4 +1,4 @@
-using Application.Shared.Extensions;
+using Application.Common.Extensions;
 
 using Configuration;
 
@@ -29,23 +29,26 @@ IHost builder = new HostBuilder().ConfigureFunctionsWorkerDefaults()
                                                             })
                                  .ConfigureServices((context, services) =>
                                                     {
-                                                        // Bind configuration to strongly-typed options
-                                                        services.AddConfiguration(context.Configuration);
+                                                        try
+                                                        {
+                                                            // Bind configuration to strongly-typed options
+                                                            services.AddConfiguration(context.Configuration);
 
-                                                        // Register AutoMapper
-                                                        services.AddAutoMapper(typeof(Infrastructure.AssemblyMarker));
+                                                            // Register AutoMapper
+                                                            services.AddAutoMapper(
+                                                                typeof(Infrastructure.AssemblyMarker));
 
-                                                        // Configure infrastructure (consume the options)
-                                                        services.AddInfrastructure();
+                                                            // Configure infrastructure (consume the options)
+                                                            services.AddInfrastructure();
 
-                                                        // Register Application services (e.g., SyncOrchestrator)
-                                                        services.AddServices();
+                                                            // Register Application services (e.g., SyncOrchestrator)
+                                                            services.AddServices();
 
-                                                        // Register Shared services
-                                                        services.AddSharedServices();
+                                                            // Register Shared services
+                                                            services.AddSharedServices();
 
-                                                        // DI for other services via Scrutor
-                                                        services.Scan(scan => scan
+                                                            // DI for other services via Scrutor
+                                                            services.Scan(scan => scan
                                                                               .FromAssembliesOf(
                                                                                   typeof(Application.AssemblyMarker),
                                                                                   typeof(Infrastructure.AssemblyMarker))
@@ -74,10 +77,45 @@ IHost builder = new HostBuilder().ConfigureFunctionsWorkerDefaults()
                                                                                       "GenesysTokenClient" &&
                                                                                       type.Name !=
                                                                                       "GenesysTokenProvider" &&
+                                                                                      type.Name != "Interval" &&
+                                                                                      type.Name !=
+                                                                                      "IntervalWithPages" &&
+                                                                                      type.Name != "CompositeKey" &&
+                                                                                      type.Name != "EntityMetadata`1" &&
+                                                                                      type.Name != "UpsertResult" &&
                                                                                       !type.IsAssignableTo(
                                                                                           typeof(Exception))))
                                                                               .AsImplementedInterfaces()
                                                                               .WithScopedLifetime());
+                                                        }
+                                                        catch (Exception ex)
+                                                        {
+                                                            Console.ForegroundColor = ConsoleColor.Red;
+                                                            Console.WriteLine(
+                                                                "╔══════════════════════════════════════════════════════════════════════════════╗");
+                                                            Console.WriteLine(
+                                                                "║ FATAL ERROR: Service Registration Failed                                     ║");
+                                                            Console.WriteLine(
+                                                                "╚══════════════════════════════════════════════════════════════════════════════╝");
+                                                            Console.ResetColor();
+                                                            Console.WriteLine(
+                                                                $"\nException Type: {ex.GetType().FullName}");
+                                                            Console.WriteLine($"Message: {ex.Message}");
+                                                            Console.WriteLine($"\nStack Trace:\n{ex.StackTrace}");
+
+                                                            if (ex.InnerException == null) throw;
+
+                                                            Console.ForegroundColor = ConsoleColor.Yellow;
+                                                            Console.WriteLine($"\n--- Inner Exception ---");
+                                                            Console.ResetColor();
+                                                            Console.WriteLine(
+                                                                $"Type: {ex.InnerException.GetType().FullName}");
+                                                            Console.WriteLine($"Message: {ex.InnerException.Message}");
+                                                            Console.WriteLine(
+                                                                $"\nStack Trace:\n{ex.InnerException.StackTrace}");
+
+                                                            throw;
+                                                        }
                                                     })
                                  .Build();
 

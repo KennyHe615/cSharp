@@ -10,34 +10,32 @@ namespace Shared.Extensions;
 /// </summary>
 public static class LoggerExtensions
 {
-    private const string CallerMessageTemplate = "{CallerMessage}";
-
     /// <summary>
     /// Creates a logging scope with operation context and distributed tracing information.
     /// Automatically starts a new Activity if one is not already present.
     /// </summary>
     /// <param name="logger">The logger instance to create the scope for.</param>
-    /// <param name="operationName">The name of the operation being performed.</param>
+    /// <param name="category">The name of the category being performed.</param>
     /// <param name="lobName">The line of business name, if applicable.</param>
     /// <returns>An IDisposable that ends the scope and stops any created Activity when disposed.</returns>
-    public static IDisposable BeginOperationScope(this ILogger logger, string operationName, string? lobName)
+    public static IDisposable BeginOperationScope(this ILogger logger, string category, string? lobName)
     {
-        if (string.IsNullOrWhiteSpace(operationName)) operationName = "UnknownOperation";
+        if (string.IsNullOrWhiteSpace(category)) category = "UnknownOperation";
 
         Activity? activity = Activity.Current;
         bool startedHere = false;
 
         if (activity == null)
         {
-            activity = new Activity(operationName);
+            activity = new Activity(category);
             activity.Start();
             startedHere = true;
         }
 
         IDisposable? scope = logger.BeginScope(new Dictionary<string, object?>
                                                {
-                                                   ["Operation"] = operationName,
-                                                   ["Lob"] = lobName,
+                                                   ["Lob_Name"] = lobName,
+                                                   ["Category_Name"] = category,
                                                    ["TraceId"] = activity.TraceId.ToString(),
                                                    ["SpanId"] = activity.SpanId.ToString(),
                                                    ["ActivityId"] = activity.Id
@@ -113,8 +111,9 @@ public static class LoggerExtensions
     {
         using (logger.BeginScope(exception.ToLogScope()))
         {
-            // Keep the template constant; store caller message + args as structured data.
-            logger.Log(level, exception, CallerMessageTemplate, message);
+#pragma warning disable CA2254
+            logger.Log(level, exception, message, args);
+#pragma warning restore CA2254
 
             if (args is { Length: > 0 })
             {

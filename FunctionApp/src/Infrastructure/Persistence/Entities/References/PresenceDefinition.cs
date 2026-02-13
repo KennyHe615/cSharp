@@ -1,9 +1,9 @@
-using Application.Enums;
+using Application.Contracts.Enums;
 
 
 namespace Infrastructure.Persistence.Entities.References;
 
-public class PresenceDefinition : Audit
+public sealed class PresenceDefinition : Audit
 {
     public Guid Id { get; set; }
 

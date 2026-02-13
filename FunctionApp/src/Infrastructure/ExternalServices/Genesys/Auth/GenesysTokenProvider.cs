@@ -1,7 +1,7 @@
 using System.Collections.Concurrent;
 
-using Application.Shared.Context;
-using Application.Shared.Providers;
+using Application.Common.Abstractions.Context;
+using Application.Common.Abstractions.Providers;
 
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
@@ -70,7 +70,7 @@ public sealed class GenesysTokenProvider(ILobContext lobContext,
 
         if (cache.TryGetValue(TokenCacheKey, out string? cachedToken) && !string.IsNullOrEmpty(cachedToken))
         {
-            logger.LogDebug("[LOB: {Lob}] Using cached Genesys token", LobName);
+            logger.LogDebug(CommonConstants.LobLogPrefix + "Using cached Genesys token", LobName);
 
             return cachedToken;
         }
@@ -101,7 +101,8 @@ public sealed class GenesysTokenProvider(ILobContext lobContext,
                 }
 
                 logger.LogInformation(
-                    "[LOB: {Lob}] Genesys token secret '{SecretName}' not found in Key Vault. Proceeding to API fetch.",
+                    CommonConstants.LobLogPrefix +
+                    "Genesys token secret '{SecretName}' not found in Key Vault. Proceeding to API fetch.",
                     LobName,
                     TokenSecretName);
             }
@@ -109,7 +110,8 @@ public sealed class GenesysTokenProvider(ILobContext lobContext,
             {
                 // Actual Key Vault failures (auth, throttling, network, etc.)
                 logger.LogWarningWithDetails(ex,
-                                             "[LOB: {Lob}] Non-critical error retrieving Genesys token from Key Vault. Falling back to API.",
+                                             CommonConstants.LobLogPrefix +
+                                             "Non-critical error retrieving Genesys token from Key Vault. Falling back to API.",
                                              LobName);
             }
 
@@ -139,8 +141,6 @@ public sealed class GenesysTokenProvider(ILobContext lobContext,
 
         try
         {
-            logger.LogInformation("[LOB: {Lob}] Refreshing Genesys OAuth token due to 401", LobName);
-
             // Always invalidate first: a 401 means the current token is not usable even if it exists in cache.
             cache.Remove(TokenCacheKey);
 
@@ -169,6 +169,7 @@ public sealed class GenesysTokenProvider(ILobContext lobContext,
         string clientId = lobContext.GenesysClientId;
         string clientSecret = lobContext.GenesysClientSecret;
         const string oauthEndpoint = GenesysConstants.OAuthBaseUrl;
+        string formattedPrefix = CommonConstants.LobLogPrefix.Replace("{LobName}", LobName);
 
         if (string.IsNullOrWhiteSpace(clientId) ||
             string.IsNullOrWhiteSpace(clientSecret) ||
@@ -177,7 +178,7 @@ public sealed class GenesysTokenProvider(ILobContext lobContext,
             throw new ExternalServiceHttpException(System.Net.HttpStatusCode.BadRequest,
                                                    "POST",
                                                    oauthEndpoint,
-                                                   $"Critical: [LOB: {LobName}] Genesys OAuth credentials (ClientId/Secret/Endpoint) are incomplete.");
+                                                   $"{formattedPrefix}Critical: Genesys OAuth credentials (ClientId/Secret/Endpoint) are incomplete.");
         }
 
         GenesysTokenResponse? tokenResponse =
@@ -188,7 +189,7 @@ public sealed class GenesysTokenProvider(ILobContext lobContext,
             throw new ExternalServiceHttpException(System.Net.HttpStatusCode.OK,
                                                    "POST",
                                                    oauthEndpoint,
-                                                   $"[LOB: {LobName}] Genesys API returned success but no access token was found in the payload.",
+                                                   $"{formattedPrefix}Genesys API returned success but no access token was found in the payload.",
                                                    null,
                                                    "Empty or malformed token response body");
         }
@@ -204,19 +205,22 @@ public sealed class GenesysTokenProvider(ILobContext lobContext,
         {
             await secretProvider.UpsertSecretAsync(TokenSecretName, token, ct).ConfigureAwait(false);
 
-            logger.LogDebug("[LOB: {Lob}] Genesys token updated in Key Vault ('{SecretName}')",
+            logger.LogDebug(CommonConstants.LobLogPrefix + "Genesys token updated in Key Vault ('{SecretName}')",
                             LobName,
                             TokenSecretName);
         }
         catch (Exception ex)
         {
             // Log as warning but don't fail the request; the local cache is still valid
-            logger.LogWarningWithDetails(ex, "[LOB: {Lob}] Failed to update Genesys token in Key Vault.", LobName);
+            logger.LogWarningWithDetails(ex,
+                                         CommonConstants.LobLogPrefix + "Failed to update Genesys token in Key Vault.",
+                                         LobName);
         }
 
-        logger.LogInformation("[LOB: {Lob}] Genesys token refreshed and cached successfully. Expires in {ExpiresIn}s",
-                              LobName,
-                              tokenResponse.ExpiresIn);
+        logger.LogInformation(
+            CommonConstants.LobLogPrefix + "Genesys token refreshed and cached successfully. Expires in {ExpiresIn}s",
+            LobName,
+            tokenResponse.ExpiresIn);
 
         return token;
     }

@@ -1,5 +1,5 @@
-using Application.Shared.Context;
-using Application.Shared.Providers;
+using Application.Common.Abstractions.Context;
+using Application.Common.Abstractions.Providers;
 
 using Microsoft.Extensions.Logging;
 
@@ -41,7 +41,7 @@ public sealed class LobSecretsResolver(ISecretProvider secretProvider,
         accessor.GenesysClientSecret = clientSecretTask.Result;
         accessor.DbConnStr = dbConnTask.Result;
 
-        logger.LogInformation("Successfully populated secrets for LOB: {LobName}", lob);
+        logger.LogDebug(CommonConstants.LobLogPrefix + "✅ Secrets populated successfully", lob);
     }
 
     #region ========== *** Private Methods *** ==========

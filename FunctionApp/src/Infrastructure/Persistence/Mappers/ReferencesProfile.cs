@@ -1,4 +1,4 @@
-using Application.Dtos.References;
+using Application.Contracts.References;
 
 using AutoMapper;
 
@@ -17,8 +17,7 @@ public class ReferencesProfile : Profile
         #region ========== *** Skill *** ==========
 
         CreateMap<SkillResponse, Skill>()
-            .ForMember(dest => dest.Name, opt => opt.MapFrom(src => src.Name.Truncate(255)))
-            .ForMember(dest => dest.DateModified, opt => opt.MapFromEst(src => src.DateModified));
+            .ForMember(dest => dest.Name, opt => opt.MapFrom(src => src.Name.Truncate(255)));
 
         #endregion
 
@@ -36,7 +35,6 @@ public class ReferencesProfile : Profile
         CreateMap<GroupResponse, Group>()
             .ForMember(dest => dest.Name, opt => opt.MapFrom(src => src.Name.Truncate(255)))
             .ForMember(dest => dest.Description, opt => opt.MapFrom(src => src.Description.Truncate(255)))
-            .ForMember(dest => dest.DateModified, opt => opt.MapFromEst(src => src.DateModified))
             .ForMember(dest => dest.ChatJabberId, opt => opt.MapFrom(src => src.Chat.GetValue("jabberId", 255)));
 
         #endregion
@@ -46,9 +44,7 @@ public class ReferencesProfile : Profile
         CreateMap<WrapupCodeResponse, WrapupCode>()
             .ForMember(dest => dest.Name, opt => opt.MapFrom(src => src.Name.Truncate(255)))
             .ForMember(dest => dest.DivisionId, opt => opt.MapFrom(src => src.Division.GetValue("id")))
-            .ForMember(dest => dest.DivisionName, opt => opt.MapFrom(src => src.Division.GetValue("name", 255)))
-            .ForMember(dest => dest.DateCreated, opt => opt.MapFromEst(src => src.DateCreated))
-            .ForMember(dest => dest.DateModified, opt => opt.MapFromEst(src => src.DateModified));
+            .ForMember(dest => dest.DivisionName, opt => opt.MapFrom(src => src.Division.GetValue("name", 255)));
 
         #endregion
     }

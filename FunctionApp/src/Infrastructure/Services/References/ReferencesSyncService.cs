@@ -1,12 +1,13 @@
+using Application.Common.Abstractions.Context;
+using Application.Common.Enums;
 using Application.References;
-using Application.Shared.Context;
-using Application.Shared.Enums;
 
 using Infrastructure.ExternalServices;
 using Infrastructure.Persistence;
 
 using Microsoft.Extensions.Logging;
 
+using Shared.Constants;
 using Shared.Extensions;
 
 
@@ -116,7 +117,7 @@ public class ReferencesSyncService(IReferencesClient referencesClient,
                                                      Func<Task<List<TData>>> fetchDataAsync,
                                                      Func<IReadOnlyCollection<TData>, Task> persistDataAsync)
     {
-        logger.LogDebug("[LOB: {Lob} Reference \"{Category}\"] Starting synchronization", LobName, categoryName);
+        logger.LogDebug(CommonConstants.LobCategoryLogPrefix + "Starting synchronization", LobName, categoryName);
 
         try
         {
@@ -125,7 +126,7 @@ public class ReferencesSyncService(IReferencesClient referencesClient,
             int count = data.Count;
             if (count == 0)
             {
-                logger.LogError("[LOB: {Lob} Reference \"{Category}\"] No data found in Genesys to synchronize",
+                logger.LogError(CommonConstants.LobCategoryLogPrefix + "No data found in Genesys to synchronize",
                                 LobName,
                                 categoryName);
 
@@ -133,16 +134,11 @@ public class ReferencesSyncService(IReferencesClient referencesClient,
             }
 
             await persistDataAsync(data).ConfigureAwait(false);
-
-            logger.LogInformation("[LOB: {Lob} Reference \"{Category}\"] Successfully synchronized (Count: {Count})",
-                                  LobName,
-                                  categoryName,
-                                  count);
         }
         catch (Exception ex)
         {
             logger.LogErrorWithDetails(ex,
-                                       "[LOB: {Lob} Reference \"{Category}\"] Failure during synchronization.",
+                                       CommonConstants.LobCategoryLogPrefix + "Failure during synchronization.",
                                        LobName,
                                        categoryName);
 

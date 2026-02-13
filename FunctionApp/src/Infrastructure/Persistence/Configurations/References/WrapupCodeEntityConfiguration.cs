@@ -35,6 +35,7 @@ public class WrapupCodeEntityConfiguration : IEntityTypeConfiguration<WrapupCode
         #region ========== *** Non-Clustered Indexes *** ==========
 
         builder.HasIndex(x => x.Name);
+
         builder.HasIndex(x => x.DivisionId);
 
         #endregion

@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 
-using Shared.Providers;
+using Shared.Time;
 
 
 namespace Infrastructure.Persistence.Interceptors;

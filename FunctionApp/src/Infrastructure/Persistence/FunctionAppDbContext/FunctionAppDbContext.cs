@@ -1,4 +1,4 @@
-﻿using Application.Shared.Context;
+﻿using Application.Common.Abstractions.Context;
 
 using Configuration.Options;
 
@@ -7,9 +7,11 @@ using Infrastructure.Persistence.Interceptors;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Microsoft.Extensions.Options;
 
 using Shared.Extensions;
+using Shared.Time;
 
 
 namespace Infrastructure.Persistence.FunctionAppDbContext;
@@ -88,6 +90,8 @@ public class FunctionAppDbContext(DbContextOptions<FunctionAppDbContext> options
         // This automatically finds all classes in this assembly that implement IEntityTypeConfiguration
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(FunctionAppDbContext).Assembly);
 
+        ApplyEstConvention(modelBuilder);
+
         // Apply naming convention for all entities and properties
         foreach (IMutableEntityType entity in modelBuilder.Model.GetEntityTypes())
         {
@@ -149,6 +153,51 @@ public class FunctionAppDbContext(DbContextOptions<FunctionAppDbContext> options
                         .HasDefaultValueSql("SYSDATETIMEOFFSET()");
 
             modelBuilder.Entity(entity.ClrType).HasIndex(nameof(Audit.AppUpdatedAt));
+        }
+    }
+
+    // For EF ValueConverter, use static methods to avoid expression-tree closure issues.
+    private static void ApplyEstConvention(ModelBuilder modelBuilder)
+    {
+        ValueConverter<DateTimeOffset, DateTimeOffset> dtoConverter = new(
+            v => DateTimeResolver.ConvertToEst(v),
+            v => DateTimeResolver.ConvertToEst(v));
+
+        ValueConverter<DateTimeOffset?, DateTimeOffset?> dtoNullableConverter = new(
+            v => v.HasValue ? DateTimeResolver.ConvertToEst(v.Value) : null,
+            v => v.HasValue ? DateTimeResolver.ConvertToEst(v.Value) : null);
+
+        foreach (IMutableEntityType entityType in modelBuilder.Model.GetEntityTypes())
+        {
+            foreach (IMutableProperty property in entityType.GetProperties())
+            {
+                if (property.ClrType == typeof(DateTimeOffset))
+                {
+                    property.SetColumnType("datetimeoffset(0)");
+                    property.SetValueConverter(dtoConverter);
+                }
+                else if (property.ClrType == typeof(DateTimeOffset?))
+                {
+                    property.SetColumnType("datetimeoffset(0)");
+                    property.SetValueConverter(dtoNullableConverter);
+                }
+            }
+
+            // Extra safety: ensure all PK DateTimeOffset columns are also forced (some configs override keys).
+            foreach (IMutableKey key in entityType.GetKeys())
+            {
+                foreach (IMutableProperty keyProp in key.Properties.Where(p => p.ClrType == typeof(DateTimeOffset)))
+                {
+                    keyProp.SetColumnType("datetimeoffset(3)");
+                    keyProp.SetValueConverter(dtoConverter);
+                }
+
+                foreach (IMutableProperty keyProp in key.Properties.Where(p => p.ClrType == typeof(DateTimeOffset?)))
+                {
+                    keyProp.SetColumnType("datetimeoffset(3)");
+                    keyProp.SetValueConverter(dtoNullableConverter);
+                }
+            }
         }
     }
 }

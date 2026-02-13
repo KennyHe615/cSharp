@@ -181,3 +181,84 @@ GO
 /* endregion */
 
 /* endregion */
+
+/* region ========== *** User Details *** ========== */
+IF OBJECT_ID(N'dbo.user_details_primary_presence_stg', N'U') IS NULL
+    BEGIN
+        CREATE TABLE [dbo].[user_details_primary_presence_stg]
+        (
+            [user_id]                  UNIQUEIDENTIFIER  NOT NULL,
+            [start_time]               DATETIMEOFFSET(3) NOT NULL,
+            [end_time]                 DATETIMEOFFSET(3) NULL,
+            [duration_in_seconds]      BIGINT            NULL,
+            [system_presence]          NVARCHAR(9)       NOT NULL,
+            [organization_presence_id] NVARCHAR(255)     NULL,
+            [app_created_at]           DATETIMEOFFSET(0) NOT NULL
+                CONSTRAINT [DF_user_details_primary_presence_stg_app_created_at] DEFAULT SYSDATETIMEOFFSET(),
+            [app_updated_at]           DATETIMEOFFSET(0) NOT NULL
+                CONSTRAINT [DF_user_details_primary_presence_stg_app_updated_at] DEFAULT SYSDATETIMEOFFSET(),
+
+            CONSTRAINT [PK_user_details_primary_presence_stg] PRIMARY KEY CLUSTERED ([user_id], [start_time])
+        );
+    END
+GO
+
+IF NOT EXISTS (SELECT 1
+               FROM sys.indexes
+               WHERE name = N'IX_user_details_primary_presence_stg_system_presence'
+                 AND object_id = OBJECT_ID(N'dbo.user_details_primary_presence_stg'))
+    BEGIN
+        CREATE NONCLUSTERED INDEX [IX_user_details_primary_presence_stg_system_presence]
+            ON [dbo].[user_details_primary_presence_stg] ([system_presence]);
+    END
+GO
+
+IF NOT EXISTS (SELECT 1
+               FROM sys.indexes
+               WHERE name = N'IX_user_details_primary_presence_stg_app_updated_at'
+                 AND object_id = OBJECT_ID(N'dbo.user_details_primary_presence_stg'))
+    BEGIN
+        CREATE NONCLUSTERED INDEX [IX_user_details_primary_presence_stg_app_updated_at]
+            ON [dbo].[user_details_primary_presence_stg] ([app_updated_at]);
+    END
+GO
+
+IF OBJECT_ID(N'dbo.user_details_routing_status_stg', N'U') IS NULL
+    BEGIN
+        CREATE TABLE [dbo].[user_details_routing_status_stg]
+        (
+            [user_id]             UNIQUEIDENTIFIER  NOT NULL,
+            [start_time]          DATETIMEOFFSET(3) NOT NULL,
+            [end_time]            DATETIMEOFFSET(3) NULL,
+            [duration_in_seconds] BIGINT            NULL,
+            [routing_status]      NVARCHAR(15)      NOT NULL,
+            [app_created_at]      DATETIMEOFFSET(0) NOT NULL
+                CONSTRAINT [DF_user_details_routing_status_stg_app_created_at] DEFAULT SYSDATETIMEOFFSET(),
+            [app_updated_at]      DATETIMEOFFSET(0) NOT NULL
+                CONSTRAINT [DF_user_details_routing_status_stg_app_updated_at] DEFAULT SYSDATETIMEOFFSET(),
+
+            CONSTRAINT [PK_user_details_routing_status_stg] PRIMARY KEY CLUSTERED ([user_id], [start_time])
+        );
+    END
+GO
+
+IF NOT EXISTS (SELECT 1
+               FROM sys.indexes
+               WHERE name = N'IX_user_details_routing_status_stg_routing_status'
+                 AND object_id = OBJECT_ID(N'dbo.user_details_routing_status_stg'))
+    BEGIN
+        CREATE NONCLUSTERED INDEX [IX_user_details_routing_status_stg_routing_status]
+            ON [dbo].[user_details_routing_status_stg] ([routing_status]);
+    END
+GO
+
+IF NOT EXISTS (SELECT 1
+               FROM sys.indexes
+               WHERE name = N'IX_user_details_routing_status_stg_app_updated_at'
+                 AND object_id = OBJECT_ID(N'dbo.user_details_routing_status_stg'))
+    BEGIN
+        CREATE NONCLUSTERED INDEX [IX_user_details_routing_status_stg_app_updated_at]
+            ON [dbo].[user_details_routing_status_stg] ([app_updated_at]);
+    END
+GO
+-- /* endregion */

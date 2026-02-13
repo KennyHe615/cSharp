@@ -1,10 +1,9 @@
 using System.Text;
-using System.Text.RegularExpressions;
 
 
 namespace Shared.Extensions;
 
-public static partial class StringExtensions
+public static class StringExtensions
 {
     public static string? ToSnakeCase(this string? input)
     {
@@ -73,6 +72,11 @@ public static partial class StringExtensions
         }
 
         return sb.ToString();
+    }
+
+    public static string? ToSnakeUpperCase(this string? input)
+    {
+        return input?.ToSnakeCase()?.ToUpperInvariant();
     }
 
     public static string? Truncate(this string? value, int maxLength)
@@ -159,13 +163,17 @@ public static partial class StringExtensions
         return normalized;
     }
 
-    #region ========== *** Private Methods *** ==========
+    public static string NormalizeEnumToken(this string value)
+    {
+        ArgumentNullException.ThrowIfNull(value);
 
-    [GeneratedRegex("^_+")]
-    private static partial Regex SnakeCaseRegex();
+        StringBuilder sb = new(value.Length);
 
-    [GeneratedRegex("([a-z0-9])([A-Z])")]
-    private static partial Regex SnakeCaseRegex2();
+        foreach (char ch in value.Where(ch => ch != '_' && ch != '-' && !char.IsWhiteSpace(ch)))
+        {
+            sb.Append(char.ToUpperInvariant(ch));
+        }
 
-    #endregion
+        return sb.ToString();
+    }
 }

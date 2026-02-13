@@ -29,5 +29,13 @@ public static class ConfigurationExtensions
                 .Bind(configuration.GetSection(DatabaseOptions.SectionName))
                 .ValidateDataAnnotations()
                 .ValidateOnStart();
+
+        services.AddOptions<IntervalSubdivisionOptions>()
+                .Configure(options =>
+                           {
+                               options.HighHitThreshold = 200_000;
+                               options.AdjustmentMinutes = 120;
+                               options.MinIntervalMinutes = 1;
+                           });
     }
 }
