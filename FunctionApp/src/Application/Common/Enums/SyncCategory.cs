@@ -15,7 +15,7 @@ public enum SyncCategory
     #region Analytics
 
     UserDetailsIncremental,
-    UserDetailsBackfill,
+    UserDetailsRecovery,
     ConversationDetails
 
     #endregion

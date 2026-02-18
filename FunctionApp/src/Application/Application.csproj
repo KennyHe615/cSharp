@@ -8,6 +8,8 @@
 
     <ItemGroup>
         <!-- Scrutor for assembly scanning -->
+        <PackageReference Include="FluentValidation" Version="12.1.1"/>
+        <PackageReference Include="FluentValidation.DependencyInjectionExtensions" Version="12.1.1"/>
         <PackageReference Include="Scrutor" Version="4.2.2"/>
     </ItemGroup>
 
@@ -20,6 +22,5 @@
 
     <ItemGroup>
         <Folder Include="Notifications\"/>
-        <Folder Include="Recovery\"/>
     </ItemGroup>
 </Project>

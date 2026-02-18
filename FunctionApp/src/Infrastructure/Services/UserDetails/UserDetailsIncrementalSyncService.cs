@@ -124,7 +124,7 @@ public class UserDetailsIncrementalSyncService(IUserDetailsClient client,
             totalPages);
     }
 
-    public async Task SyncUserDetailsBackfillAsync(CancellationToken ct)
+    public async Task SyncUserDetailsRecoveryAsync(CancellationToken ct)
     {
         await Task.CompletedTask;
     }
