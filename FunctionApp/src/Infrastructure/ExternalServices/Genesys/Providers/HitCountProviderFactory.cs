@@ -20,7 +20,7 @@ public class HitCountProviderFactory(IServiceProvider serviceProvider) : IHitCou
         return category switch
         {
             SyncCategory.UserDetailsIncremental => serviceProvider.GetRequiredService<UserDetailsHitCountProvider>(),
-            SyncCategory.UserDetailsBackfill => serviceProvider.GetRequiredService<UserDetailsHitCountProvider>(),
+            SyncCategory.UserDetailsRecovery => serviceProvider.GetRequiredService<UserDetailsHitCountProvider>(),
             // SyncCategory.ConversationDetails => serviceProvider.GetRequiredService<ConversationHitCountProvider>(),
             _ => throw new NotSupportedException($"Sync category '{category}' does not support hit count queries.")
         };

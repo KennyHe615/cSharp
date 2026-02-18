@@ -1,4 +1,6 @@
+using Application.Behaviors;
 using Application.Common.Extensions;
+using Application.Common.Mediator;
 
 using Configuration;
 
@@ -9,6 +11,8 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Configuration;
 
 using Shared.Extensions;
+
+using FluentValidation;
 
 
 IHost builder = new HostBuilder().ConfigureFunctionsWorkerDefaults()
@@ -41,11 +45,22 @@ IHost builder = new HostBuilder().ConfigureFunctionsWorkerDefaults()
                                                             // Configure infrastructure (consume the options)
                                                             services.AddInfrastructure();
 
+                                                            // Register simple mediator
+                                                            services.AddScoped<ISimpleMediator, SimpleMediator>();
+
                                                             // Register Application services (e.g., SyncOrchestrator)
                                                             services.AddServices();
 
                                                             // Register Shared services
                                                             services.AddSharedServices();
+
+                                                            // Register pipeline behaviors
+                                                            services.AddTransient(typeof(IPipelineBehavior<,>),
+                                                                typeof(ValidationBehavior<,>));
+
+// Register validators
+                                                            services.AddValidatorsFromAssembly(
+                                                                typeof(Application.AssemblyMarker).Assembly);
 
                                                             // DI for other services via Scrutor
                                                             services.Scan(scan => scan
@@ -61,6 +76,8 @@ IHost builder = new HostBuilder().ConfigureFunctionsWorkerDefaults()
                                                                                       } &&
                                                                                       !type.IsAssignableTo(
                                                                                           typeof(IDisposable)) &&
+                                                                                      !type.IsAssignableTo(
+                                                                                          typeof(Exception)) &&
                                                                                       (type.Namespace?.StartsWith(
                                                                                               "Application") ==
                                                                                           true ||
@@ -83,8 +100,10 @@ IHost builder = new HostBuilder().ConfigureFunctionsWorkerDefaults()
                                                                                       type.Name != "CompositeKey" &&
                                                                                       type.Name != "EntityMetadata`1" &&
                                                                                       type.Name != "UpsertResult" &&
-                                                                                      !type.IsAssignableTo(
-                                                                                          typeof(Exception))))
+                                                                                      type.Name !=
+                                                                                      "CreateRecoveryRequestCommand" &&
+                                                                                      type.Name !=
+                                                                                      "CreateRecoveryRequestResponse"))
                                                                               .AsImplementedInterfaces()
                                                                               .WithScopedLifetime());
                                                         }
