@@ -1,7 +1,7 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
 
-namespace Configuration.Options;
+namespace Infrastructure.Configuration.Options;
 
 /// <summary>
 /// Represents the configuration options for Application Insights telemetry.
