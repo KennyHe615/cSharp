@@ -15,7 +15,7 @@ namespace Infrastructure.Observability;
 public static class ApplicationInsightsExtensions
 {
     /// <summary>
-    /// Adds Application Insights for a Worker Service host.
+    /// Adds Application Insight for a Worker Service host.
     /// </summary>
     /// <param name="services">DI container.</param>
     /// <param name="appCategory">Logger category prefix for app logs.</param>

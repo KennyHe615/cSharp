@@ -12,6 +12,4 @@ builder.ConfigureFunctionsWebApplication();
 builder.Services.AddConfiguration(builder.Configuration);
 builder.Services.AddApplicationInsightsForFunctions("FunctionApp");
 
-builder
-   .Build()
-   .Run();
+builder.Build().Run();

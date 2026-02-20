@@ -24,9 +24,7 @@ public sealed class ApplicationInsightsExtensionsTests
                                                        "false"
                                                };
 
-        IConfiguration configuration = new ConfigurationBuilder()
-                                      .AddInMemoryCollection(settings)
-                                      .Build();
+        IConfiguration configuration = new ConfigurationBuilder().AddInMemoryCollection(settings).Build();
 
         ServiceCollection services = new ServiceCollection();
         services.AddConfiguration(configuration);
@@ -34,8 +32,7 @@ public sealed class ApplicationInsightsExtensionsTests
 
         using ServiceProvider provider = services.BuildServiceProvider();
 
-        ApplicationInsightsOptions options = provider.GetRequiredService<IOptions<ApplicationInsightsOptions>>()
-                                                     .Value;
+        ApplicationInsightsOptions options = provider.GetRequiredService<IOptions<ApplicationInsightsOptions>>().Value;
 
         Assert.Equal(settings["ApplicationInsights:ConnectionString"], options.ConnectionString);
         Assert.False(options.EnableAdaptiveSampling);

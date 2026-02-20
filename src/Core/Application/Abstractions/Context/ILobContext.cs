@@ -1,3 +1,6 @@
+using SharedKernel.Lobs;
+
+
 namespace Application.Abstractions.Context;
 
 /// <summary>
@@ -8,7 +11,7 @@ public interface ILobContext
     /// <summary>
     /// Gets the unique name of the Line of Business.
     /// </summary>
-    string LobName { get; }
+    LobName LobName { get; }
 
     /// <summary>
     /// Gets the Genesys Cloud OAuth Client ID associated with this LOB.

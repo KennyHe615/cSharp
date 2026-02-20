@@ -1,5 +1,7 @@
 using Application.Abstractions.Context;
 
+using SharedKernel.Lobs;
+
 
 namespace Infrastructure.Context;
 
@@ -14,10 +16,8 @@ public sealed class LobContext(ILobContextAccessor accessor) : ILobContext
 {
     /// <inheritdoc />
     /// <exception cref="InvalidOperationException">Thrown when accessed before the LOB name is set in the accessor.</exception>
-    public string LobName =>
-        !string.IsNullOrWhiteSpace(accessor.LobName)
-            ? accessor.LobName!
-            : throw new InvalidOperationException("LOB context was not initialized with a LobName.");
+    public LobName LobName =>
+        new LobName(accessor.LobName ?? throw new InvalidOperationException("Missing LobName in context."));
 
     /// <inheritdoc />
     /// <exception cref="InvalidOperationException">Thrown when the Genesys Client ID is missing for the current LOB.</exception>

@@ -90,9 +90,12 @@ public static class StringExtensions
     /// The uppercase snake-case result, or the original value when <paramref name="input"/> is
     /// <see langword="null"/> or empty.
     /// </returns>
-    public static string? ToSnakeUpperCase(this string? input) => input
-                                                                ?.ToSnakeCase()
-                                                                ?.ToUpperInvariant();
+    public static string? ToSnakeUpperCase(this string? input)
+    {
+        return input
+             ?.ToSnakeCase()
+             ?.ToUpperInvariant();
+    }
 
     /// <summary>
     /// Truncates a string to the specified maximum length.
@@ -114,8 +117,11 @@ public static class StringExtensions
     /// Attempts to parse a string into a <see cref="Guid"/>.
     /// </summary>
     /// <param name="value">The string value to parse.</param>
-    /// <returns>A <see cref="Guid"/> if parsing succeeds; otherwise, <see langword="null"/>.</returns>
-    public static Guid? ToGuid(this string? value) => Guid.TryParse(value, out Guid guid) ? guid : null;
+    /// <returns>A <see cref="Guid"/> if parsing succeeds; otherwise, <c>null</c>.</returns>
+    public static Guid? ToGuid(this string? value)
+    {
+        return Guid.TryParse(value, out Guid guid) ? guid : null;
+    }
 
     /// <summary>
     /// Normalizes an enum token by removing separators and converting to uppercase.
