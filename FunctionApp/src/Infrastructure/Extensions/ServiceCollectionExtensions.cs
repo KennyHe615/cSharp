@@ -24,10 +24,5 @@ public static class ServiceCollectionExtensions
 
         services.AddPersistence();
 
-        services.AddScoped<ILobContextAccessor, LobContextAccessor>();
-        services.AddScoped<ILobContext, LobContext>();
-
-        // services.AddBlobStorageClient();
-        // services.AddRepositories();
     }
 }
