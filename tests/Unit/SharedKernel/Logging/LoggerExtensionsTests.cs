@@ -272,6 +272,7 @@ public sealed class LoggerExtensionsTests
 
         public List<LogEntry> Entries { get; } = [];
 
+        [System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverage]
         public IDisposable? BeginScope<TState>(TState state)
             where TState : notnull
         {
