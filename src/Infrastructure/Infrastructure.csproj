@@ -42,6 +42,7 @@
         <Folder Include="ExternalApis\Genesys\Models\"/>
         <Folder Include="Observability\Telemetry\"/>
         <Folder Include="Persistence\Migrations\"/>
+        <Folder Include="Storage\Tables\"/>
     </ItemGroup>
 
 </Project>

@@ -13,8 +13,10 @@
 
     <ItemGroup>
         <Folder Include="Features\Analytics\"/>
+        <Folder Include="Features\Recovery\"/>
         <Folder Include="Features\References\"/>
         <Folder Include="Mappings\"/>
+        <Folder Include="Validation\"/>
     </ItemGroup>
 
 </Project>
