@@ -1,5 +1,18 @@
-namespace Application.Contracts.References;
+namespace Application.Contracts.ExternalApis.Genesys.References;
 
+/// <example>
+/// {
+///     "entities": [],
+///     "pageSize": 100,
+///     "pageNumber": 1,
+///     "total": 1,
+///     "pageCount": 1,
+///     "nextUri": "",
+///     "firstUri": "",
+///     "lastUri": "",
+///     "selfUri": "",
+/// }
+/// </example>
 public sealed class PagedReferenceResponse<T>
 {
     public List<T> Entities { get; set; } = [];
@@ -10,6 +23,8 @@ public sealed class PagedReferenceResponse<T>
 
     public long? Total { get; set; }
 
+    public int? PageCount { get; set; }
+
     public string? NextUri { get; set; }
 
     public string? FirstUri { get; set; }
@@ -17,6 +32,4 @@ public sealed class PagedReferenceResponse<T>
     public string? LastUri { get; set; }
 
     public string? SelfUri { get; set; }
-
-    public int? PageCount { get; set; }
 }

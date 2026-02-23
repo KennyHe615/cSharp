@@ -1,7 +1,7 @@
-using Application.Contracts.Enums;
+using Application.Enums;
 
 
-namespace Application.Contracts.References;
+namespace Application.Contracts.ExternalApis.Genesys.References;
 
 /// <summary>
 /// Represents a Skill from the Genesys API.
@@ -24,7 +24,9 @@ public sealed class SkillResponse
 
     public DateTimeOffset? DateModified { get; set; }
 
-    public State? State { get; set; }
+    public StateKind? State { get; set; }
 
     public string? Version { get; set; }
+
+    public string? SelfUri { get; set; }
 }

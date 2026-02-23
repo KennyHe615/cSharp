@@ -22,10 +22,10 @@ public class GenesysOptions
     [Range(1, 1_000_000)]
     public int MaxHitThreshold { get; init; } = 100_000;
 
-    // Defined by Genesys
-    public string OAuthEndpoint = "oauth/token";
+    // Restrictions by Genesys
+    public const string OAuthEndpoint = "oauth/token";
 
-    public int HistoricalDataLimitDays { get; init; } = 558;
+    public const int HistoricalDataLimitDays = 558;
 
-    public int MaxIntervalDays { get; init; } = 7;
+    public const int MaxIntervalDays = 7;
 }

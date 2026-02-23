@@ -1,7 +1,7 @@
-namespace Application.Contracts.References;
+namespace Application.Contracts.ExternalApis.Genesys.References;
 
 /// <summary>
-/// Represents a Wrapup_Code from the Genesys API.
+/// Represents a Wrap_Up_Code from the Genesys API.
 /// </summary>
 /// <example>
 /// {
@@ -19,7 +19,7 @@ namespace Application.Contracts.References;
 ///     "selfUri": "/api/v2/routing/wrapupcodes/d1827868-eeac-4e7e-8495-4b9f60f4a499"
 /// }
 /// </example>
-public sealed class WrapupCodeResponse
+public sealed class WrapUpCodeResponse
 {
     public Guid Id { get; set; }
 
@@ -34,4 +34,6 @@ public sealed class WrapupCodeResponse
     public string? CreatedBy { get; set; }
 
     public string? ModifiedBy { get; set; }
+
+    public string? SelfUri { get; set; }
 }

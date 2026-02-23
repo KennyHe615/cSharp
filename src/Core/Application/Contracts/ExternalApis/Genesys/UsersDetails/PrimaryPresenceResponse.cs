@@ -1,7 +1,7 @@
-using Application.Contracts.Enums;
+using Application.Enums;
 
 
-namespace Application.Contracts.UserDetails;
+namespace Application.Contracts.ExternalApis.Genesys.UsersDetails;
 
 public sealed class PrimaryPresenceResponse
 {
@@ -9,7 +9,7 @@ public sealed class PrimaryPresenceResponse
 
     public DateTimeOffset? EndTime { get; set; }
 
-    public SystemPresence SystemPresence { get; set; }
+    public SystemPresenceKind SystemPresence { get; set; }
 
     public string? OrganizationPresenceId { get; set; }
 }

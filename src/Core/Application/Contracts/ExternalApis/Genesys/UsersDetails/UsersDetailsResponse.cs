@@ -1,7 +1,7 @@
-namespace Application.Contracts.UserDetails;
+namespace Application.Contracts.ExternalApis.Genesys.UsersDetails;
 
 /// <summary>
-/// Represents User Details from the Genesys Analytics API.
+/// Represents Users Details from the Genesys Analytics API.
 /// Contains user presence and routing status history.
 /// </summary>
 /// <example>
@@ -29,14 +29,14 @@ namespace Application.Contracts.UserDetails;
 ///     "totalHits": 70191
 /// }
 /// </example>
-public sealed class UserDetailsResponse
+public sealed class UsersDetailsResponse
 {
-    public List<UserDetailResponse> UserDetails { get; set; } = [];
+    public List<UserDetailsResponse> UserDetails { get; set; } = [];
 
     public int TotalHits { get; set; }
 }
 
-public sealed class UserDetailResponse
+public sealed class UserDetailsResponse
 {
     public Guid UserId { get; set; }
 

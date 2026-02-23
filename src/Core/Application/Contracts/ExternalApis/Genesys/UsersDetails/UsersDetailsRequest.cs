@@ -1,6 +1,6 @@
-namespace Application.Contracts.UserDetails;
+namespace Application.Contracts.ExternalApis.Genesys.UsersDetails;
 
-public sealed class UserDetailsRequest
+public sealed class UsersDetailsRequest
 {
     public string Order { get; set; } = "asc";
 

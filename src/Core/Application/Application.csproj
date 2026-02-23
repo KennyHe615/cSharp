@@ -12,6 +12,8 @@
     </ItemGroup>
 
     <ItemGroup>
+        <Folder Include="Contracts\ExternalApis\Genesys\"/>
+        <Folder Include="Contracts\InternalApis\"/>
         <Folder Include="Features\Analytics\"/>
         <Folder Include="Features\Recovery\"/>
         <Folder Include="Features\References\"/>

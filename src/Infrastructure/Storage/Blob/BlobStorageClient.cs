@@ -1,4 +1,4 @@
-namespace Infrastructure.Azure.BlobStorage;
+namespace Infrastructure.Storage.Blob;
 
 public class BlobStorageClient
 {

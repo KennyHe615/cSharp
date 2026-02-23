@@ -1,7 +1,7 @@
-using Application.Contracts.Enums;
+using Application.Enums;
 
 
-namespace Application.Contracts.References;
+namespace Application.Contracts.ExternalApis.Genesys.References;
 
 /// <summary>
 /// Represents a Presence Definition from the Genesys API.
@@ -24,14 +24,16 @@ public sealed class PresenceDefinitionResponse
 {
     public Guid Id { get; set; }
 
-    public PresenceType? Type { get; set; }
+    public PresenceTypeKind? Type { get; set; }
 
     public Dictionary<string, string>? LanguageLabels { get; set; }
 
-    public SystemPresence? SystemPresence { get; set; }
+    public SystemPresenceKind? SystemPresence { get; set; }
 
     // Currently all is "*" from API response, not GUID
     public string? DivisionId { get; set; }
 
     public bool? Deactivated { get; set; }
+
+    public string? SelfUri { get; set; }
 }

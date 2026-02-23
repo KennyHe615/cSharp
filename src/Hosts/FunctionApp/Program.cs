@@ -1,15 +1,14 @@
-using Microsoft.Azure.Functions.Worker.Builder;
-using Microsoft.Extensions.Hosting;
-
-using Infrastructure.Configuration;
+using Infrastructure;
 using Infrastructure.Observability;
 
+using Microsoft.Azure.Functions.Worker.Builder;
+using Microsoft.Extensions.Hosting;
 
 FunctionsApplicationBuilder builder = FunctionsApplication.CreateBuilder(args);
 
 builder.ConfigureFunctionsWebApplication();
 
-builder.Services.AddConfiguration(builder.Configuration);
+builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddApplicationInsightsForFunctions("FunctionApp");
 
 builder.Build().Run();
