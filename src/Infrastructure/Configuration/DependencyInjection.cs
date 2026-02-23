@@ -1,4 +1,4 @@
-﻿using Infrastructure.Configuration.Options;
+using Infrastructure.Configuration.Options;
 
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -6,10 +6,13 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Infrastructure.Configuration;
 
-public static class ConfigurationExtensions
+public static class DependencyInjection
 {
     public static void AddConfiguration(this IServiceCollection services, IConfiguration configuration)
     {
+        ArgumentNullException.ThrowIfNull(services);
+        ArgumentNullException.ThrowIfNull(configuration);
+
         services
            .AddOptions<ApplicationInsightsOptions>()
            .Bind(configuration.GetSection(ApplicationInsightsOptions.SectionName))
@@ -28,12 +31,7 @@ public static class ConfigurationExtensions
         //    .ValidateDataAnnotations()
         //    .ValidateOnStart();
         //
-        // services
-        //    .AddOptions<DatabaseOptions>()
-        //    .Bind(configuration.GetSection(DatabaseOptions.SectionName))
-        //    .ValidateDataAnnotations()
-        //    .ValidateOnStart();
-        //
+
         // services
         //    .AddOptions<IntervalSubdivisionOptions>()
         //    .Configure(options =>

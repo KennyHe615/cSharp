@@ -9,8 +9,11 @@ namespace Infrastructure.ExternalApis;
 
 public static class DependencyInjection
 {
-    public static IServiceCollection AddExternalApis(this IServiceCollection services, IConfiguration configuration)
+    public static void AddExternalApis(this IServiceCollection services, IConfiguration configuration)
     {
+        ArgumentNullException.ThrowIfNull(services);
+        ArgumentNullException.ThrowIfNull(configuration);
+
         services
            .AddOptions<HttpClientResilienceOptions>()
            .Bind(configuration.GetSection(HttpClientResilienceOptions.SectionName))
@@ -18,8 +21,7 @@ public static class DependencyInjection
            .ValidateOnStart();
 
         services.AddSingleton<IHttpResiliencePolicyFactory, HttpResiliencePolicyFactory>();
-        services.AddSingleton<IHttpApiClientFactory, HttpApiClientFactory>();
 
-        return services;
+        services.AddSingleton<IHttpApiClientFactory, HttpApiClientFactory>();
     }
 }

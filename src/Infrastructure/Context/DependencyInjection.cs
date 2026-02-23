@@ -7,11 +7,12 @@ namespace Infrastructure.Context;
 
 public static class DependencyInjection
 {
-    public static IServiceCollection AddLobContext(this IServiceCollection services)
+    public static void AddContext(this IServiceCollection services)
     {
-        services.AddScoped<ILobContextAccessor, LobContextAccessor>();
+        ArgumentNullException.ThrowIfNull(services);
+
         services.AddScoped<ILobContext, LobContext>();
 
-        return services;
+        services.AddScoped<ILobContextAccessor, LobContextAccessor>();
     }
 }
