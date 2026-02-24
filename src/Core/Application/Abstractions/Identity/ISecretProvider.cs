@@ -1,7 +1,7 @@
-namespace Application.Common.Abstractions.Providers;
+namespace Application.Abstractions.Identity;
 
 /// <summary>
-/// Defines a provider for managing secrets in a secure storage system.
+/// Abstraction for secure secret operations used by infrastructure services.
 /// </summary>
 public interface ISecretProvider
 {
@@ -11,7 +11,6 @@ public interface ISecretProvider
     /// <param name="secretName">The name of the secret to retrieve.</param>
     /// <param name="ct">The cancellation token.</param>
     /// <returns>The secret value.</returns>
-    /// <exception cref="Exception">Thrown if the secret is not found or retrieval fails.</exception>
     public Task<string> GetSecretAsync(string secretName, CancellationToken ct = default);
 
     /// <summary>

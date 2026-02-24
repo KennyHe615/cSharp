@@ -4,11 +4,14 @@ using Infrastructure.ExternalApis.Genesys;
 using Infrastructure.ExternalApis.Genesys.Abstractions;
 using Infrastructure.ExternalApis.Genesys.Analytics;
 using Infrastructure.ExternalApis.Genesys.References;
+using Infrastructure.ExternalApis.Genesys.Tokens;
+using Infrastructure.ExternalApis.Genesys.Tokens.Abstractions;
 using Infrastructure.ExternalApis.Http;
 using Infrastructure.ExternalApis.Http.Policies;
 
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+
 
 namespace Infrastructure.ExternalApis;
 
@@ -36,6 +39,8 @@ public static class DependencyInjection
         services.AddSingleton<IHttpResiliencePolicyFactory, HttpResiliencePolicyFactory>();
         services.AddSingleton<IHttpApiClientFactory, HttpApiClientFactory>();
 
+        services.AddScoped<IGenesysTokenApiClient, GenesysTokenApiClient>();
+        services.AddScoped<IGenesysTokenStore, GenesysTokenStore>();
         services.AddScoped<IGenesysTokenProvider, GenesysTokenProvider>();
         services.AddScoped<IGenesysApiClient, GenesysApiClient>();
 

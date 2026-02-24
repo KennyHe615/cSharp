@@ -1,7 +1,7 @@
 using System.Text.Json.Serialization;
 
 
-namespace Infrastructure.ExternalApis.Genesys.Models.Auth;
+namespace Infrastructure.ExternalApis.Genesys.Tokens.Models;
 
 /// <summary>
 /// Represents the OAuth token response from Genesys Cloud API.

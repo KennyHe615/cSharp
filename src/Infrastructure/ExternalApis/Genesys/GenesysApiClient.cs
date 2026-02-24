@@ -3,6 +3,7 @@ using System.Net;
 using Application.Abstractions.Context;
 
 using Infrastructure.ExternalApis.Genesys.Abstractions;
+using Infrastructure.ExternalApis.Genesys.Tokens.Abstractions;
 using Infrastructure.ExternalApis.Http;
 
 using Microsoft.Extensions.Logging;

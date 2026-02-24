@@ -1,4 +1,4 @@
-namespace Infrastructure.ExternalApis.Genesys.Abstractions;
+namespace Infrastructure.ExternalApis.Genesys.Tokens.Abstractions;
 
 /// <summary>
 /// Provides OAuth access tokens for Genesys API calls.

@@ -18,19 +18,12 @@ public static class DependencyInjection
            .Bind(configuration.GetSection(ApplicationInsightsOptions.SectionName))
            .ValidateDataAnnotations()
            .ValidateOnStart();
-        //
-        // services
-        //    .AddOptions<FlurlClientOptions>()
-        //    .Bind(configuration.GetSection(FlurlClientOptions.SectionName))
-        //    .ValidateDataAnnotations()
-        //    .ValidateOnStart();
-        //
-        // services
-        //    .AddOptions<KeyVaultsOptions>()
-        //    .Bind(configuration.GetSection(KeyVaultsOptions.SectionName))
-        //    .ValidateDataAnnotations()
-        //    .ValidateOnStart();
-        //
+
+        services
+           .AddOptions<KeyVaultOptions>()
+           .Bind(configuration.GetSection(KeyVaultOptions.SectionName))
+           .ValidateDataAnnotations()
+           .ValidateOnStart();
 
         // services
         //    .AddOptions<IntervalSubdivisionOptions>()

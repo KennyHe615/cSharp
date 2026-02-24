@@ -9,6 +9,8 @@ using Infrastructure.Storage;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
+using SharedKernel.Concurrency;
+
 
 namespace Infrastructure;
 
@@ -25,12 +27,14 @@ public static class InfrastructureDependencyInjection
 
         services.AddExternalApis(configuration);
 
-        services.AddIdentity(configuration);
+        services.AddIdentity();
 
         services.AddObservability(configuration);
 
         services.AddPersistence(configuration);
 
         services.AddStorage(configuration);
+
+        services.AddSingleton<KeyedSemaphoreLock>();
     }
 }
