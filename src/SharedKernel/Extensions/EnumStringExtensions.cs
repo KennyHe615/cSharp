@@ -1,3 +1,6 @@
+using System.Text;
+
+
 namespace SharedKernel.Extensions;
 
 public static class EnumStringExtensions
@@ -26,6 +29,32 @@ public static class EnumStringExtensions
         string name = value.ToString();
 
         return name.ToSnakeUpperCase() ?? name.ToUpperInvariant();
+    }
+
+    /// <summary>
+    /// Normalizes an enum token by removing separators and converting to uppercase.
+    /// </summary>
+    /// <param name="value">The raw enum token.</param>
+    /// <returns>The normalized token.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="value"/> is <c>null</c>.</exception>
+    /// <exception cref="ArgumentException">Thrown when the normalized token is empty.</exception>
+    /// <remarks>
+    /// Underscores, hyphens, and whitespace are removed.
+    /// </remarks>
+    public static string NormalizeEnumToken(this string value)
+    {
+        ArgumentNullException.ThrowIfNull(value);
+
+        StringBuilder sb = new StringBuilder(value.Length);
+
+        foreach (char ch in value.Where(ch => ch != '_' && ch != '-' && !char.IsWhiteSpace(ch)))
+        {
+            sb.Append(char.ToUpperInvariant(ch));
+        }
+
+        return sb.Length == 0
+            ? throw new ArgumentException("Enum token cannot be empty after normalization.", nameof(value))
+            : sb.ToString();
     }
 
     #region ========== *** Private Class *** ==========

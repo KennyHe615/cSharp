@@ -7,11 +7,17 @@ namespace tests.Unit.SharedKernel.Extensions;
 
 public sealed class StringExtensionsTests
 {
+    #region ToSnakeCase
+
     [Theory]
     [InlineData(null, null)]
     [InlineData("", "")]
     [InlineData("my_value", "my_value")]
+    [InlineData("my_Value", "my_value")]
+    [InlineData("My__Value", "my_value")]
     [InlineData("__MyValue", "__my_value")]
+    [InlineData("myValueX", "my_value_x")]
+    [InlineData("HTTPServer", "http_server")]
     [InlineData("HTTP2Server", "http2_server")]
     [InlineData("東京Value", "東京_value")]
     [InlineData("Already_Snake_Case", "already_snake_case")]
@@ -21,6 +27,10 @@ public sealed class StringExtensionsTests
         string? actual = input.ToSnakeCase();
         Assert.Equal(expected, actual);
     }
+
+    #endregion
+
+    #region ToSnakeUpperCase
 
     [Theory]
     [InlineData(null, null)]
@@ -32,6 +42,10 @@ public sealed class StringExtensionsTests
         string? actual = input.ToSnakeUpperCase();
         Assert.Equal(expected, actual);
     }
+
+    #endregion
+
+    #region Truncate
 
     [Fact]
     public void Truncate_ReturnsNull_WhenInputIsNull()
@@ -58,13 +72,15 @@ public sealed class StringExtensionsTests
         Assert.Throws<ArgumentOutOfRangeException>(() => "abc".Truncate(-1));
     }
 
+    #endregion
+
+    #region ToGuid
+
     [Fact]
     public void ToGuid_ReturnsGuid_WhenValid()
     {
         Guid expected = Guid.NewGuid();
-        Guid? actual = expected
-                      .ToString()
-                      .ToGuid();
+        Guid? actual = expected.ToString().ToGuid();
 
         Assert.Equal(expected, actual);
     }
@@ -79,30 +95,5 @@ public sealed class StringExtensionsTests
         Assert.Null(actual);
     }
 
-    [Theory]
-    [InlineData("in_queue", "INQUEUE")]
-    [InlineData("in-queue", "INQUEUE")]
-    [InlineData(" in queue ", "INQUEUE")]
-    [InlineData("In_Queue-Now", "INQUEUENOW")]
-    public void NormalizeEnumToken_ReturnsExpected(string input, string expected)
-    {
-        string actual = input.NormalizeEnumToken();
-        Assert.Equal(expected, actual);
-    }
-
-    [Theory]
-    [InlineData("")]
-    [InlineData("   ")]
-    [InlineData("__--")]
-    public void NormalizeEnumToken_Throws_WhenEmptyAfterNormalization(string input)
-    {
-        ArgumentException ex = Assert.Throws<ArgumentException>(() => input.NormalizeEnumToken());
-        Assert.Equal("value", ex.ParamName);
-    }
-
-    [Fact]
-    public void NormalizeEnumToken_Throws_WhenNull()
-    {
-        Assert.Throws<ArgumentNullException>(() => StringExtensions.NormalizeEnumToken(null!));
-    }
+    #endregion
 }

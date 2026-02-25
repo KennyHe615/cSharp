@@ -35,8 +35,6 @@ public static class StringExtensions
             i++;
         }
 
-        if (i == input.Length) return input;// all underscores
-
         StringBuilder sb = new StringBuilder(input.Length + 8);
 
         if (i > 0) sb.Append(input, 0, i);// preserve leading underscores
@@ -92,9 +90,7 @@ public static class StringExtensions
     /// </returns>
     public static string? ToSnakeUpperCase(this string? input)
     {
-        return input
-             ?.ToSnakeCase()
-             ?.ToUpperInvariant();
+        return input?.ToSnakeCase()?.ToUpperInvariant();
     }
 
     /// <summary>
@@ -121,31 +117,5 @@ public static class StringExtensions
     public static Guid? ToGuid(this string? value)
     {
         return Guid.TryParse(value, out Guid guid) ? guid : null;
-    }
-
-    /// <summary>
-    /// Normalizes an enum token by removing separators and converting to uppercase.
-    /// </summary>
-    /// <param name="value">The raw enum token.</param>
-    /// <returns>The normalized token.</returns>
-    /// <exception cref="ArgumentNullException">Thrown when <paramref name="value"/> is <c>null</c>.</exception>
-    /// <exception cref="ArgumentException">Thrown when the normalized token is empty.</exception>
-    /// <remarks>
-    /// Underscores, hyphens, and whitespace are removed.
-    /// </remarks>
-    public static string NormalizeEnumToken(this string value)
-    {
-        ArgumentNullException.ThrowIfNull(value);
-
-        StringBuilder sb = new StringBuilder(value.Length);
-
-        foreach (char ch in value.Where(ch => ch != '_' && ch != '-' && !char.IsWhiteSpace(ch)))
-        {
-            sb.Append(char.ToUpperInvariant(ch));
-        }
-
-        return sb.Length == 0
-            ? throw new ArgumentException("Enum token cannot be empty after normalization.", nameof(value))
-            : sb.ToString();
     }
 }

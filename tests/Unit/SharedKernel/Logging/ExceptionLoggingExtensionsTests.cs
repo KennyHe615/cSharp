@@ -282,7 +282,7 @@ public sealed class ExceptionLoggingExtensionsTests
 
     private static string BuildStackLines(int count)
     {
-        return string.Join(Environment.NewLine, Enumerable.Range(0, count).Select(i => $"at Method{i}()"));
+        return string.Join(System.Environment.NewLine, Enumerable.Range(0, count).Select(i => $"at Method{i}()"));
     }
 
     [System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverage]
