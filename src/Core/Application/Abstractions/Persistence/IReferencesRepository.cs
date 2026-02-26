@@ -1,7 +1,7 @@
-using Application.Contracts.References;
+using Application.DTOs.References;
 
 
-namespace Application.References;
+namespace Application.Abstractions.Persistence;
 
 /// <summary>
 /// Domain-grouped repository for all Reference-related persistence operations.
@@ -11,21 +11,21 @@ public interface IReferencesRepository
     /// <summary>
     /// Synchronizes the provided skills with the database.
     /// </summary>
-    Task UpsertSkillsAsync(IReadOnlyCollection<SkillResponse> skills, CancellationToken ct);
+    Task UpsertSkillsAsync(IReadOnlyCollection<SkillDto> skills, CancellationToken ct);
 
     /// <summary>
     /// Synchronizes the provided presence_definitions with the database.
     /// </summary>
-    Task UpsertPresenceDefinitionsAsync(IReadOnlyCollection<PresenceDefinitionResponse> presenceDefinitions,
+    Task UpsertPresenceDefinitionsAsync(IReadOnlyCollection<PresenceDefinitionDto> presenceDefinitions,
                                         CancellationToken ct);
 
     /// <summary>
     /// Synchronizes the provided groups with the database.
     /// </summary>
-    Task UpsertGroupsAsync(IReadOnlyCollection<GroupResponse> groups, CancellationToken ct);
+    Task UpsertGroupsAsync(IReadOnlyCollection<GroupDto> groups, CancellationToken ct);
 
     /// <summary>
-    /// Synchronizes the provided wrapup_codes with the database.
+    /// Synchronizes the provided wrap_up_codes with the database.
     /// </summary>
-    Task UpsertWrapupCodesAsync(IReadOnlyCollection<WrapupCodeResponse> wrapupCodes, CancellationToken ct);
+    Task UpsertWrapUpCodesAsync(IReadOnlyCollection<WrapUpCodeDto> wrapUpCodes, CancellationToken ct);
 }

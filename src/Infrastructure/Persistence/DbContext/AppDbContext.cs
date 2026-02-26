@@ -1,5 +1,6 @@
 using Application.Abstractions.Context;
 
+using Infrastructure.Persistence.Converters;
 using Infrastructure.Persistence.Entities;
 using Infrastructure.Persistence.Interceptors;
 
@@ -23,12 +24,17 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options,
 {
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
-        // Dynamic connection string resolution based on current LOB Context
-        if (optionsBuilder.IsConfigured) return;
+        // Always register cross-cutting interceptor (works for SQL Server and InMemory tests).
+        optionsBuilder.AddInterceptors(auditInterceptor);
 
         DatabaseOptions dbOptions = databaseOptions.Value;
 
-        // 1. ILobContext is scoped and initialized by SyncOrchestrator for each run.
+        if (dbOptions.EnableDetailedErrors) optionsBuilder.EnableDetailedErrors();
+        if (dbOptions.EnableSensitiveDataLogging) optionsBuilder.EnableSensitiveDataLogging();
+
+        // Provider/connection only when not preconfigured externally.
+        if (optionsBuilder.IsConfigured) return;
+
         string connectionString = lobContext.DbConnectionString;
 
         if (string.IsNullOrWhiteSpace(connectionString))
@@ -39,7 +45,6 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options,
 
         try
         {
-            // 2. Use global settings for Retry and Timeout
             optionsBuilder.UseSqlServer(connectionString,
                                         sqlOptions =>
                                         {
@@ -56,12 +61,6 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options,
             throw new DbContextConfigurationException($"Failed to configure DbContext for LOB '{lobContext.LobName}'.",
                                                       ex);
         }
-
-        if (dbOptions.EnableDetailedErrors) optionsBuilder.EnableDetailedErrors();
-        if (dbOptions.EnableSensitiveDataLogging) optionsBuilder.EnableSensitiveDataLogging();
-
-        // Register auditing so it runs for all SaveChanges calls, without repository code.
-        optionsBuilder.AddInterceptors(auditInterceptor);
     }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -71,78 +70,18 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options,
         // This automatically finds all classes in this assembly that implement IEntityTypeConfiguration
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
 
-        ApplyEstConvention(modelBuilder);
+        ApplyEstDateTimeConvention(modelBuilder, dateTimeProvider);
 
-        // Apply naming convention for all entities and properties
-        foreach (IMutableEntityType entity in modelBuilder.Model.GetEntityTypes())
-        {
-            // Table name can be null for non-table mapped types; skip those safely.
-            string? tableName = entity.GetTableName();
-            if (!string.IsNullOrWhiteSpace(tableName))
-            {
-                entity.SetTableName(tableName.ToSnakeCase());
-            }
+        ApplyEnumSnakeUpperConvention(modelBuilder);
 
-            // Set column names to snake_case
-            foreach (IMutableProperty property in entity.GetProperties())
-            {
-                // Use the property name directly to generate the column name
-                property.SetColumnName(property.Name.ToSnakeCase());
-            }
+        ApplySnakeCaseNamingConvention(modelBuilder);
 
-            // Set key and index names to snake_case
-            foreach (IMutableKey key in entity.GetKeys())
-            {
-                string? keyName = key.GetName();
-                if (!string.IsNullOrWhiteSpace(keyName))
-                {
-                    key.SetName(keyName.ToSnakeCase());
-                }
-            }
-
-            foreach (IMutableForeignKey foreignKey in entity.GetForeignKeys())
-            {
-                string? fkName = foreignKey.GetConstraintName();
-                if (!string.IsNullOrWhiteSpace(fkName))
-                {
-                    foreignKey.SetConstraintName(fkName.ToSnakeCase());
-                }
-            }
-
-            foreach (IMutableIndex index in entity.GetIndexes())
-            {
-                string? indexName = index.GetDatabaseName();
-                if (!string.IsNullOrWhiteSpace(indexName))
-                {
-                    index.SetDatabaseName(indexName.ToSnakeCase());
-                }
-            }
-
-            // Centralized Audit configuration for entities inheriting from Audit base class
-            if (!typeof(Audit).IsAssignableFrom(entity.ClrType)) continue;
-
-            modelBuilder
-               .Entity(entity.ClrType)
-               .Property(nameof(Audit.AppCreatedAt))
-               .IsRequired()
-               .HasColumnType("datetimeoffset(0)")
-               .HasDefaultValueSql("SYSDATETIMEOFFSET()");
-
-            modelBuilder
-               .Entity(entity.ClrType)
-               .Property(nameof(Audit.AppUpdatedAt))
-               .IsRequired()
-               .HasColumnType("datetimeoffset(0)")
-               .HasDefaultValueSql("SYSDATETIMEOFFSET()");
-
-            modelBuilder
-               .Entity(entity.ClrType)
-               .HasIndex(nameof(Audit.AppUpdatedAt));
-        }
+        ApplyAuditConvention(modelBuilder);
     }
 
-    // For EF ValueConverter, use static methods to avoid expression-tree closure issues.
-    private void ApplyEstConvention(ModelBuilder modelBuilder)
+    #region ========== *** Private Methods *** ==========
+
+    private static void ApplyEstDateTimeConvention(ModelBuilder modelBuilder, IDateTimeProvider dateTimeProvider)
     {
         ValueConverter<DateTimeOffset, DateTimeOffset> dtoConverter =
             new ValueConverter<DateTimeOffset, DateTimeOffset>(v => dateTimeProvider.ConvertToEst(v),
@@ -173,7 +112,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options,
                 }
             }
 
-            // Extra safety: ensure all PK DateTimeOffset columns are also forced (some configs override keys).
+            // ensure all PK DateTimeOffset columns are also forced (some configs override keys).
             foreach (IMutableKey key in entityType.GetKeys())
             {
                 foreach (IMutableProperty keyProp in key.Properties.Where(p => p.ClrType == typeof(DateTimeOffset)))
@@ -190,4 +129,121 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options,
             }
         }
     }
+
+    private static void ApplyEnumSnakeUpperConvention(ModelBuilder modelBuilder)
+    {
+        foreach (IMutableEntityType entityType in modelBuilder.Model.GetEntityTypes())
+        {
+            foreach (IMutableProperty property in entityType.GetProperties())
+            {
+                Type clrType = property.ClrType;
+                Type? nullableUnderlying = Nullable.GetUnderlyingType(clrType);
+
+                Type? enumType =
+                    clrType.IsEnum ? clrType :
+                    nullableUnderlying is not null && nullableUnderlying.IsEnum ? nullableUnderlying : null;
+
+                if (enumType is null) continue;
+
+                ValueConverter converter = CreateEnumConverter(enumType, clrType);
+                property.SetValueConverter(converter);
+
+                property.SetColumnType("nvarchar(64)");
+            }
+        }
+    }
+
+    private static void ApplySnakeCaseNamingConvention(ModelBuilder modelBuilder)
+    {
+        foreach (IMutableEntityType entity in modelBuilder.Model.GetEntityTypes())
+        {
+            // Table name can be null for non-table mapped types; skip those safely.
+            string? tableName = entity.GetTableName();
+            if (!string.IsNullOrWhiteSpace(tableName))
+            {
+                entity.SetTableName(tableName.ToSnakeCase());
+            }
+
+            // Set column names to snake_case
+            foreach (IMutableProperty property in entity.GetProperties())
+            {
+                property.SetColumnName(property.Name.ToSnakeCase());
+            }
+
+            // Set key and index names to snake_case
+            foreach (IMutableKey key in entity.GetKeys())
+            {
+                string? keyName = key.GetName();
+                if (!string.IsNullOrWhiteSpace(keyName))
+                {
+                    key.SetName(keyName.ToSnakeCase());
+                }
+            }
+
+            foreach (IMutableForeignKey foreignKey in entity.GetForeignKeys())
+            {
+                string? fkName = foreignKey.GetConstraintName();
+                if (!string.IsNullOrWhiteSpace(fkName))
+                {
+                    foreignKey.SetConstraintName(fkName.ToSnakeCase());
+                }
+            }
+
+            foreach (IMutableIndex index in entity.GetIndexes())
+            {
+                string? indexName = index.GetDatabaseName();
+                if (!string.IsNullOrWhiteSpace(indexName))
+                {
+                    index.SetDatabaseName(indexName.ToSnakeCase());
+                }
+            }
+        }
+    }
+
+    private static void ApplyAuditConvention(ModelBuilder modelBuilder)
+    {
+        const string easternNowSql =
+            "SWITCHOFFSET(SYSDATETIMEOFFSET(), DATENAME(TzOffset, SYSDATETIMEOFFSET() AT TIME ZONE 'Eastern Standard Time'))";
+
+        foreach (IMutableEntityType entity in modelBuilder.Model.GetEntityTypes())
+        {
+            if (!typeof(Audit).IsAssignableFrom(entity.ClrType)) continue;
+
+            modelBuilder.Entity(entity.ClrType)
+                        .Property(nameof(Audit.AppCreatedAt))
+                        .IsRequired()
+                        .HasColumnType("datetimeoffset(0)")
+                        .HasDefaultValueSql(easternNowSql);
+
+            modelBuilder.Entity(entity.ClrType)
+                        .Property(nameof(Audit.AppUpdatedAt))
+                        .IsRequired()
+                        .HasColumnType("datetimeoffset(0)")
+                        .HasDefaultValueSql(easternNowSql);
+
+            modelBuilder.Entity(entity.ClrType)
+                        .HasIndex(nameof(Audit.AppUpdatedAt));
+        }
+    }
+
+    private static ValueConverter CreateEnumConverter(Type enumType, Type propertyType)
+    {
+        if (!enumType.IsEnum)
+        {
+            throw
+                new InvalidOperationException($"CreateEnumConverter called with non-enum type '{enumType.FullName}'.");
+        }
+
+        bool isNullableEnumProperty = Nullable.GetUnderlyingType(propertyType) is not null;
+
+        Type converterType = isNullableEnumProperty
+            ? typeof(NullableEnumToSnakeUpperStringConverter<>).MakeGenericType(enumType)
+            : typeof(EnumToSnakeUpperStringConverter<>).MakeGenericType(enumType);
+
+        return Activator.CreateInstance(converterType) as ValueConverter
+               ?? throw new
+                   InvalidOperationException($"Failed to create enum value converter '{converterType.FullName}'.");
+    }
+
+    #endregion
 }

@@ -1,18 +1,16 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Net;
 using System.Text;
-
-using Application.Abstractions.Context;
 
 using Flurl.Http;
 
 using Infrastructure.ExternalApis.Http;
 
-using Microsoft.Extensions.Logging;
-
 using Polly;
 using Polly.CircuitBreaker;
 
-using SharedKernel.Lobs;
+using tests.TestSupport.Context;
+using tests.TestSupport.Logging;
 
 using Xunit;
 
@@ -27,7 +25,7 @@ public sealed class HttpApiClientTests
     public void Ctor_Throws_WhenClientIsNull()
     {
         FakeHttpApiClientFactory factory = new FakeHttpApiClientFactory();
-        FakeLobContext lob = new FakeLobContext();
+        StubLobContext lob = new StubLobContext();
         TestLogger<HttpApiClient> logger = new TestLogger<HttpApiClient>();
 
         Assert.Throws<ArgumentNullException>(() => new HttpApiClient(null!,
@@ -40,7 +38,7 @@ public sealed class HttpApiClientTests
     public void Ctor_Throws_WhenFactoryIsNull()
     {
         FlurlClient client = CreateFlurlClient(new QueueHandler(new HttpResponseMessage(HttpStatusCode.OK)));
-        FakeLobContext lob = new FakeLobContext();
+        StubLobContext lob = new StubLobContext();
         TestLogger<HttpApiClient> logger = new TestLogger<HttpApiClient>();
 
         Assert.Throws<ArgumentNullException>(() => new HttpApiClient(client,
@@ -67,7 +65,7 @@ public sealed class HttpApiClientTests
     {
         FlurlClient client = CreateFlurlClient(new QueueHandler(new HttpResponseMessage(HttpStatusCode.OK)));
         FakeHttpApiClientFactory factory = new FakeHttpApiClientFactory();
-        FakeLobContext lob = new FakeLobContext();
+        StubLobContext lob = new StubLobContext();
 
         Assert.Throws<ArgumentNullException>(() => new HttpApiClient(client,
                                                                      factory,
@@ -82,8 +80,7 @@ public sealed class HttpApiClientTests
     [Fact]
     public void BaseUrl_ReturnsClientBaseUrl()
     {
-        FlurlClient client = CreateFlurlClient(new QueueHandler(new HttpResponseMessage(HttpStatusCode.OK)),
-                                               "https://example.test/");
+        FlurlClient client = CreateFlurlClient(new QueueHandler(new HttpResponseMessage(HttpStatusCode.OK)));
         HttpApiClient sut = CreateSut(client);
 
         Assert.Equal("https://example.test/", sut.BaseUrl);
@@ -223,9 +220,8 @@ public sealed class HttpApiClientTests
     [Fact]
     public async Task PostAsync_UsesUnsafePolicy_WhenSafePolicyIsOpenCircuit()
     {
-        AsyncCircuitBreakerPolicy safeBreaker = Policy
-                                               .Handle<Exception>()
-                                               .CircuitBreakerAsync(1, TimeSpan.FromMinutes(1));
+        AsyncCircuitBreakerPolicy safeBreaker = Policy.Handle<Exception>()
+                                                      .CircuitBreakerAsync(1, TimeSpan.FromMinutes(1));
 
         await Assert.ThrowsAsync<Exception>(() => safeBreaker.ExecuteAsync(() => throw new Exception("trip")));
 
@@ -250,9 +246,8 @@ public sealed class HttpApiClientTests
     [Fact]
     public async Task GetAsync_UsesSafePolicy_WhenUnsafePolicyIsOpenCircuit()
     {
-        AsyncCircuitBreakerPolicy unsafeBreaker = Policy
-                                                 .Handle<Exception>()
-                                                 .CircuitBreakerAsync(1, TimeSpan.FromMinutes(1));
+        AsyncCircuitBreakerPolicy unsafeBreaker = Policy.Handle<Exception>()
+                                                        .CircuitBreakerAsync(1, TimeSpan.FromMinutes(1));
 
         await Assert.ThrowsAsync<Exception>(() => unsafeBreaker.ExecuteAsync(() => throw new Exception("trip")));
 
@@ -340,13 +335,13 @@ public sealed class HttpApiClientTests
     private static HttpApiClient CreateSut(FlurlClient? client =
                                                null,
                                            FakeHttpApiClientFactory? factory = null,
-                                           FakeLobContext? lobContext = null,
+                                           StubLobContext? lobContext = null,
                                            TestLogger<HttpApiClient>? logger = null)
     {
         return new HttpApiClient(client
                                  ?? CreateFlurlClient(new QueueHandler(new HttpResponseMessage(HttpStatusCode.OK))),
                                  factory    ?? new FakeHttpApiClientFactory(),
-                                 lobContext ?? new FakeLobContext(),
+                                 lobContext ?? new StubLobContext(),
                                  logger     ?? new TestLogger<HttpApiClient>());
     }
 
@@ -360,7 +355,7 @@ public sealed class HttpApiClientTests
         return new FlurlClient(httpClient);
     }
 
-    [System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverage]
+    [ExcludeFromCodeCoverage]
     private sealed class FakeHttpApiClientFactory(IAsyncPolicy? safe = null,
                                                   IAsyncPolicy? unsafePolicy = null) : IHttpApiClientFactory
     {
@@ -387,51 +382,7 @@ public sealed class HttpApiClientTests
         }
     }
 
-    [System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverage]
-    private sealed class FakeLobContext : ILobContext
-    {
-        public LobName LobName => LobName.Ntt;
-
-        public string GenesysClientId => "client-id";
-
-        public string GenesysClientSecret => "client-secret";
-
-        public string DbConnectionString => "db-connection";
-    }
-
-    private sealed class TestLogger<T> : ILogger<T>
-    {
-        public IDisposable BeginScope<TState>(TState state)
-            where TState : notnull
-        {
-            return NoopDisposable.Instance;
-        }
-
-        public bool IsEnabled(LogLevel logLevel)
-        {
-            return true;
-        }
-
-        public void Log<TState>(LogLevel logLevel,
-                                EventId eventId,
-                                TState state,
-                                Exception? exception,
-                                Func<TState, Exception?, string> formatter)
-        {
-            _ = formatter(state, exception);
-        }
-
-        private sealed class NoopDisposable : IDisposable
-        {
-            public static readonly NoopDisposable Instance = new NoopDisposable();
-
-            public void Dispose()
-            {
-            }
-        }
-    }
-
-    [System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverage]
+    [ExcludeFromCodeCoverage]
     private sealed class QueueHandler(params HttpResponseMessage[] responses) : HttpMessageHandler
     {
         private readonly Queue<HttpResponseMessage> _responses = new Queue<HttpResponseMessage>(responses);

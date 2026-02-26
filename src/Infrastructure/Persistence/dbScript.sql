@@ -25,9 +25,13 @@ IF OBJECT_ID(N'ref.skills', N'U') IS NULL
             [state]          NVARCHAR(8)       NULL,
             [version]        NVARCHAR(8)       NULL,
             [app_created_at] DATETIMEOFFSET(0) NOT NULL
-                CONSTRAINT [DF_skills_app_created_at] DEFAULT SYSDATETIMEOFFSET(),
+                CONSTRAINT [DF_skills_app_created_at] DEFAULT (SWITCHOFFSET(SYSDATETIMEOFFSET(), DATENAME(TzOffset,
+                                                                                                          SYSDATETIMEOFFSET() AT TIME ZONE
+                                                                                                          'Eastern Standard Time'))),
             [app_updated_at] DATETIMEOFFSET(0) NOT NULL
-                CONSTRAINT [DF_skills_app_updated_at] DEFAULT SYSDATETIMEOFFSET(),
+                CONSTRAINT [DF_skills_app_updated_at] DEFAULT (SWITCHOFFSET(SYSDATETIMEOFFSET(), DATENAME(TzOffset,
+                                                                                                          SYSDATETIMEOFFSET() AT TIME ZONE
+                                                                                                          'Eastern Standard Time'))),
 
             CONSTRAINT [PK_skills] PRIMARY KEY ([id])
         );
@@ -67,9 +71,15 @@ IF OBJECT_ID(N'ref.presence_definitions', N'U') IS NULL
             [division_id]     NVARCHAR(36)      NULL,
             [deactivated]     BIT               NULL,
             [app_created_at]  DATETIMEOFFSET(0) NOT NULL
-                CONSTRAINT [DF_presence_definitions_app_created_at] DEFAULT SYSDATETIMEOFFSET(),
+                CONSTRAINT [DF_presence_definitions_app_created_at] DEFAULT (SWITCHOFFSET(SYSDATETIMEOFFSET(),
+                                                                                          DATENAME(TzOffset,
+                                                                                                   SYSDATETIMEOFFSET() AT TIME ZONE
+                                                                                                   'Eastern Standard Time'))),
             [app_updated_at]  DATETIMEOFFSET(0) NOT NULL
-                CONSTRAINT [DF_presence_definitions_app_updated_at] DEFAULT SYSDATETIMEOFFSET(),
+                CONSTRAINT [DF_presence_definitions_app_updated_at] DEFAULT (SWITCHOFFSET(SYSDATETIMEOFFSET(),
+                                                                                          DATENAME(TzOffset,
+                                                                                                   SYSDATETIMEOFFSET() AT TIME ZONE
+                                                                                                   'Eastern Standard Time'))),
 
             CONSTRAINT [PK_presence_definitions] PRIMARY KEY ([id])
         );
@@ -106,9 +116,13 @@ IF OBJECT_ID(N'ref.groups', N'U') IS NULL
             [roles_enabled]  BIT               NULL,
             [include_owners] BIT               NULL,
             [app_created_at] DATETIMEOFFSET(0) NOT NULL
-                CONSTRAINT [DF_groups_app_created_at] DEFAULT SYSDATETIMEOFFSET(),
+                CONSTRAINT [DF_groups_app_created_at] DEFAULT (SWITCHOFFSET(SYSDATETIMEOFFSET(), DATENAME(TzOffset,
+                                                                                                          SYSDATETIMEOFFSET() AT TIME ZONE
+                                                                                                          'Eastern Standard Time'))),
             [app_updated_at] DATETIMEOFFSET(0) NOT NULL
-                CONSTRAINT [DF_groups_app_updated_at] DEFAULT SYSDATETIMEOFFSET(),
+                CONSTRAINT [DF_groups_app_updated_at] DEFAULT (SWITCHOFFSET(SYSDATETIMEOFFSET(), DATENAME(TzOffset,
+                                                                                                          SYSDATETIMEOFFSET() AT TIME ZONE
+                                                                                                          'Eastern Standard Time'))),
 
             CONSTRAINT [PK_groups] PRIMARY KEY ([id])
         );
@@ -136,10 +150,10 @@ IF NOT EXISTS (SELECT 1
 GO
 /* endregion */
 
-/* region ========== ** Wrapup Codes ** ========== */
-IF OBJECT_ID(N'ref.wrapup_codes', N'U') IS NULL
+/* region ========== ** Wrap Up Codes ** ========== */
+IF OBJECT_ID(N'ref.wrap_up_codes', N'U') IS NULL
     BEGIN
-        CREATE TABLE [ref].[wrapup_codes]
+        CREATE TABLE [ref].[wrap_up_codes]
         (
             [id]             UNIQUEIDENTIFIER  NOT NULL,
             [name]           NVARCHAR(255)     NULL,
@@ -149,33 +163,40 @@ IF OBJECT_ID(N'ref.wrapup_codes', N'U') IS NULL
             [date_modified]  DATETIMEOFFSET(0) NULL,
             [created_by]     NVARCHAR(36)      NULL,
             [modified_by]    NVARCHAR(36)      NULL,
+            [state]          NVARCHAR(8)       NULL,
             [app_created_at] DATETIMEOFFSET(0) NOT NULL
-                CONSTRAINT [DF_wrapup_codes_app_created_at] DEFAULT SYSDATETIMEOFFSET(),
+                CONSTRAINT [DF_wrap_up_codes_app_created_at] DEFAULT (SWITCHOFFSET(SYSDATETIMEOFFSET(),
+                                                                                   DATENAME(TzOffset,
+                                                                                            SYSDATETIMEOFFSET() AT TIME ZONE
+                                                                                            'Eastern Standard Time'))),
             [app_updated_at] DATETIMEOFFSET(0) NOT NULL
-                CONSTRAINT [DF_wrapup_codes_app_updated_at] DEFAULT SYSDATETIMEOFFSET(),
+                CONSTRAINT [DF_wrap_up_codes_app_updated_at] DEFAULT (SWITCHOFFSET(SYSDATETIMEOFFSET(),
+                                                                                   DATENAME(TzOffset,
+                                                                                            SYSDATETIMEOFFSET() AT TIME ZONE
+                                                                                            'Eastern Standard Time'))),
 
-            CONSTRAINT [PK_wrapup_codes] PRIMARY KEY ([id])
+            CONSTRAINT [PK_wrap_up_codes] PRIMARY KEY ([id])
         );
     END
 GO
 
 IF NOT EXISTS (SELECT 1
                FROM sys.indexes
-               WHERE name = N'IX_wrapup_codes_name'
-                 AND object_id = OBJECT_ID(N'ref.wrapup_codes'))
+               WHERE name = N'IX_wrap_up_codes_name'
+                 AND object_id = OBJECT_ID(N'ref.wrap_up_codes'))
     BEGIN
-        CREATE NONCLUSTERED INDEX [IX_wrapup_codes_name]
-            ON [ref].[wrapup_codes] ([name]);
+        CREATE NONCLUSTERED INDEX [IX_wrap_up_codes_name]
+            ON [ref].[wrap_up_codes] ([name]);
     END
 GO
 
 IF NOT EXISTS (SELECT 1
                FROM sys.indexes
-               WHERE name = N'IX_wrapup_codes_division_id'
-                 AND object_id = OBJECT_ID(N'ref.wrapup_codes'))
+               WHERE name = N'IX_wrap_up_codes_division_id'
+                 AND object_id = OBJECT_ID(N'ref.wrap_up_codes'))
     BEGIN
-        CREATE NONCLUSTERED INDEX [IX_wrapup_codes_division_id]
-            ON [ref].[wrapup_codes] ([division_id]);
+        CREATE NONCLUSTERED INDEX [IX_wrap_up_codes_division_id]
+            ON [ref].[wrap_up_codes] ([division_id]);
     END
 GO
 /* endregion */
@@ -194,9 +215,11 @@ IF OBJECT_ID(N'dbo.user_details_primary_presence_stg', N'U') IS NULL
             [system_presence]          NVARCHAR(9)       NOT NULL,
             [organization_presence_id] NVARCHAR(255)     NULL,
             [app_created_at]           DATETIMEOFFSET(0) NOT NULL
-                CONSTRAINT [DF_user_details_primary_presence_stg_app_created_at] DEFAULT SYSDATETIMEOFFSET(),
+                CONSTRAINT [DF_user_details_primary_presence_stg_app_created_at] DEFAULT (SWITCHOFFSET(
+                    SYSDATETIMEOFFSET(), DATENAME(TzOffset, SYSDATETIMEOFFSET() AT TIME ZONE 'Eastern Standard Time'))),
             [app_updated_at]           DATETIMEOFFSET(0) NOT NULL
-                CONSTRAINT [DF_user_details_primary_presence_stg_app_updated_at] DEFAULT SYSDATETIMEOFFSET(),
+                CONSTRAINT [DF_user_details_primary_presence_stg_app_updated_at] DEFAULT (SWITCHOFFSET(
+                    SYSDATETIMEOFFSET(), DATENAME(TzOffset, SYSDATETIMEOFFSET() AT TIME ZONE 'Eastern Standard Time'))),
 
             CONSTRAINT [PK_user_details_primary_presence_stg] PRIMARY KEY CLUSTERED ([user_id], [start_time])
         );
@@ -233,9 +256,11 @@ IF OBJECT_ID(N'dbo.user_details_routing_status_stg', N'U') IS NULL
             [duration_in_seconds] BIGINT            NULL,
             [routing_status]      NVARCHAR(15)      NOT NULL,
             [app_created_at]      DATETIMEOFFSET(0) NOT NULL
-                CONSTRAINT [DF_user_details_routing_status_stg_app_created_at] DEFAULT SYSDATETIMEOFFSET(),
+                CONSTRAINT [DF_user_details_routing_status_stg_app_created_at] DEFAULT (SWITCHOFFSET(
+                    SYSDATETIMEOFFSET(), DATENAME(TzOffset, SYSDATETIMEOFFSET() AT TIME ZONE 'Eastern Standard Time'))),
             [app_updated_at]      DATETIMEOFFSET(0) NOT NULL
-                CONSTRAINT [DF_user_details_routing_status_stg_app_updated_at] DEFAULT SYSDATETIMEOFFSET(),
+                CONSTRAINT [DF_user_details_routing_status_stg_app_updated_at] DEFAULT (SWITCHOFFSET(
+                    SYSDATETIMEOFFSET(), DATENAME(TzOffset, SYSDATETIMEOFFSET() AT TIME ZONE 'Eastern Standard Time'))),
 
             CONSTRAINT [PK_user_details_routing_status_stg] PRIMARY KEY CLUSTERED ([user_id], [start_time])
         );
@@ -276,9 +301,15 @@ IF OBJECT_ID(N'dbo.sync_job_tracking', N'U') IS NULL
             [is_incremental_completed] [bit]                   NOT NULL,
             [is_recovery_completed]    [bit]                   NOT NULL,
             [app_created_at]           DATETIMEOFFSET(0)       NOT NULL
-                CONSTRAINT [DF_sync_job_tracking_app_created_at] DEFAULT SYSDATETIMEOFFSET(),
+                CONSTRAINT [DF_sync_job_tracking_app_created_at] DEFAULT (SWITCHOFFSET(SYSDATETIMEOFFSET(),
+                                                                                       DATENAME(TzOffset,
+                                                                                                SYSDATETIMEOFFSET() AT TIME ZONE
+                                                                                                'Eastern Standard Time'))),
             [app_updated_at]           DATETIMEOFFSET(0)       NOT NULL
-                CONSTRAINT [DF_sync_job_tracking_app_updated_at] DEFAULT SYSDATETIMEOFFSET(),
+                CONSTRAINT [DF_sync_job_tracking_app_updated_at] DEFAULT (SWITCHOFFSET(SYSDATETIMEOFFSET(),
+                                                                                       DATENAME(TzOffset,
+                                                                                                SYSDATETIMEOFFSET() AT TIME ZONE
+                                                                                                'Eastern Standard Time'))),
 
             CONSTRAINT [PK_sync_job_tracking] PRIMARY KEY CLUSTERED ([id])
         );

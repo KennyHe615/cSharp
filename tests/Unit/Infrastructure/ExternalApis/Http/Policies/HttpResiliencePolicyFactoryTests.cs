@@ -9,6 +9,8 @@ using Microsoft.Extensions.Options;
 using Polly;
 using Polly.CircuitBreaker;
 
+using tests.TestSupport.Logging;
+
 using Xunit;
 
 
@@ -208,23 +210,21 @@ public sealed class HttpResiliencePolicyFactoryTests
 
         int executed = 0;
 
-        Assert.Throws<ExternalServiceHttpException>(() => policy
-                                                         .ExecuteAsync(_ =>
-                                                                       {
-                                                                           executed++;
+        Assert.Throws<ExternalServiceHttpException>(() => policy.ExecuteAsync(_ =>
+                                                                              {
+                                                                                  executed++;
 
-                                                                           throw
-                                                                               CreateExternalHttpException(HttpStatusCode
-                                                                                  .InternalServerError);
-                                                                       },
-                                                                       new Polly.Context())
-                                                         .GetAwaiter()
-                                                         .GetResult());
+                                                                                  throw
+                                                                                      CreateExternalHttpException(HttpStatusCode
+                                                                                         .InternalServerError);
+                                                                              },
+                                                                              new Polly.Context())
+                                                                .GetAwaiter()
+                                                                .GetResult());
 
-        Assert.Throws<BrokenCircuitException>(() => policy
-                                                   .ExecuteAsync(ExecuteNoOp, new Polly.Context())
-                                                   .GetAwaiter()
-                                                   .GetResult());
+        Assert.Throws<BrokenCircuitException>(() => policy.ExecuteAsync(ExecuteNoOp, new Polly.Context())
+                                                          .GetAwaiter()
+                                                          .GetResult());
 
         Assert.Equal(1, executed);
     }
@@ -320,7 +320,7 @@ public sealed class HttpResiliencePolicyFactoryTests
                    new EventId(42, "evt"),
                    "state",
                    null,
-                   (state, ex) =>
+                   (state, _) =>
                    {
                        formatterCalled = true;
 
@@ -393,38 +393,6 @@ public sealed class HttpResiliencePolicyFactoryTests
     private static Task ExecuteNoOp(Polly.Context _)
     {
         return Task.CompletedTask;
-    }
-
-    private sealed class TestLogger<T> : ILogger<T>
-    {
-        public IDisposable BeginScope<TState>(TState state)
-            where TState : notnull
-        {
-            return NoopDisposable.Instance;
-        }
-
-        public bool IsEnabled(LogLevel logLevel)
-        {
-            return true;
-        }
-
-        public void Log<TState>(LogLevel logLevel,
-                                EventId eventId,
-                                TState state,
-                                Exception? exception,
-                                Func<TState, Exception?, string> formatter)
-        {
-            _ = formatter(state, exception);
-        }
-
-        private sealed class NoopDisposable : IDisposable
-        {
-            public static readonly NoopDisposable Instance = new NoopDisposable();
-
-            public void Dispose()
-            {
-            }
-        }
     }
 
     #endregion

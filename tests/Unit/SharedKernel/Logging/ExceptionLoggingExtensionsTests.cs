@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 
 using SharedKernel.Logging;
 
@@ -86,7 +87,8 @@ public sealed class ExceptionLoggingExtensionsTests
 
         Assert.Equal("UnitTests.Source", scope["exception.source"]);
         Assert.True(scope.ContainsKey("exception.activity_id"));
-        Assert.False(string.IsNullOrWhiteSpace(scope["exception.activity_id"]?.ToString()));
+        Assert.False(string.IsNullOrWhiteSpace(scope["exception.activity_id"]
+                                                 ?.ToString()));
     }
 
     [Fact]
@@ -271,7 +273,7 @@ public sealed class ExceptionLoggingExtensionsTests
         return current;
     }
 
-    [System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverage]
+    [ExcludeFromCodeCoverage]
     private sealed class HResultException : Exception
     {
         public HResultException(string message, int hresult) : base(message)
@@ -282,10 +284,12 @@ public sealed class ExceptionLoggingExtensionsTests
 
     private static string BuildStackLines(int count)
     {
-        return string.Join(System.Environment.NewLine, Enumerable.Range(0, count).Select(i => $"at Method{i}()"));
+        return string.Join(System.Environment.NewLine,
+                           Enumerable.Range(0, count)
+                                     .Select(i => $"at Method{i}()"));
     }
 
-    [System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverage]
+    [ExcludeFromCodeCoverage]
     private sealed class FakeStackException(string message,
                                             string stackTrace) : Exception(message)
     {

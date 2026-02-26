@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 
 using Microsoft.Extensions.Logging;
 
@@ -262,7 +263,7 @@ public sealed class LoggerExtensionsTests
 
     #region ========== *** Private *** ==========
 
-    [method: System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverage]
+    [ExcludeFromCodeCoverage]
     private sealed class TestLogger(bool returnNullScope = false,
                                     Func<LogLevel, bool>? enabled = null) : ILogger
     {
@@ -272,7 +273,7 @@ public sealed class LoggerExtensionsTests
 
         public List<LogEntry> Entries { get; } = [];
 
-        [System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverage]
+        [ExcludeFromCodeCoverage]
         public IDisposable? BeginScope<TState>(TState state)
             where TState : notnull
         {
@@ -318,7 +319,7 @@ public sealed class LoggerExtensionsTests
         }
     }
 
-    [System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverage]
+    [ExcludeFromCodeCoverage]
     private sealed class LogEntry
     {
         public LogLevel Level { get; init; }
@@ -328,7 +329,7 @@ public sealed class LoggerExtensionsTests
         public string Message { get; init; } = string.Empty;
     }
 
-    [System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverage]
+    [ExcludeFromCodeCoverage]
     private sealed class ActivityTestProbe : IDisposable
     {
         private readonly ActivityListener _listener;
@@ -362,7 +363,7 @@ public sealed class LoggerExtensionsTests
         }
     }
 
-    [System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverage]
+    [ExcludeFromCodeCoverage]
     private sealed class ThrowingScopeLogger : ILogger
     {
         public IDisposable BeginScope<TState>(TState state)

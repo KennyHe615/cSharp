@@ -1,9 +1,9 @@
-using Infrastructure.ExternalApis.Genesys.Models.Enums;
+using Application.Enums;
 
 
-namespace Infrastructure.Persistence.Entities.References;
+namespace Application.DTOs.References;
 
-public class WrapUpCode : Audit
+public sealed class WrapUpCodeDto
 {
     public Guid Id { get; set; }
 
@@ -21,5 +21,5 @@ public class WrapUpCode : Audit
 
     public string? ModifiedBy { get; set; }
 
-    public State? State { get; set; }
+    public StateKind? State { get; set; }
 }

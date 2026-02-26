@@ -1,4 +1,4 @@
-namespace Application.Common.Abstractions.Persistence;
+namespace Application.Abstractions.Persistence;
 
 /// <summary>
 /// Defines the Unit of Work pattern for managing atomic database operations and entity persistence.
@@ -7,7 +7,8 @@ public interface IUnitOfWork
 {
     Task UpsertAsync<TEntity>(TEntity entity,
                               Action<TEntity>? onMissingFromIncoming = null,
-                              CancellationToken ct = default) where TEntity : class;
+                              CancellationToken ct = default)
+        where TEntity : class;
 
     /// <summary>
     /// Performs a high-performance upsert (update or insert) operation for a collection of entities.
@@ -20,7 +21,8 @@ public interface IUnitOfWork
     /// <returns>A task representing the asynchronous upsert range operation.</returns>
     Task UpsertRangeAsync<TEntity>(IEnumerable<TEntity> incomingMappedEntities,
                                    Action<TEntity>? onMissingFromIncoming = null,
-                                   CancellationToken ct = default) where TEntity : class;
+                                   CancellationToken ct = default)
+        where TEntity : class;
 
     // /// <summary>
     // /// Synchronizes a collection of entities by comparing them with the database.
