@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 
-using Infrastructure.ExternalApis.Http;
+using Infrastructure.ExternalApis.Shared.Http;
 
 using Xunit;
 

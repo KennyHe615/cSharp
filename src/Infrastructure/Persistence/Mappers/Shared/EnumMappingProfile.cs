@@ -2,7 +2,7 @@ using Application.Enums;
 
 using AutoMapper;
 
-using Infrastructure.ExternalApis.Genesys.Models.Enums;
+using Infrastructure.ExternalApis.Providers.Genesys.Enums;
 
 
 namespace Infrastructure.Persistence.Mappers.Shared;

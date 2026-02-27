@@ -16,29 +16,30 @@ public interface IReferenceApiClient
     /// Retrieves all Skills from the Genesys Cloud API for the current Line of Business (LOB).
     /// </summary>
     /// <param name="ct">A token to monitor for cancellation requests during the asynchronous operation.</param>
-    /// <returns>A list of <see cref="SkillResponse"/> objects representing all available skills in the organization.</returns>
-    Task<IReadOnlyCollection<SkillResponse>> GetSkillsAsync(CancellationToken ct = default);
+    /// <returns>A list of <see cref="SkillRawContract"/> objects representing all available skills in the organization.</returns>
+    Task<IReadOnlyCollection<SkillRawContract>> GetSkillsAsync(CancellationToken ct = default);
 
     /// <summary>
     /// Retrieves all Presence Definitions from the Genesys Cloud API for the current Line of Business (LOB).
     /// </summary>
     /// <param name="ct">A token to monitor for cancellation requests during the asynchronous operation.</param>
     /// <returns>
-    /// A list of <see cref="PresenceDefinitionResponse"/> objects representing all presence states in the organization.
+    /// A list of <see cref="PresenceDefinitionRawContract"/> objects representing all presence states in the organization.
     /// </returns>
-    Task<IReadOnlyCollection<PresenceDefinitionResponse>> GetPresenceDefinitionsAsync(CancellationToken ct = default);
+    Task<IReadOnlyCollection<PresenceDefinitionRawContract>>
+        GetPresenceDefinitionsAsync(CancellationToken ct = default);
 
     /// <summary>
     /// Retrieves all Groups from the Genesys Cloud API for the current Line of Business (LOB).
     /// </summary>
     /// <param name="ct">A token to monitor for cancellation requests during the asynchronous operation.</param>
-    /// <returns>A list of <see cref="GroupResponse"/> objects representing all groups in the organization.</returns>
-    Task<IReadOnlyCollection<GroupResponse>> GetGroupsAsync(CancellationToken ct = default);
+    /// <returns>A list of <see cref="GroupRawContract"/> objects representing all groups in the organization.</returns>
+    Task<IReadOnlyCollection<GroupRawContract>> GetGroupsAsync(CancellationToken ct = default);
 
     /// <summary>
     /// Retrieves all WrapUpCodes from the Genesys Cloud API for the current Line of Business (LOB).
     /// </summary>
     /// <param name="ct">A token to monitor for cancellation requests during the asynchronous operation.</param>
-    /// <returns>A list of <see cref="WrapUpCodeResponse"/> objects representing all wrap_up_codes in the organization.</returns>
-    Task<IReadOnlyCollection<WrapUpCodeResponse>> GetWrapUpCodesAsync(CancellationToken ct = default);
+    /// <returns>A list of <see cref="WrapUpCodeRawContract"/> objects representing all wrap_up_codes in the organization.</returns>
+    Task<IReadOnlyCollection<WrapUpCodeRawContract>> GetWrapUpCodesAsync(CancellationToken ct = default);
 }

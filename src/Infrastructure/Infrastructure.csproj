@@ -39,7 +39,7 @@
     </ItemGroup>
 
     <ItemGroup>
-        <Folder Include="ExternalApis\Genesys\Models\"/>
+        <Folder Include="ExternalApis\Providers\Genesys\Modules\"/>
         <Folder Include="Observability\Telemetry\"/>
         <Folder Include="Persistence\Migrations\"/>
         <Folder Include="Storage\Tables\"/>

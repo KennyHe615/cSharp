@@ -1,4 +1,4 @@
-using Infrastructure.ExternalApis.Http.Policies;
+using Infrastructure.ExternalApis.Shared.Policies;
 
 using Xunit;
 

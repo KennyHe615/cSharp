@@ -1,13 +1,14 @@
 using Application.Abstractions.External;
 
-using Infrastructure.ExternalApis.Genesys;
-using Infrastructure.ExternalApis.Genesys.Abstractions;
-using Infrastructure.ExternalApis.Genesys.Analytics;
-using Infrastructure.ExternalApis.Genesys.References;
-using Infrastructure.ExternalApis.Genesys.Tokens;
-using Infrastructure.ExternalApis.Genesys.Tokens.Abstractions;
-using Infrastructure.ExternalApis.Http;
-using Infrastructure.ExternalApis.Http.Policies;
+using Infrastructure.ExternalApis.Abstractions;
+using Infrastructure.ExternalApis.Providers.Genesys.Auth;
+using Infrastructure.ExternalApis.Providers.Genesys.Auth.Abstractions;
+using Infrastructure.ExternalApis.Providers.Genesys.Configuration;
+using Infrastructure.ExternalApis.Providers.Genesys.Modules.Analytics.UsersDetails;
+using Infrastructure.ExternalApis.Providers.Genesys.Modules.References;
+using Infrastructure.ExternalApis.Providers.Genesys.Transport;
+using Infrastructure.ExternalApis.Shared.Http;
+using Infrastructure.ExternalApis.Shared.Policies;
 
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -22,17 +23,15 @@ public static class DependencyInjection
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(configuration);
 
-        services
-           .AddOptions<HttpClientResilienceOptions>()
-           .Bind(configuration.GetSection(HttpClientResilienceOptions.SectionName))
-           .ValidateDataAnnotations()
-           .ValidateOnStart();
+        services.AddOptions<HttpClientResilienceOptions>()
+                .Bind(configuration.GetSection(HttpClientResilienceOptions.SectionName))
+                .ValidateDataAnnotations()
+                .ValidateOnStart();
 
-        services
-           .AddOptions<GenesysOptions>()
-           .Bind(configuration.GetSection(GenesysOptions.SectionName))
-           .ValidateDataAnnotations()
-           .ValidateOnStart();
+        services.AddOptions<GenesysOptions>()
+                .Bind(configuration.GetSection(GenesysOptions.SectionName))
+                .ValidateDataAnnotations()
+                .ValidateOnStart();
 
         services.AddMemoryCache();
 

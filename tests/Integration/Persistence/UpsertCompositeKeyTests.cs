@@ -1,7 +1,7 @@
 using Application.Abstractions.Context;
 using Application.Abstractions.Persistence;
 
-using Infrastructure.ExternalApis.Genesys.Models.Enums;
+using Infrastructure.ExternalApis.Providers.Genesys.Enums;
 using Infrastructure.Persistence;
 using Infrastructure.Persistence.DbContext;
 using Infrastructure.Persistence.Entities.UserDetails;

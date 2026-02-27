@@ -1,8 +1,8 @@
 using Flurl.Http;
 using Flurl.Http.Configuration;
 
-using Infrastructure.ExternalApis.Http;
-using Infrastructure.ExternalApis.Http.Policies;
+using Infrastructure.ExternalApis.Abstractions;
+using Infrastructure.ExternalApis.Shared.Http;
 
 using Microsoft.Extensions.Options;
 

@@ -1,4 +1,4 @@
-using Infrastructure.ExternalApis.Genesys.Models.Enums;
+using Infrastructure.ExternalApis.Providers.Genesys.Enums;
 
 
 namespace Infrastructure.Persistence.Entities.References;

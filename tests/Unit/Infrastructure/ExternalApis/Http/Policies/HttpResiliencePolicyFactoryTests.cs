@@ -1,7 +1,7 @@
 using System.Net;
 
-using Infrastructure.ExternalApis.Http;
-using Infrastructure.ExternalApis.Http.Policies;
+using Infrastructure.ExternalApis.Shared.Http;
+using Infrastructure.ExternalApis.Shared.Policies;
 
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;

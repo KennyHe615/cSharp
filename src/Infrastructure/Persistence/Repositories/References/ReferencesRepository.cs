@@ -3,7 +3,7 @@ using Application.DTOs.References;
 
 using AutoMapper;
 
-using Infrastructure.ExternalApis.Genesys.Models.Enums;
+using Infrastructure.ExternalApis.Providers.Genesys.Enums;
 using Infrastructure.Persistence.Entities.References;
 
 using Group=Infrastructure.Persistence.Entities.References.Group;
