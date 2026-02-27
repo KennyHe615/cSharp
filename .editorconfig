@@ -12,10 +12,11 @@ trim_trailing_whitespace = true
 indent_style = space
 indent_size = 4
 
-[*.cs]
+[**/*.cs]
 # Keep usings grouped and stable across tooling
 dotnet_sort_system_directives_first = true
 dotnet_separate_import_directive_groups = true
+csharp_style_expression_bodied_methods = false
 
 # Prefer file-scoped namespaces (C# 10+); set to suggestion to avoid breaking builds in older projects
 csharp_style_namespace_declarations = file_scoped:suggestion
@@ -33,12 +34,14 @@ csharp_new_line_before_finally = true
 
 # ReSharper properties
 resharper_csharp_max_line_length = 120
+resharper_keep_existing_attribute_arrangement = false
+resharper_wrap_chained_method_calls = chop_always
 
 
 ############################################################
 # DTOs, Mapper Profiles and Entities - Suppress ReSharper warnings
 ############################################################
-[{**/*Options.cs,**/*Response.cs,**/*Profile.cs,**/Entities/**, **/Dtos/**,**/*Dto.cs}]
+[{**/*Options.cs,**/*Response.cs,**/*Profile.cs,**/Entities/**/*.cs,**/Dtos/**/*.cs,**/*Dto.cs}]
 resharper_class_never_instantiated_global_highlighting = none
 resharper_unused_type_global_highlighting = none
 resharper_unused_member_global_highlighting = none

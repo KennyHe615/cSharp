@@ -30,13 +30,7 @@
     <!-- Project References -->
     <ItemGroup>
         <ProjectReference Include="..\Application\Application.csproj"/>
-        <ProjectReference Include="..\Domain\Domain.csproj"/>
         <ProjectReference Include="..\Shared\Shared.csproj"/>
-    </ItemGroup>
-
-    <ItemGroup>
-        <Folder Include="Persistence\Migrations\"/>
-        <Folder Include="Persistence\Repositories\JobTracking\"/>
     </ItemGroup>
 
 </Project>

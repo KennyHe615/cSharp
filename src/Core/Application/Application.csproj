@@ -1,0 +1,23 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net8.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\Domain\Domain.csproj"/>
+        <ProjectReference Include="..\..\SharedKernel\SharedKernel.csproj"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <Folder Include="Contracts\ExternalApis\Genesys\"/>
+        <Folder Include="Contracts\InternalApis\"/>
+        <Folder Include="Features\Analytics\"/>
+        <Folder Include="Features\Recovery\"/>
+        <Folder Include="Features\References\"/>
+        <Folder Include="Validation\"/>
+    </ItemGroup>
+
+</Project>
