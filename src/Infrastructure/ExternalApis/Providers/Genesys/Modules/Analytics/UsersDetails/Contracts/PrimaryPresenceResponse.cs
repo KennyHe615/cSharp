@@ -1,4 +1,4 @@
-using Application.Enums;
+using Application.Contracts.ExternalApis.Genesys.Enums;
 
 
 namespace Infrastructure.ExternalApis.Providers.Genesys.Modules.Analytics.UsersDetails.Contracts;

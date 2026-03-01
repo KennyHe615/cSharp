@@ -7,15 +7,20 @@
     </PropertyGroup>
 
     <ItemGroup>
+        <PackageReference Include="Scrutor" Version="4.2.2"/>
+
+        <PackageReference Include="FluentValidation" Version="12.1.1"/>
+        <PackageReference Include="FluentValidation.DependencyInjectionExtensions" Version="12.1.1"/>
+    </ItemGroup>
+
+    <ItemGroup>
         <ProjectReference Include="..\Domain\Domain.csproj"/>
         <ProjectReference Include="..\..\SharedKernel\SharedKernel.csproj"/>
     </ItemGroup>
 
     <ItemGroup>
-        <Folder Include="Contracts\ExternalApis\Genesys\"/>
         <Folder Include="Contracts\InternalApis\"/>
         <Folder Include="Features\Analytics\"/>
-        <Folder Include="Features\Recovery\"/>
         <Folder Include="Features\References\"/>
         <Folder Include="Validation\"/>
     </ItemGroup>

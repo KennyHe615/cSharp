@@ -13,9 +13,12 @@ public enum SyncDataType
 
     #region Analytics
 
-    UserDetailsIncremental,
-    UserDetailsRecovery,
-    ConversationDetails
+    UsersDetailsIncremental,
+    UsersDetailsRecovery,
+    ConversationsDetailsIncremental,
+    ConversationsDetailsRecovery,
+    ConversationsAggregatesIncremental,
+    ConversationsAggregatesRecovery,
 
     #endregion
 }
