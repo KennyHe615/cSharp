@@ -294,12 +294,14 @@ IF OBJECT_ID(N'dbo.sync_job_tracking', N'U') IS NULL
         CREATE TABLE [dbo].[sync_job_tracking]
         (
             [id]                       [bigint] IDENTITY (1,1) NOT NULL,
-            [category]                 [nvarchar](50)          NOT NULL,
+            [data_type]                [nvarchar](50)          NOT NULL,
             [interval]                 [nvarchar](50)          NULL,
             [page_number]              [int]                   NULL,
             [job_id]                   [nvarchar](100)         NULL,
-            [is_incremental_completed] [bit]                   NOT NULL,
-            [is_recovery_completed]    [bit]                   NOT NULL,
+            [is_incremental_completed] [bit]                   NOT NULL
+                CONSTRAINT [DF_sync_job_tracking_is_incremental_completed] DEFAULT ((0)),
+            [is_recovery_completed]    [bit]                   NOT NULL
+                CONSTRAINT [DF_sync_job_tracking_is_recovery_completed] DEFAULT ((0)),
             [app_created_at]           DATETIMEOFFSET(0)       NOT NULL
                 CONSTRAINT [DF_sync_job_tracking_app_created_at] DEFAULT (SWITCHOFFSET(SYSDATETIMEOFFSET(),
                                                                                        DATENAME(TzOffset,
@@ -318,11 +320,11 @@ GO
 
 IF NOT EXISTS (SELECT 1
                FROM sys.indexes
-               WHERE name = N'IX_sync_job_tracking_category'
+               WHERE name = N'IX_sync_job_tracking_data_type'
                  AND object_id = OBJECT_ID(N'dbo.sync_job_tracking'))
     BEGIN
-        CREATE NONCLUSTERED INDEX [IX_sync_job_tracking_category]
-            ON [dbo].[sync_job_tracking] ([category]);
+        CREATE NONCLUSTERED INDEX [IX_sync_job_tracking_data_type]
+            ON [dbo].[sync_job_tracking] ([data_type]);
     END
 GO
 

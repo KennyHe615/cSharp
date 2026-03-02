@@ -7,8 +7,6 @@ public class GenesysOptions
 {
     public const string SectionName = "Genesys";
 
-    // public const string OAuthBaseUrl = "https://login.cac1.pure.cloud";
-    // public const string ApiBaseUrl = "https://api.cac1.pure.cloud";
     [Required]
     public string OAuthBaseUrl { get; init; } = null!;
 

@@ -33,10 +33,12 @@ public sealed class JobTrackingConfiguration : IEntityTypeConfiguration<JobTrack
                .HasMaxLength(100);
 
         builder.Property(x => x.IsIncrementalCompleted)
-               .HasDefaultValue(false);
+               .IsRequired()
+               .ValueGeneratedNever();
 
         builder.Property(x => x.IsRecoveryCompleted)
-               .HasDefaultValue(false);
+               .IsRequired()
+               .ValueGeneratedNever();
 
         #endregion
 

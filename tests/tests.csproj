@@ -18,9 +18,13 @@
         <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="8.0.0"/>
         <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="8.0.0"/>
         <PackageReference Include="Microsoft.Data.Sqlite" Version="8.0.11"/>
+
+        <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.Http" Version="3.3.0"/>
     </ItemGroup>
 
     <ItemGroup>
+        <ProjectReference Include="..\src\Core\Application\Application.csproj"/>
+        <ProjectReference Include="..\src\Hosts\FunctionApp\FunctionApp.csproj"/>
         <ProjectReference Include="..\src\Infrastructure\Infrastructure.csproj"/>
     </ItemGroup>
 

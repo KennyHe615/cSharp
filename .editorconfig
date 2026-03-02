@@ -41,7 +41,7 @@ resharper_wrap_chained_method_calls = chop_always
 ############################################################
 # DTOs, Mapper Profiles and Entities - Suppress ReSharper warnings
 ############################################################
-[{**/*Options.cs,**/*Response.cs,**/*Profile.cs,**/Entities/**/*.cs,**/Dtos/**/*.cs,**/*Dto.cs}]
+[{**/*Options.cs,**/*Response.cs,**/*Profile.cs,**/Entities/**/*.cs,**/DTOs/**/*.cs,**/*RawContract.cs}]
 resharper_class_never_instantiated_global_highlighting = none
 resharper_unused_type_global_highlighting = none
 resharper_unused_member_global_highlighting = none

@@ -17,7 +17,7 @@ public sealed class KeyVaultOptions
 
     [Required]
     [MinLength(1)]
-    public string GenesysClientSecretPrefix { get; init; } = "GenesysClientSecret";
+    public string GenesysClientSecretSecretPrefix { get; init; } = "GenesysClientSecret";
 
     [Required]
     [MinLength(1)]
@@ -38,5 +38,3 @@ public sealed class KeyVaultOptions
 
     public bool UseExponentialBackoff { get; set; } = true;
 }
-
-// public const string Uri = "https://kv-bi-services-dev-01.vault.azure.net/";

@@ -3,6 +3,7 @@ using Application.Abstractions.Persistence;
 using Infrastructure.Persistence.DbContext;
 using Infrastructure.Persistence.Interceptors;
 using Infrastructure.Persistence.Mappers;
+using Infrastructure.Persistence.Repositories.JobTracking;
 using Infrastructure.Persistence.Repositories.References;
 using Infrastructure.Persistence.Repositories.UserDetails;
 using Infrastructure.Time;
@@ -38,5 +39,6 @@ public static class DependencyInjection
         services.AddScoped<IUnitOfWork, UnitOfWork>();
         services.AddScoped<IReferencesRepository, ReferencesRepository>();
         services.AddScoped<IUserDetailsRepository, UserDetailsRepository>();
+        services.AddScoped<IJobTrackingRepository, JobTrackingRepository>();
     }
 }
