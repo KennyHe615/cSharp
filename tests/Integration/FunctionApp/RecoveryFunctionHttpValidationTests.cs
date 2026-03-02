@@ -7,6 +7,9 @@ using FluentValidation.Results;
 using FunctionApp.Http;
 
 using Microsoft.Azure.Functions.Worker.Http;
+using Microsoft.Extensions.Logging;
+
+using SharedKernel.Lobs;
 
 using tests.TestSupport.Functions;
 
@@ -78,7 +81,12 @@ public sealed class RecoveryFunctionHttpValidationTests
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         Assert.Contains("Invalid value for 'lob': 'abc'.", error);
-        Assert.Contains("NTT / LCL / CRC", error);
+
+        foreach (string allowed in LobName.AllowedValues)
+        {
+            Assert.Contains(allowed, error);
+        }
+
         Assert.Equal(0, mediator.SendCount);
     }
 
@@ -218,6 +226,116 @@ public sealed class RecoveryFunctionHttpValidationTests
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         Assert.Contains("Invalid interval format.", error);
         Assert.Equal(0, mediator.SendCount);
+    }
+
+    [Fact]
+    public async Task Post_WhenCanceledBeforeProcessing_ThrowsOperationCanceledException()
+    {
+        using CancellationTokenSource cts = new CancellationTokenSource();
+        cts.Cancel();
+
+        RecoveryFunctionHttpTestFixture.StubMediator mediator = new RecoveryFunctionHttpTestFixture.StubMediator();
+
+        RecoveryFunction sut = RecoveryFunctionHttpTestFixture.CreateSut(mediator);
+        FakeHttpRequestData req = RecoveryFunctionHttpTestFixture.CreateRequest("""
+                                                                                    {
+                                                                                      "lob":"crc",
+                                                                                      "category":"UsersDetails",
+                                                                                      "jobId":"JOB-123"
+                                                                                    }
+                                                                                    """);
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => sut.CreateRecoveryRequest(req, cts.Token));
+
+        Assert.Equal(0, mediator.SendCount);
+    }
+
+    [Fact]
+    public async Task Post_MalformedJson_LogsWarningOnce_ForInvalidJsonPayloadMessage()
+    {
+        RecoveryFunctionHttpTestFixture.StubMediator mediator = new RecoveryFunctionHttpTestFixture.StubMediator();
+        RecoveryFunctionHttpTestFixture.CapturingLogger<RecoveryFunction> logger =
+            new RecoveryFunctionHttpTestFixture.CapturingLogger<RecoveryFunction>();
+
+        RecoveryFunction sut = RecoveryFunctionHttpTestFixture.CreateSut(mediator, logger);
+        FakeHttpRequestData req = RecoveryFunctionHttpTestFixture.CreateRequest("{");
+
+        HttpResponseData response = await sut.CreateRecoveryRequest(req, CancellationToken.None);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal(0, mediator.SendCount);
+
+        List<RecoveryFunctionHttpTestFixture.CapturingLogger<RecoveryFunction>.LogEntry> warningEntries =
+            logger.Entries.Where(e => e.Level == LogLevel.Warning)
+                  .ToList();
+
+        Assert.Contains(warningEntries, e => e.Message.Contains("Invalid JSON payload for recovery request."));
+        Assert.Equal(1, warningEntries.Count(e => e.Message.Contains("Invalid JSON payload for recovery request.")));
+    }
+
+    [Fact]
+    public async Task Post_UnexpectedException_ReturnsInternalServerError_AndLogsError()
+    {
+        RecoveryFunctionHttpTestFixture.StubMediator mediator = new RecoveryFunctionHttpTestFixture.StubMediator
+                                                                {
+                                                                    OnSend = (_, _) =>
+                                                                                 throw new
+                                                                                     InvalidOperationException("boom")
+                                                                };
+        RecoveryFunctionHttpTestFixture.CapturingLogger<RecoveryFunction> logger =
+            new RecoveryFunctionHttpTestFixture.CapturingLogger<RecoveryFunction>();
+
+        RecoveryFunction sut = RecoveryFunctionHttpTestFixture.CreateSut(mediator, logger);
+        FakeHttpRequestData req = RecoveryFunctionHttpTestFixture.CreateRequest("""
+                                                                                    {
+                                                                                      "lob":"crc",
+                                                                                      "category":"UsersDetails",
+                                                                                      "jobId":"JOB-123"
+                                                                                    }
+                                                                                    """);
+
+        HttpResponseData response = await sut.CreateRecoveryRequest(req, CancellationToken.None);
+        string error = RecoveryFunctionHttpTestFixture.ReadError(response);
+
+        Assert.Equal(HttpStatusCode.InternalServerError, response.StatusCode);
+        Assert.Contains("An error occurred processing your request.", error);
+        Assert.Equal(1, mediator.SendCount);
+
+        Assert.Contains(logger.Entries,
+                        e => e.Level == LogLevel.Error && e.Message.Contains("Error processing recovery request."));
+        Assert.Contains(logger.Entries, e => e.Level == LogLevel.Error && e.Message.Contains("Exception Summary:"));
+    }
+
+    [Fact]
+    public async Task Post_ValidationException_DoesNotLogWarningOrError()
+    {
+        RecoveryFunctionHttpTestFixture.StubMediator mediator = new RecoveryFunctionHttpTestFixture.StubMediator
+                                                                {
+                                                                    OnSend = (_, _) =>
+                                                                                 throw new ValidationException([
+                                                                                     new ValidationFailure("",
+                                                                                      "Either Interval or JobId must be provided.")
+                                                                                 ])
+                                                                };
+        RecoveryFunctionHttpTestFixture.CapturingLogger<RecoveryFunction> logger =
+            new RecoveryFunctionHttpTestFixture.CapturingLogger<RecoveryFunction>();
+
+        RecoveryFunction sut = RecoveryFunctionHttpTestFixture.CreateSut(mediator, logger);
+        FakeHttpRequestData req = RecoveryFunctionHttpTestFixture.CreateRequest("""
+                                                                                    {
+                                                                                      "lob":"crc",
+                                                                                      "category":"UsersDetails",
+                                                                                      "jobId":"JOB-123"
+                                                                                    }
+                                                                                    """);
+
+        HttpResponseData response = await sut.CreateRecoveryRequest(req, CancellationToken.None);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.DoesNotContain(logger.Entries,
+                              e => e.Level    == LogLevel.Warning
+                                   || e.Level == LogLevel.Error
+                                   || e.Level == LogLevel.Critical);
     }
 
     [Fact]

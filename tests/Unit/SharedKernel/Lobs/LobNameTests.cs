@@ -7,7 +7,7 @@ namespace tests.Unit.SharedKernel.Lobs;
 
 public sealed class LobNameTests
 {
-    #region Constructor
+    #region ========== *** Constructor *** ==========
 
     [Theory]
     [InlineData("NTT", "NTT")]
@@ -55,6 +55,17 @@ public sealed class LobNameTests
         Assert.Contains("Unsupported LOB", ex.Message);
     }
 
+    [Fact]
+    public void Constructor_ThrowsArgumentOutOfRangeException_MessageIncludesAllowedValues()
+    {
+        ArgumentOutOfRangeException ex = Assert.Throws<ArgumentOutOfRangeException>(() => new LobName("ABC"));
+
+        foreach (string allowed in LobName.AllowedValues)
+        {
+            Assert.Contains(allowed, ex.Message);
+        }
+    }
+
     #endregion
 
     [Fact]
@@ -92,5 +103,14 @@ public sealed class LobNameTests
         LobName right = new LobName("NTT");
 
         Assert.Equal(left, right);
+    }
+
+    [Fact]
+    public void AllowedValues_ReturnsNormalizedValues_InOrdinalOrder()
+    {
+        string[] expected = ["CRC", "LCL", "NTT"];
+        string[] actual = LobName.AllowedValues.ToArray();
+
+        Assert.Equal(expected, actual);
     }
 }

@@ -26,6 +26,14 @@ public readonly record struct LobName
         Value = value.ToUpperInvariant();
     }
 
+    /// <summary>
+    /// Gets the supported LOB values in normalized uppercase form.
+    /// </summary>
+    public static IReadOnlyCollection<string> AllowedValues =>
+        Allowed.Select(v => v.ToUpperInvariant())
+               .OrderBy(v => v, StringComparer.Ordinal)
+               .ToArray();
+
     public static LobName Ntt => new LobName("NTT");
 
     public static LobName Crc => new LobName("CRC");

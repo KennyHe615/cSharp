@@ -10,6 +10,7 @@ using Application.Mediator;
 using FunctionApp.Http;
 
 using Microsoft.Azure.Functions.Worker.Http;
+using Microsoft.Extensions.Logging;
 
 using tests.TestSupport.Functions;
 using tests.TestSupport.Logging;
@@ -20,7 +21,7 @@ namespace Tests.Integration.FunctionApp;
 [ExcludeFromCodeCoverage]
 internal static class RecoveryFunctionHttpTestFixture
 {
-    internal static RecoveryFunction CreateSut(StubMediator mediator)
+    internal static RecoveryFunction CreateSut(StubMediator mediator, ILogger<RecoveryFunction>? logger = null)
     {
         StubLobContextAccessor accessor = new StubLobContextAccessor();
         StubCredentialProvider credentialProvider = new StubCredentialProvider();
@@ -28,7 +29,7 @@ internal static class RecoveryFunctionHttpTestFixture
         return new RecoveryFunction(mediator,
                                     accessor,
                                     credentialProvider,
-                                    new TestLogger<RecoveryFunction>());
+                                    logger ?? new TestLogger<RecoveryFunction>());
     }
 
     internal static FakeHttpRequestData CreateRequest(string json)
@@ -101,6 +102,46 @@ internal static class RecoveryFunctionHttpTestFixture
             accessor.DbConnectionString = "conn";
 
             return Task.CompletedTask;
+        }
+    }
+
+    internal sealed class CapturingLogger<T> : ILogger<T>
+    {
+        private readonly List<LogEntry> _entries = [];
+
+        internal IReadOnlyList<LogEntry> Entries => _entries;
+
+        public IDisposable BeginScope<TState>(TState state)
+            where TState : notnull
+        {
+            return NoopDisposable.Instance;
+        }
+
+        public bool IsEnabled(LogLevel logLevel)
+        {
+            return true;
+        }
+
+        public void Log<TState>(LogLevel logLevel,
+                                EventId eventId,
+                                TState state,
+                                Exception? exception,
+                                Func<TState, Exception?, string> formatter)
+        {
+            _entries.Add(new LogEntry(logLevel, formatter(state, exception), exception));
+        }
+
+        internal sealed record LogEntry(LogLevel Level,
+                                        string Message,
+                                        Exception? Exception);
+
+        private sealed class NoopDisposable : IDisposable
+        {
+            internal static readonly NoopDisposable Instance = new NoopDisposable();
+
+            public void Dispose()
+            {
+            }
         }
     }
 }
