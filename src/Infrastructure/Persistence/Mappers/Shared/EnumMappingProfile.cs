@@ -1,4 +1,4 @@
-using Application.Enums;
+using Application.Contracts.ExternalApis.Genesys.Enums;
 
 using AutoMapper;
 
