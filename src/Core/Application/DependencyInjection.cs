@@ -1,4 +1,6 @@
+using Application.Abstractions.Orchestration;
 using Application.Behaviors;
+using Application.Features.SyncTracking;
 using Application.Mediator;
 
 using FluentValidation;
@@ -24,5 +26,9 @@ public static class DependencyInjection
                                   .AddClasses(classes => classes.AssignableTo(typeof(IRequestHandler<,>)))
                                   .AsImplementedInterfaces()
                                   .WithScopedLifetime());
+
+        services.AddScoped<ISyncRunCoordinator, SyncRunCoordinator>();
+        services.AddScoped<ISyncRequestRunner, SyncRequestRunner>();
+        services.AddScoped<ISyncExecutionDispatcher, SyncExecutionDispatcher>();
     }
 }

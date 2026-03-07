@@ -1,4 +1,4 @@
-using Application.DTOs.UserDetails;
+using Application.DTOs.UsersDetails;
 
 
 namespace Application.Abstractions.Persistence;

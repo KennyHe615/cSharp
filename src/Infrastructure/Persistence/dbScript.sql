@@ -288,73 +288,228 @@ IF NOT EXISTS (SELECT 1
 GO
 /* endregion */
 
-/* region ========== *** Sync Job Tracking *** ========== */
-IF OBJECT_ID(N'dbo.sync_job_tracking', N'U') IS NULL
+/* region ========== *** Sync Tracking: Request *** ========== */
+IF OBJECT_ID(N'dbo.sync_request', N'U') IS NULL
     BEGIN
-        CREATE TABLE [dbo].[sync_job_tracking]
+        CREATE TABLE [dbo].[sync_request]
         (
-            [id]                       [bigint] IDENTITY (1,1) NOT NULL,
-            [data_type]                [nvarchar](50)          NOT NULL,
-            [interval]                 [nvarchar](50)          NULL,
-            [page_number]              [int]                   NULL,
-            [job_id]                   [nvarchar](100)         NULL,
-            [is_incremental_completed] [bit]                   NOT NULL
-                CONSTRAINT [DF_sync_job_tracking_is_incremental_completed] DEFAULT ((0)),
-            [is_recovery_completed]    [bit]                   NOT NULL
-                CONSTRAINT [DF_sync_job_tracking_is_recovery_completed] DEFAULT ((0)),
-            [app_created_at]           DATETIMEOFFSET(0)       NOT NULL
-                CONSTRAINT [DF_sync_job_tracking_app_created_at] DEFAULT (SWITCHOFFSET(SYSDATETIMEOFFSET(),
-                                                                                       DATENAME(TzOffset,
-                                                                                                SYSDATETIMEOFFSET() AT TIME ZONE
-                                                                                                'Eastern Standard Time'))),
-            [app_updated_at]           DATETIMEOFFSET(0)       NOT NULL
-                CONSTRAINT [DF_sync_job_tracking_app_updated_at] DEFAULT (SWITCHOFFSET(SYSDATETIMEOFFSET(),
-                                                                                       DATENAME(TzOffset,
-                                                                                                SYSDATETIMEOFFSET() AT TIME ZONE
-                                                                                                'Eastern Standard Time'))),
+            [id]             [bigint] IDENTITY (1,1) NOT NULL,
+            [category]       [nvarchar](50)          NOT NULL,
+            [mode]           [nvarchar](20)          NOT NULL,
+            [interval]       [nvarchar](50)          NULL,
+            [page_number]    [int]                   NULL,
+            [genesys_job_id] [nvarchar](100)         NULL,
+            [scope_key]      [nvarchar](255)         NOT NULL,
+            [current_run_id] [bigint]                NULL,
+            [app_created_at] DATETIMEOFFSET(0)       NOT NULL
+                CONSTRAINT [DF_sync_request_app_created_at] DEFAULT (SWITCHOFFSET(SYSDATETIMEOFFSET(),
+                                                                                  DATENAME(TzOffset,
+                                                                                           SYSDATETIMEOFFSET() AT TIME ZONE
+                                                                                           'Eastern Standard Time'))),
+            [app_updated_at] DATETIMEOFFSET(0)       NOT NULL
+                CONSTRAINT [DF_sync_request_app_updated_at] DEFAULT (SWITCHOFFSET(SYSDATETIMEOFFSET(),
+                                                                                  DATENAME(TzOffset,
+                                                                                           SYSDATETIMEOFFSET() AT TIME ZONE
+                                                                                           'Eastern Standard Time'))),
 
-            CONSTRAINT [PK_sync_job_tracking] PRIMARY KEY CLUSTERED ([id])
+            CONSTRAINT [PK_sync_request] PRIMARY KEY CLUSTERED ([id])
         );
     END
 GO
 
 IF NOT EXISTS (SELECT 1
                FROM sys.indexes
-               WHERE name = N'IX_sync_job_tracking_data_type'
-                 AND object_id = OBJECT_ID(N'dbo.sync_job_tracking'))
+               WHERE name = N'UX_sync_request_scope_key'
+                 AND object_id = OBJECT_ID(N'dbo.sync_request'))
     BEGIN
-        CREATE NONCLUSTERED INDEX [IX_sync_job_tracking_data_type]
-            ON [dbo].[sync_job_tracking] ([data_type]);
+        CREATE UNIQUE NONCLUSTERED INDEX [UX_sync_request_scope_key]
+            ON [dbo].[sync_request] ([scope_key]);
     END
 GO
 
 IF NOT EXISTS (SELECT 1
                FROM sys.indexes
-               WHERE name = N'IX_sync_job_tracking_is_incremental_completed'
-                 AND object_id = OBJECT_ID(N'dbo.sync_job_tracking'))
+               WHERE name = N'IX_sync_request_category_mode_app_updated_at'
+                 AND object_id = OBJECT_ID(N'dbo.sync_request'))
     BEGIN
-        CREATE NONCLUSTERED INDEX [IX_sync_job_tracking_is_incremental_completed]
-            ON [dbo].[sync_job_tracking] ([is_incremental_completed]);
+        CREATE NONCLUSTERED INDEX [IX_sync_request_category_mode_app_updated_at]
+            ON [dbo].[sync_request] ([category], [mode], [app_updated_at]);
     END
 GO
 
 IF NOT EXISTS (SELECT 1
                FROM sys.indexes
-               WHERE name = N'IX_sync_job_tracking_is_recovery_completed'
-                 AND object_id = OBJECT_ID(N'dbo.sync_job_tracking'))
+               WHERE name = N'IX_sync_request_current_run_id'
+                 AND object_id = OBJECT_ID(N'dbo.sync_request'))
     BEGIN
-        CREATE NONCLUSTERED INDEX [IX_sync_job_tracking_is_recovery_completed]
-            ON [dbo].[sync_job_tracking] ([is_recovery_completed]);
+        CREATE NONCLUSTERED INDEX [IX_sync_request_current_run_id]
+            ON [dbo].[sync_request] ([current_run_id]);
     END
 GO
 
 IF NOT EXISTS (SELECT 1
                FROM sys.indexes
-               WHERE name = N'IX_sync_job_tracking_app_updated_at'
-                 AND object_id = OBJECT_ID(N'dbo.sync_job_tracking'))
+               WHERE name = N'IX_sync_request_app_updated_at'
+                 AND object_id = OBJECT_ID(N'dbo.sync_request'))
     BEGIN
-        CREATE NONCLUSTERED INDEX [IX_sync_job_tracking_app_updated_at]
-            ON [dbo].[sync_job_tracking] ([app_updated_at]);
+        CREATE NONCLUSTERED INDEX [IX_sync_request_app_updated_at]
+            ON [dbo].[sync_request] ([app_updated_at]);
+    END
+GO
+/* endregion */
+
+/* region ========== *** Sync Tracking: Run *** ========== */
+IF OBJECT_ID(N'dbo.sync_run', N'U') IS NULL
+    BEGIN
+        CREATE TABLE [dbo].[sync_run]
+        (
+            [id]                   [bigint] IDENTITY (1,1) NOT NULL,
+            [request_id]           [bigint]                NOT NULL,
+            [status]               [nvarchar](20)          NOT NULL,
+            [superseded_by_run_id] [bigint]                NULL,
+            [attempt_no]           [int]                   NOT NULL
+                CONSTRAINT [DF_sync_run_attempt_no] DEFAULT ((1)),
+            [run_started_at]       DATETIMEOFFSET(0)       NULL,
+            [run_completed_at]     DATETIMEOFFSET(0)       NULL,
+            [failure_reason]       [nvarchar](1000)        NULL,
+            [app_created_at]       DATETIMEOFFSET(0)       NOT NULL
+                CONSTRAINT [DF_sync_run_app_created_at] DEFAULT (SWITCHOFFSET(SYSDATETIMEOFFSET(),
+                                                                              DATENAME(TzOffset,
+                                                                                       SYSDATETIMEOFFSET() AT TIME ZONE
+                                                                                       'Eastern Standard Time'))),
+            [app_updated_at]       DATETIMEOFFSET(0)       NOT NULL
+                CONSTRAINT [DF_sync_run_app_updated_at] DEFAULT (SWITCHOFFSET(SYSDATETIMEOFFSET(),
+                                                                              DATENAME(TzOffset,
+                                                                                       SYSDATETIMEOFFSET() AT TIME ZONE
+                                                                                       'Eastern Standard Time'))),
+
+            CONSTRAINT [PK_sync_run] PRIMARY KEY CLUSTERED ([id]),
+            CONSTRAINT [FK_sync_run_request_id] FOREIGN KEY ([request_id]) REFERENCES [dbo].[sync_request] ([id]),
+            CONSTRAINT [FK_sync_run_superseded_by_run_id] FOREIGN KEY ([superseded_by_run_id]) REFERENCES [dbo].[sync_run] ([id])
+        );
+    END
+GO
+
+IF NOT EXISTS (SELECT 1
+               FROM sys.indexes
+               WHERE name = N'IX_sync_run_request_id_app_updated_at'
+                 AND object_id = OBJECT_ID(N'dbo.sync_run'))
+    BEGIN
+        CREATE NONCLUSTERED INDEX [IX_sync_run_request_id_app_updated_at]
+            ON [dbo].[sync_run] ([request_id], [app_updated_at]);
+    END
+GO
+
+IF NOT EXISTS (SELECT 1
+               FROM sys.indexes
+               WHERE name = N'IX_sync_run_status_app_updated_at'
+                 AND object_id = OBJECT_ID(N'dbo.sync_run'))
+    BEGIN
+        CREATE NONCLUSTERED INDEX [IX_sync_run_status_app_updated_at]
+            ON [dbo].[sync_run] ([status], [app_updated_at]);
+    END
+GO
+
+IF NOT EXISTS (SELECT 1
+               FROM sys.indexes
+               WHERE name = N'IX_sync_run_superseded_by_run_id'
+                 AND object_id = OBJECT_ID(N'dbo.sync_run'))
+    BEGIN
+        CREATE NONCLUSTERED INDEX [IX_sync_run_superseded_by_run_id]
+            ON [dbo].[sync_run] ([superseded_by_run_id]);
+    END
+GO
+
+IF NOT EXISTS (SELECT 1
+               FROM sys.indexes
+               WHERE name = N'UX_sync_run_request_active'
+                 AND object_id = OBJECT_ID(N'dbo.sync_run'))
+    BEGIN
+        CREATE UNIQUE NONCLUSTERED INDEX [UX_sync_run_request_active]
+            ON [dbo].[sync_run] ([request_id])
+            WHERE [status] IN ('PENDING', 'RUNNING');
+    END
+GO
+
+IF NOT EXISTS (SELECT 1
+               FROM sys.indexes
+               WHERE name = N'IX_sync_run_app_updated_at'
+                 AND object_id = OBJECT_ID(N'dbo.sync_run'))
+    BEGIN
+        CREATE NONCLUSTERED INDEX [IX_sync_run_app_updated_at]
+            ON [dbo].[sync_run] ([app_updated_at]);
+    END
+GO
+/* endregion */
+
+/* region ========== *** Cross-table FK (sync_request.current_run_id -> sync_run.id) *** ========== */
+IF NOT EXISTS (SELECT 1
+               FROM sys.foreign_keys
+               WHERE name = N'FK_sync_request_current_run_id'
+                 AND parent_object_id = OBJECT_ID(N'dbo.sync_request'))
+    BEGIN
+        ALTER TABLE [dbo].[sync_request]
+            ADD CONSTRAINT [FK_sync_request_current_run_id]
+                FOREIGN KEY ([current_run_id]) REFERENCES [dbo].[sync_run] ([id]);
+    END
+GO
+/* endregion */
+
+/* region ========== *** Sync Tracking: Checkpoint *** ========== */
+IF OBJECT_ID(N'dbo.sync_checkpoint', N'U') IS NULL
+    BEGIN
+        CREATE TABLE [dbo].[sync_checkpoint]
+        (
+            [id]             [bigint] IDENTITY (1,1) NOT NULL,
+            [run_id]         [bigint]                NOT NULL,
+            [step]           [nvarchar](50)          NOT NULL,
+            [cursor]         [nvarchar](200)         NOT NULL,
+            [status]         [nvarchar](20)          NOT NULL,
+            [failure_reason] [nvarchar](1000)        NULL,
+            [app_created_at] DATETIMEOFFSET(0)       NOT NULL
+                CONSTRAINT [DF_sync_checkpoint_app_created_at] DEFAULT (SWITCHOFFSET(SYSDATETIMEOFFSET(),
+                                                                                     DATENAME(TzOffset,
+                                                                                              SYSDATETIMEOFFSET() AT TIME ZONE
+                                                                                              'Eastern Standard Time'))),
+            [app_updated_at] DATETIMEOFFSET(0)       NOT NULL
+                CONSTRAINT [DF_sync_checkpoint_app_updated_at] DEFAULT (SWITCHOFFSET(SYSDATETIMEOFFSET(),
+                                                                                     DATENAME(TzOffset,
+                                                                                              SYSDATETIMEOFFSET() AT TIME ZONE
+                                                                                              'Eastern Standard Time'))),
+
+            CONSTRAINT [PK_sync_checkpoint] PRIMARY KEY CLUSTERED ([id]),
+            CONSTRAINT [FK_sync_checkpoint_run_id] FOREIGN KEY ([run_id]) REFERENCES [dbo].[sync_run] ([id])
+        );
+    END
+GO
+
+IF NOT EXISTS (SELECT 1
+               FROM sys.indexes
+               WHERE name = N'UX_sync_checkpoint_run_step_cursor'
+                 AND object_id = OBJECT_ID(N'dbo.sync_checkpoint'))
+    BEGIN
+        CREATE UNIQUE NONCLUSTERED INDEX [UX_sync_checkpoint_run_step_cursor]
+            ON [dbo].[sync_checkpoint] ([run_id], [step], [cursor]);
+    END
+GO
+
+IF NOT EXISTS (SELECT 1
+               FROM sys.indexes
+               WHERE name = N'IX_sync_checkpoint_run_status_app_updated_at'
+                 AND object_id = OBJECT_ID(N'dbo.sync_checkpoint'))
+    BEGIN
+        CREATE NONCLUSTERED INDEX [IX_sync_checkpoint_run_status_app_updated_at]
+            ON [dbo].[sync_checkpoint] ([run_id], [status], [app_updated_at]);
+    END
+GO
+
+IF NOT EXISTS (SELECT 1
+               FROM sys.indexes
+               WHERE name = N'IX_sync_checkpoint_app_updated_at'
+                 AND object_id = OBJECT_ID(N'dbo.sync_checkpoint'))
+    BEGIN
+        CREATE NONCLUSTERED INDEX [IX_sync_checkpoint_app_updated_at]
+            ON [dbo].[sync_checkpoint] ([app_updated_at]);
     END
 GO
 /* endregion */

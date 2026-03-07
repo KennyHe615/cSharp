@@ -45,7 +45,7 @@ public sealed class RecoveryFunction(ISimpleMediator mediator,
                                                                 };
 
     /// <summary>
-    /// Creates a recovery request record for a given LOB/category and optional interval/job id.
+    /// Creates a recovery request record for a given LOB/category and optional interval/GenesysJobId.
     /// </summary>
     /// <param name="req">Incoming HTTP request.</param>
     /// <param name="ct">Cancellation token.</param>
@@ -205,7 +205,7 @@ public sealed class RecoveryFunction(ISimpleMediator mediator,
             new CreateRecoveryRequestCommand(lob,
                                              request.Category!.Value,
                                              request.Interval,
-                                             request.JobId);
+                                             request.GenesysJobId);
 
         return await mediator.Send(command, ct)
                              .ConfigureAwait(false);

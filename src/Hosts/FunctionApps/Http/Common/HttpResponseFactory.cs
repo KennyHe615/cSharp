@@ -6,7 +6,7 @@ using Microsoft.Azure.Functions.Worker.Http;
 namespace FunctionApp.Http.Common;
 
 /// <summary>
-/// Centralized factory for standard HTTP JSON responses used by FunctionApp HTTP triggers.
+/// Centralized factory for standard HTTP JSON responses used by FunctionApps HTTP triggers.
 /// </summary>
 public static class HttpResponseFactory
 {

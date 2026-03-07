@@ -19,7 +19,7 @@ builder.ConfigureFunctionsWebApplication();
 
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
-builder.Services.AddApplicationInsightsForFunctions("FunctionApp");
+builder.Services.AddApplicationInsightsForFunctions("FunctionApps");
 
 builder.Build()
        .Run();

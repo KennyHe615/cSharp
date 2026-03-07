@@ -21,13 +21,12 @@ public sealed class RecoveryFunctionHttpSuccessTests
         RecoveryFunctionHttpTestFixture.StubMediator mediator = new RecoveryFunctionHttpTestFixture.StubMediator();
 
         RecoveryFunction sut = RecoveryFunctionHttpTestFixture.CreateSut(mediator);
-        FakeHttpRequestData req = RecoveryFunctionHttpTestFixture.CreateRequest("""
-                                                                                    {
-                                                                                      "lob":"crc",
-                                                                                      "category":"ConversationsDetails",
-                                                                                      "interval":"2025-01-01T00:00Z/2025-12-31T23:59Z"
-                                                                                    }
-                                                                                    """);
+        FakeHttpRequestData req =
+            RecoveryFunctionHttpTestFixture.CreateRequest("{\n"
+                                                          + "  \"lob\":\"crc\",\n"
+                                                          + "  \"category\":\"ConversationsDetails\",\n"
+                                                          + "  \"interval\":\"2025-01-01T00:00Z/2025-12-31T23:59Z\"\n"
+                                                          + "}");
 
         HttpResponseData response = await sut.CreateRecoveryRequest(req, CancellationToken.None);
 
@@ -39,18 +38,28 @@ public sealed class RecoveryFunctionHttpSuccessTests
     }
 
     [Fact]
-    public async Task Post_ValidJobIdOnlyPayload_ReturnsCreated()
+    public async Task Post_ValidGenesysJobIdOnlyPayload_WithAsyncMediatorContinuation_ReturnsCreated()
     {
-        RecoveryFunctionHttpTestFixture.StubMediator mediator = new RecoveryFunctionHttpTestFixture.StubMediator();
+        RecoveryFunctionHttpTestFixture.StubMediator mediator = new RecoveryFunctionHttpTestFixture.StubMediator
+                                                                {
+                                                                    OnSend = async (_, _) =>
+                                                                             {
+                                                                                 await Task.Yield();
+
+                                                                                 return new
+                                                                                     CreateRecoveryRequestResponse(true,
+                                                                                      "ok",
+                                                                                      new {});
+                                                                             }
+                                                                };
 
         RecoveryFunction sut = RecoveryFunctionHttpTestFixture.CreateSut(mediator);
-        FakeHttpRequestData req = RecoveryFunctionHttpTestFixture.CreateRequest("""
-                                                                                    {
-                                                                                      "lob":"lcl",
-                                                                                      "category":"UsersDetails",
-                                                                                      "jobId":"JOB-123"
-                                                                                    }
-                                                                                    """);
+        FakeHttpRequestData req =
+            RecoveryFunctionHttpTestFixture.CreateRequest("{\n"
+                                                          + "  \"lob\":\"lcl\",\n"
+                                                          + "  \"category\":\"UsersDetails\",\n"
+                                                          + "  \"genesysJobId\":\"JOB-123\"\n"
+                                                          + "}");
 
         HttpResponseData response = await sut.CreateRecoveryRequest(req, CancellationToken.None);
 
@@ -58,6 +67,6 @@ public sealed class RecoveryFunctionHttpSuccessTests
         Assert.Equal(1, mediator.SendCount);
         Assert.NotNull(mediator.LastCommand);
         Assert.Null(mediator.LastCommand!.Interval);
-        Assert.Equal("JOB-123", mediator.LastCommand.JobId);
+        Assert.Equal("JOB-123", mediator.LastCommand.GenesysJobId);
     }
 }

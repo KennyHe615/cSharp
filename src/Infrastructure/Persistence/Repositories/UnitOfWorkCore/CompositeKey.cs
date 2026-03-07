@@ -37,7 +37,8 @@ internal sealed class CompositeKey(object?[] values) : IEquatable<CompositeKey>
         if (ReferenceEquals(this, other)) return true;
         if (_values.Length != other._values.Length) return false;
 
-        return !_values.Where((t, i) => !Equals(t, other._values[i])).Any();
+        return !_values.Where((t, i) => !Equals(t, other._values[i]))
+                       .Any();
     }
 
     /// <summary>
@@ -94,7 +95,7 @@ internal sealed class CompositeKey(object?[] values) : IEquatable<CompositeKey>
     /// </remarks>
     private static int CalculateHashCode(object?[] values)
     {
-        HashCode hash = new();
+        HashCode hash = new HashCode();
 
         foreach (object? value in values)
         {

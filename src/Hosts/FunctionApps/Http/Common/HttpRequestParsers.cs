@@ -6,7 +6,7 @@ using Microsoft.Azure.Functions.Worker.Http;
 namespace FunctionApp.Http.Common;
 
 /// <summary>
-/// Shared HTTP request parsing helpers for FunctionApp HTTP triggers.
+/// Shared HTTP request parsing helpers for FunctionApps HTTP triggers.
 /// </summary>
 public static class HttpRequestParsers
 {
@@ -29,6 +29,9 @@ public static class HttpRequestParsers
                                                                               CancellationToken ct = default)
         where TRequest : class
     {
+        ArgumentNullException.ThrowIfNull(req);
+        ArgumentNullException.ThrowIfNull(options);
+
         TRequest? request = await JsonSerializer.DeserializeAsync<TRequest>(req.Body, options, ct)
                                                 .ConfigureAwait(false);
 
