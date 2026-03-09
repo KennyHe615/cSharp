@@ -13,7 +13,7 @@ using tests.TestSupport.Time;
 using Xunit;
 
 
-namespace Tests.Integration.Persistence;
+namespace tests.Integration.Persistence;
 
 public sealed class SyncRunRepositoryTests
 {
@@ -21,19 +21,19 @@ public sealed class SyncRunRepositoryTests
     public async Task StartNewRunAsync_NoActiveRun_CreatesRunningRun_AndSetsCurrentRun()
     {
         await using ServiceProvider provider =
-            SyncRunRepositoryTestFixture.BuildProvider(new FixedEstDateTimeProvider());
+            SyncTrackingPersistenceTestFixture.BuildProvider(new FixedEstDateTimeProvider());
         await using AsyncServiceScope scope = provider.CreateAsyncScope();
 
         AppDbContext db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         await db.Database.EnsureCreatedAsync();
 
         SyncRequestEntity request =
-            SyncRunRepositoryTestFixture.CreateRequest(SyncCategory.UsersDetails, SyncMode.Incremental, "i-1");
+            SyncTrackingPersistenceTestFixture.CreateRequest(SyncCategory.UsersDetails, SyncMode.Incremental, "i-1");
         db.Set<SyncRequestEntity>()
           .Add(request);
         await db.SaveChangesAsync();
 
-        SyncRunRepository sut = SyncRunRepositoryTestFixture.CreateSut(scope.ServiceProvider, db);
+        SyncRunRepository sut = SyncTrackingPersistenceTestFixture.CreateRunRepository(scope.ServiceProvider, db);
 
         long runId = await sut.StartNewRunAsync(request.Id, CancellationToken.None);
 
@@ -53,19 +53,21 @@ public sealed class SyncRunRepositoryTests
     public async Task StartNewRunAsync_WithActiveRun_SupersedesOldRun_AndIncrementsAttempt()
     {
         await using ServiceProvider provider =
-            SyncRunRepositoryTestFixture.BuildProvider(new FixedEstDateTimeProvider());
+            SyncTrackingPersistenceTestFixture.BuildProvider(new FixedEstDateTimeProvider());
         await using AsyncServiceScope scope = provider.CreateAsyncScope();
 
         AppDbContext db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         await db.Database.EnsureCreatedAsync();
 
         SyncRequestEntity request =
-            SyncRunRepositoryTestFixture.CreateRequest(SyncCategory.ConversationsDetails, SyncMode.Incremental, "i-2");
+            SyncTrackingPersistenceTestFixture.CreateRequest(SyncCategory.ConversationsDetails,
+                                                             SyncMode.Incremental,
+                                                             "i-2");
         db.Set<SyncRequestEntity>()
           .Add(request);
         await db.SaveChangesAsync();
 
-        SyncRunRepository sut = SyncRunRepositoryTestFixture.CreateSut(scope.ServiceProvider, db);
+        SyncRunRepository sut = SyncTrackingPersistenceTestFixture.CreateRunRepository(scope.ServiceProvider, db);
 
         long firstRunId = await sut.StartNewRunAsync(request.Id, CancellationToken.None);
         long secondRunId = await sut.StartNewRunAsync(request.Id, CancellationToken.None);
@@ -92,19 +94,19 @@ public sealed class SyncRunRepositoryTests
     public async Task IsCurrentRunAsync_ReturnsFalse_AfterRunIsCompleted()
     {
         await using ServiceProvider provider =
-            SyncRunRepositoryTestFixture.BuildProvider(new FixedEstDateTimeProvider());
+            SyncTrackingPersistenceTestFixture.BuildProvider(new FixedEstDateTimeProvider());
         await using AsyncServiceScope scope = provider.CreateAsyncScope();
 
         AppDbContext db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         await db.Database.EnsureCreatedAsync();
 
         SyncRequestEntity request =
-            SyncRunRepositoryTestFixture.CreateRequest(SyncCategory.UsersDetails, SyncMode.Incremental, "i-3");
+            SyncTrackingPersistenceTestFixture.CreateRequest(SyncCategory.UsersDetails, SyncMode.Incremental, "i-3");
         db.Set<SyncRequestEntity>()
           .Add(request);
         await db.SaveChangesAsync();
 
-        SyncRunRepository sut = SyncRunRepositoryTestFixture.CreateSut(scope.ServiceProvider, db);
+        SyncRunRepository sut = SyncTrackingPersistenceTestFixture.CreateRunRepository(scope.ServiceProvider, db);
 
         long runId = await sut.StartNewRunAsync(request.Id, CancellationToken.None);
 
@@ -125,19 +127,19 @@ public sealed class SyncRunRepositoryTests
     public async Task MarkCanceledAsync_NullReason_UsesDefaultMessage()
     {
         await using ServiceProvider provider =
-            SyncRunRepositoryTestFixture.BuildProvider(new FixedEstDateTimeProvider());
+            SyncTrackingPersistenceTestFixture.BuildProvider(new FixedEstDateTimeProvider());
         await using AsyncServiceScope scope = provider.CreateAsyncScope();
 
         AppDbContext db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         await db.Database.EnsureCreatedAsync();
 
         SyncRequestEntity request =
-            SyncRunRepositoryTestFixture.CreateRequest(SyncCategory.UsersDetails, SyncMode.Recovery, "i-4");
+            SyncTrackingPersistenceTestFixture.CreateRequest(SyncCategory.UsersDetails, SyncMode.Recovery, "i-4");
         db.Set<SyncRequestEntity>()
           .Add(request);
         await db.SaveChangesAsync();
 
-        SyncRunRepository sut = SyncRunRepositoryTestFixture.CreateSut(scope.ServiceProvider, db);
+        SyncRunRepository sut = SyncTrackingPersistenceTestFixture.CreateRunRepository(scope.ServiceProvider, db);
 
         long runId = await sut.StartNewRunAsync(request.Id, CancellationToken.None);
 

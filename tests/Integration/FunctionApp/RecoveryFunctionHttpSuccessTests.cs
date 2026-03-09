@@ -11,7 +11,7 @@ using tests.TestSupport.Functions;
 using Xunit;
 
 
-namespace Tests.Integration.FunctionApp;
+namespace tests.Integration.FunctionApp;
 
 public sealed class RecoveryFunctionHttpSuccessTests
 {

@@ -14,7 +14,7 @@ using tests.TestSupport.Time;
 using Xunit;
 
 
-namespace Tests.Integration.Persistence;
+namespace tests.Integration.Persistence;
 
 public sealed class DateTimeEstConventionTests
 {

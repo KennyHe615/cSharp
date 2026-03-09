@@ -18,14 +18,14 @@ using tests.TestSupport.Time;
 using Xunit;
 
 
-namespace Tests.Integration.Persistence;
+namespace tests.Integration.Persistence;
 
 public sealed class UpsertCompositeKeyTests
 {
     [Fact]
     public async Task UpsertRange_CompositeKey_UpdatesExistingAndAddsNew()
     {
-        ServiceCollection services = new ServiceCollection();
+        ServiceCollection services = [];
 
         services.AddLogging();
 

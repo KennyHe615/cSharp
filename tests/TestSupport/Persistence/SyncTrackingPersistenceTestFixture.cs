@@ -20,7 +20,7 @@ using tests.TestSupport.Time;
 
 namespace tests.TestSupport.Persistence;
 
-public static class SyncRunRepositoryTestFixture
+public static class SyncTrackingPersistenceTestFixture
 {
     public static ServiceProvider BuildProvider(IDateTimeProvider? dateTimeProvider = null, string? dbName = null)
     {
@@ -39,21 +39,29 @@ public static class SyncRunRepositoryTestFixture
         services.AddSingleton(dateTimeProvider ?? new FixedEstDateTimeProvider());
         services.AddScoped<AuditSaveChangesInterceptor>();
 
-        services.AddDbContext<AppDbContext>(o => o.UseInMemoryDatabase(dbName ?? $"sync-run-tests-{Guid.NewGuid()}")
-                                                  .ConfigureWarnings(w => w.Ignore(InMemoryEventId
-                                                                        .TransactionIgnoredWarning)));
+        services.AddDbContext<AppDbContext>(o => o
+                                                .UseInMemoryDatabase(dbName ?? $"sync-tracking-tests-{Guid.NewGuid()}")
+                                                .ConfigureWarnings(w => w.Ignore(InMemoryEventId
+                                                                      .TransactionIgnoredWarning)));
 
         services.AddScoped<IUnitOfWork, UnitOfWork>();
 
         return services.BuildServiceProvider();
     }
 
-    public static SyncRunRepository CreateSut(IServiceProvider provider, AppDbContext db)
+    public static SyncRunRepository CreateRunRepository(IServiceProvider provider, AppDbContext db)
     {
         IUnitOfWork uow = provider.GetRequiredService<IUnitOfWork>();
         IDateTimeProvider time = provider.GetRequiredService<IDateTimeProvider>();
 
         return new SyncRunRepository(db, uow, time);
+    }
+
+    public static SyncRequestRepository CreateRequestRepository(IServiceProvider provider, AppDbContext db)
+    {
+        IUnitOfWork uow = provider.GetRequiredService<IUnitOfWork>();
+
+        return new SyncRequestRepository(db, uow);
     }
 
     public static SyncRequestEntity CreateRequest(SyncCategory category, SyncMode mode, string interval)

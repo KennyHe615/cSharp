@@ -14,7 +14,7 @@ using SharedKernel.Lobs;
 using Xunit;
 
 
-namespace Tests.Integration.Application;
+namespace tests.Integration.Application;
 
 public sealed class ApplicationValidationPipelineIntegrationTests
 {
