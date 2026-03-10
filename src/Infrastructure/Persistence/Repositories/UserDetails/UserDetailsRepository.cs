@@ -1,5 +1,5 @@
 using Application.Abstractions.Persistence;
-using Application.DTOs.UserDetails;
+using Application.DTOs.UsersDetails;
 
 using AutoMapper;
 

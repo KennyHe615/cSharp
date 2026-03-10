@@ -1,6 +1,6 @@
 using Application.Abstractions.Normalization;
 using Application.Contracts.ExternalApis.Genesys.UsersDetails;
-using Application.DTOs.UserDetails;
+using Application.DTOs.UsersDetails;
 
 using SharedKernel.Time;
 
