@@ -7,58 +7,46 @@ using Application.Mediator;
 namespace Application.Features.Recovery;
 
 /// <summary>
-/// Handles creation of recovery requests by mapping recovery category to
-/// persistence data type and creating a job tracking record.
+/// Handles creation of recovery requests in SyncTracking (request table only).
 /// </summary>
-public sealed class
-    CreateRecoveryRequestHandler : IRequestHandler<CreateRecoveryRequestCommand, CreateRecoveryRequestResponse>
+public sealed class CreateRecoveryRequestHandler(ISyncRequestRepository syncRequestRepository)
+    : IRequestHandler<CreateRecoveryRequestCommand, CreateRecoveryRequestResponse>
 {
-    private readonly IJobTrackingRepository _jobTrackingRepository;
+    private readonly ISyncRequestRepository _syncRequestRepository =
+        syncRequestRepository ?? throw new ArgumentNullException(nameof(syncRequestRepository));
 
-    /// <summary>
-    /// Initializes a new instance of the <see cref="CreateRecoveryRequestHandler"/> class.
-    /// </summary>
-    /// <param name="jobTrackingRepository">Repository used to persist recovery job tracking records.</param>
-    public CreateRecoveryRequestHandler(IJobTrackingRepository jobTrackingRepository)
-    {
-        _jobTrackingRepository =
-            jobTrackingRepository ?? throw new ArgumentNullException(nameof(jobTrackingRepository));
-    }
-
-    /// <inheritdoc />
-    /// <exception cref="InvalidOperationException">Thrown when the recovery category is unsupported.</exception>
     public async Task<CreateRecoveryRequestResponse> Handle(CreateRecoveryRequestCommand request,
                                                             CancellationToken ct = default)
     {
-        SyncDataType dataType = MapCategoryToSyncDataType(request.Category);
-
-        long createdId = await _jobTrackingRepository.CreateAsync(dataType,
-                                                                  request.Interval,
-                                                                  request.JobId,
-                                                                  ct)
+        long requestId = await _syncRequestRepository.CreateOrGetByScopeAsync(MapCategory(request.Category),
+                                                                              SyncMode.Recovery,
+                                                                              request.Interval?.ToString(),
+                                                                              null,
+                                                                              request.GenesysJobId,
+                                                                              ct)
                                                      .ConfigureAwait(false);
 
         return new CreateRecoveryRequestResponse(true,
                                                  "Recovery request created successfully.",
                                                  new
                                                  {
-                                                     Id = createdId,
+                                                     Id = requestId,
                                                      Lob = request.Lob.ToString(),
                                                      Category = request.Category.ToString(),
                                                      request.Interval,
-                                                     request.JobId
+                                                     request.GenesysJobId
                                                  });
     }
 
     #region ========== *** Private Methods *** ==========
 
-    private static SyncDataType MapCategoryToSyncDataType(RecoveryCategory category)
+    private static SyncCategory MapCategory(RecoveryCategory category)
     {
         return category switch
                {
-                   RecoveryCategory.UsersDetails => SyncDataType.UsersDetailsRecovery,
-                   RecoveryCategory.ConversationsDetails => SyncDataType.ConversationsDetailsRecovery,
-                   RecoveryCategory.ConversationsAggregates => SyncDataType.ConversationsAggregatesRecovery,
+                   RecoveryCategory.UsersDetails => SyncCategory.UsersDetails,
+                   RecoveryCategory.ConversationsDetails => SyncCategory.ConversationsDetails,
+                   RecoveryCategory.ConversationsAggregates => SyncCategory.ConversationsAggregates,
                    _ => throw new InvalidOperationException($"Unsupported recovery category '{category}'.")
                };
     }

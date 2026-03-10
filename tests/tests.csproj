@@ -24,7 +24,7 @@
 
     <ItemGroup>
         <ProjectReference Include="..\src\Core\Application\Application.csproj"/>
-        <ProjectReference Include="..\src\Hosts\FunctionApp\FunctionApp.csproj"/>
+        <ProjectReference Include="..\src\Hosts\FunctionApps\FunctionApps.csproj"/>
         <ProjectReference Include="..\src\Infrastructure\Infrastructure.csproj"/>
     </ItemGroup>
 

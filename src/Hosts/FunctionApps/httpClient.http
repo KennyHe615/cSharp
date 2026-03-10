@@ -1,0 +1,23 @@
+@localBaseUrl = http://localhost:8008
+@azureBaseUrl = https://<your-function-app>.azurewebsites.net
+@functionKey = <your-function-key>
+
+### Local - Create Recovery Request
+POST {{localBaseUrl}}/api/recovery
+Content-Type: application/json
+
+{
+    "lob": "ntt",
+    "category": "usersdetails",
+    "interval": "2025-01-01T00:00Z/2025-12-01T23:59Z"
+}
+
+### Azure - Create Recovery Request (Function key)
+POST {{azureBaseUrl}}/api/recovery?code={{functionKey}}
+Content-Type: application/json
+
+{
+    "lob": "crc",
+    "category": "UsersDetails",
+    "interval": "2025-01-01T00:00Z/2025-12-01T23:59Z"
+}

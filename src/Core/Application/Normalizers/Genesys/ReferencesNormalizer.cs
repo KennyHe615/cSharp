@@ -1,7 +1,7 @@
 using Application.Abstractions.Normalization;
+using Application.Contracts.ExternalApis.Genesys.Enums;
 using Application.Contracts.ExternalApis.Genesys.References;
 using Application.DTOs.References;
-using Application.Enums;
 
 using SharedKernel.Extensions;
 

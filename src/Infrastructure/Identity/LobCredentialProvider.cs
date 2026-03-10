@@ -76,7 +76,7 @@ public sealed class LobCredentialProvider(ISecretProvider secretProvider,
         string env = appEnvironment.Alias;
 
         string clientIdSecretName = BuildLobSecretName(options.GenesysClientIdSecretPrefix, env, lob);
-        string clientSecretName = BuildLobSecretName(options.GenesysClientSecretPrefix, env, lob);
+        string clientSecretName = BuildLobSecretName(options.GenesysClientSecretSecretPrefix, env, lob);
         string dbConnSecretName = BuildLobSecretName(options.LandingDbConnStrSecretPrefix, env, lob);
 
         logger.LogInformation("Resolving required credentials from Key Vault for LOB '{LobName}' in environment '{EnvironmentAlias}'.",
@@ -99,7 +99,8 @@ public sealed class LobCredentialProvider(ISecretProvider secretProvider,
         Task<string> clientSecretTask = GetRequiredSecretAsync(clientSecretName, ct);
         Task<string> dbConnTask = GetRequiredSecretAsync(dbConnSecretName, ct);
 
-        await Task.WhenAll(clientIdTask, clientSecretTask, dbConnTask).ConfigureAwait(false);
+        await Task.WhenAll(clientIdTask, clientSecretTask, dbConnTask)
+                  .ConfigureAwait(false);
 
         return (clientIdTask.Result, clientSecretTask.Result, dbConnTask.Result);
     }
@@ -113,7 +114,8 @@ public sealed class LobCredentialProvider(ISecretProvider secretProvider,
     /// <exception cref="InvalidOperationException">Thrown when the secret is null/empty/whitespace.</exception>
     private async Task<string> GetRequiredSecretAsync(string secretName, CancellationToken ct)
     {
-        string value = await secretProvider.GetSecretAsync(secretName, ct).ConfigureAwait(false);
+        string value = await secretProvider.GetSecretAsync(secretName, ct)
+                                           .ConfigureAwait(false);
 
         return !string.IsNullOrWhiteSpace(value)
             ? value
@@ -139,7 +141,7 @@ public sealed class LobCredentialProvider(ISecretProvider secretProvider,
     /// </summary>
     private static string BuildLobSecretName(string prefix, string environmentAlias, string lob)
     {
-        return $"{prefix}-{environmentAlias}-{lob}";
+        return $"{prefix}-{lob}-{environmentAlias}";
     }
 
     #endregion

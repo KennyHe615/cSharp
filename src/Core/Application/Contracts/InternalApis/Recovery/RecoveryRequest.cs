@@ -11,5 +11,5 @@ public sealed class RecoveryRequest
 
     public UtcInterval? Interval { get; set; }
 
-    public string? JobId { get; set; }
+    public string? GenesysJobId { get; set; }
 }

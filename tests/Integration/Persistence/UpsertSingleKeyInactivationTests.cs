@@ -18,14 +18,14 @@ using tests.TestSupport.Time;
 using Xunit;
 
 
-namespace Tests.Integration.Persistence;
+namespace tests.Integration.Persistence;
 
 public sealed class UpsertSingleKeyInactivationTests
 {
     [Fact]
     public async Task UpsertRange_SingleKey_WithInactivationCallback_UpdatesAndInactivatesMissingRows()
     {
-        ServiceCollection services = new ServiceCollection();
+        ServiceCollection services = [];
         services.AddLogging();
         services.AddSingleton<IDateTimeProvider, FixedEstDateTimeProvider>();
         services.AddScoped<ILobContext, StubLobContext>();

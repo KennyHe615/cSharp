@@ -16,7 +16,7 @@ using tests.TestSupport.Functions;
 using tests.TestSupport.Logging;
 
 
-namespace Tests.Integration.FunctionApp;
+namespace tests.Integration.FunctionApp;
 
 [ExcludeFromCodeCoverage]
 internal static class RecoveryFunctionHttpTestFixture

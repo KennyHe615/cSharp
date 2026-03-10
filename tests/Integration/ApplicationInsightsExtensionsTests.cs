@@ -9,7 +9,7 @@ using Microsoft.Extensions.Options;
 using Xunit;
 
 
-namespace Tests.Integration;
+namespace tests.Integration;
 
 public sealed class ApplicationInsightsExtensionsTests
 {
@@ -24,15 +24,17 @@ public sealed class ApplicationInsightsExtensionsTests
                                                        "false"
                                                };
 
-        IConfiguration configuration = new ConfigurationBuilder().AddInMemoryCollection(settings).Build();
+        IConfiguration configuration = new ConfigurationBuilder().AddInMemoryCollection(settings)
+                                                                 .Build();
 
-        ServiceCollection services = new ServiceCollection();
+        ServiceCollection services = [];
         services.AddConfiguration(configuration);
         services.AddApplicationInsightsForWorker("123");
 
         using ServiceProvider provider = services.BuildServiceProvider();
 
-        ApplicationInsightsOptions options = provider.GetRequiredService<IOptions<ApplicationInsightsOptions>>().Value;
+        ApplicationInsightsOptions options = provider.GetRequiredService<IOptions<ApplicationInsightsOptions>>()
+                                                     .Value;
 
         Assert.Equal(settings["ApplicationInsights:ConnectionString"], options.ConnectionString);
         Assert.False(options.EnableAdaptiveSampling);

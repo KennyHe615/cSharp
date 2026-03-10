@@ -16,7 +16,7 @@ using tests.TestSupport.Functions;
 using Xunit;
 
 
-namespace Tests.Integration.FunctionApp;
+namespace tests.Integration.FunctionApp;
 
 public sealed class RecoveryFunctionHttpValidationTests
 {
@@ -232,7 +232,7 @@ public sealed class RecoveryFunctionHttpValidationTests
     public async Task Post_WhenCanceledBeforeProcessing_ThrowsOperationCanceledException()
     {
         using CancellationTokenSource cts = new CancellationTokenSource();
-        cts.Cancel();
+        await cts.CancelAsync();
 
         RecoveryFunctionHttpTestFixture.StubMediator mediator = new RecoveryFunctionHttpTestFixture.StubMediator();
 

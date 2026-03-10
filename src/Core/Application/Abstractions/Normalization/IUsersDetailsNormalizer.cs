@@ -1,5 +1,5 @@
 using Application.Contracts.ExternalApis.Genesys.UsersDetails;
-using Application.DTOs.UserDetails;
+using Application.DTOs.UsersDetails;
 
 
 namespace Application.Abstractions.Normalization;
