@@ -57,6 +57,13 @@ public static class SyncTrackingPersistenceTestFixture
         return new SyncRunRepository(db, uow, time);
     }
 
+    public static SyncCheckpointRepository CreateCheckpointRepository(IServiceProvider provider, AppDbContext db)
+    {
+        IUnitOfWork uow = provider.GetRequiredService<IUnitOfWork>();
+
+        return new SyncCheckpointRepository(db, uow);
+    }
+
     public static SyncRequestRepository CreateRequestRepository(IServiceProvider provider, AppDbContext db)
     {
         IUnitOfWork uow = provider.GetRequiredService<IUnitOfWork>();
