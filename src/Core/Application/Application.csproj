@@ -20,7 +20,7 @@
 
     <ItemGroup>
         <Folder Include="Contracts\InternalApis\"/>
-        <Folder Include="Features\Analytics\"/>
+        <Folder Include="Features\Analytics\UsersDetails\"/>
         <Folder Include="Features\References\"/>
         <Folder Include="Validation\"/>
     </ItemGroup>
