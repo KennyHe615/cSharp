@@ -2,6 +2,8 @@ using Application.Enums;
 
 using FluentValidation;
 
+using SharedKernel.Time;
+
 
 namespace Application.Features.SyncTracking;
 
@@ -36,6 +38,11 @@ public sealed class RunRecoverySyncCommandValidator : AbstractValidator<RunRecov
            .Must(NotHaveLeadingOrTrailingSpaces)
            .WithMessage("GenesysJobId must not contain leading or trailing spaces.")
            .When(x => !string.IsNullOrWhiteSpace(x.GenesysJobId));
+
+        RuleFor(x => x.Interval)
+           .Must(BeValidUtcInterval)
+           .When(x => !string.IsNullOrWhiteSpace(x.Interval))
+           .WithMessage("Interval format is invalid. Expected UTC interval: yyyy-MM-ddTHH:mmZ/yyyy-MM-ddTHH:mmZ.");
 
         RuleFor(x => x.Interval)
            .MaximumLength(50)
@@ -80,6 +87,11 @@ public sealed class RunRecoverySyncCommandValidator : AbstractValidator<RunRecov
     {
         return category is SyncCategory.UsersDetails or SyncCategory.ConversationsDetails
                                                      or SyncCategory.ConversationsAggregates;
+    }
+
+    private static bool BeValidUtcInterval(string? interval)
+    {
+        return UtcInterval.TryParse(interval, out _);
     }
 
     #endregion
