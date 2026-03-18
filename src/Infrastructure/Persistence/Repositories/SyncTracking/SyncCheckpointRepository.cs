@@ -44,7 +44,7 @@ public sealed class SyncCheckpointRepository(AppDbContext dbContext,
         if (existing is not null)
         {
             existing.Status = status;
-            existing.FailureReason = failureReason;
+            existing.FailureReason = normalizedFailureReason;// use normalized value on update too
 
             await uow.SaveChangesAsync(ct)
                      .ConfigureAwait(false);
