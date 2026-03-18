@@ -2,6 +2,8 @@ using Application.Enums;
 
 using FluentValidation;
 
+using SharedKernel.Time;
+
 
 namespace Application.Features.SyncTracking;
 
@@ -25,6 +27,11 @@ public sealed class RunIncrementalSyncCommandValidator : AbstractValidator<RunIn
            .WithMessage("Interval is required for analytics incremental sync.");
 
         RuleFor(x => x.Interval)
+           .Must(BeValidUtcInterval)
+           .When(x => IsAnalyticsCategory(x.Category) && !string.IsNullOrWhiteSpace(x.Interval))
+           .WithMessage("Interval format is invalid. Expected UTC interval: yyyy-MM-ddTHH:mmZ/yyyy-MM-ddTHH:mmZ.");
+
+        RuleFor(x => x.Interval)
            .MaximumLength(50)
            .When(x => !string.IsNullOrWhiteSpace(x.Interval))
            .WithMessage("Interval cannot exceed 50 characters.");
@@ -44,6 +51,11 @@ public sealed class RunIncrementalSyncCommandValidator : AbstractValidator<RunIn
     {
         return category is SyncCategory.UsersDetails or SyncCategory.ConversationsDetails
                                                      or SyncCategory.ConversationsAggregates;
+    }
+
+    private static bool BeValidUtcInterval(string? interval)
+    {
+        return UtcInterval.TryParse(interval, out _);
     }
 
     #endregion

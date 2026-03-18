@@ -24,16 +24,19 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options,
 {
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
+        DatabaseOptions dbOptions = databaseOptions.Value;
+
+        // Detect whether any database provider (SQL Server, InMemory, Sqlite, etc.) was configured externally.
+        bool providerConfigured = optionsBuilder.Options.Extensions.Any(x => x.Info.IsDatabaseProvider);
+
         // Always register cross-cutting interceptor (works for SQL Server and InMemory tests).
         optionsBuilder.AddInterceptors(auditInterceptor);
-
-        DatabaseOptions dbOptions = databaseOptions.Value;
 
         if (dbOptions.EnableDetailedErrors) optionsBuilder.EnableDetailedErrors();
         if (dbOptions.EnableSensitiveDataLogging) optionsBuilder.EnableSensitiveDataLogging();
 
-        // Provider/connection only when not preconfigured externally.
-        if (optionsBuilder.IsConfigured) return;
+        // Only set provider/connection when no relational provider is configured yet.
+        if (providerConfigured) return;
 
         string connectionString = lobContext.DbConnectionString;
 
@@ -79,7 +82,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options,
         ApplyAuditConvention(modelBuilder);
     }
 
-    #region ========== *** Private Methods *** ==========
+    #region ========== *** Private Section *** ==========
 
     private static void ApplyEstDateTimeConvention(ModelBuilder modelBuilder, IDateTimeProvider dateTimeProvider)
     {
