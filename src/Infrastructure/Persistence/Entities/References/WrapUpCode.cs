@@ -21,5 +21,5 @@ public class WrapUpCode : Audit
 
     public string? ModifiedBy { get; set; }
 
-    public State? State { get; set; }
+    public State State { get; set; }
 }
