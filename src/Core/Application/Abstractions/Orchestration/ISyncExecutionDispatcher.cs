@@ -4,23 +4,22 @@ using Application.Enums;
 namespace Application.Abstractions.Orchestration;
 
 /// <summary>
-/// Routes one sync run execution to the appropriate category/mode implementation.
+/// Routes a sync execution request to the appropriate category and mode pipeline.
 /// </summary>
 public interface ISyncExecutionDispatcher
 {
     /// <summary>
-    /// Executes a sync run for the provided scope selectors.
-    /// Implementations are responsible for route selection and execution-stage tracking.
+    /// Executes one sync run for the provided scope selectors.
     /// </summary>
-    /// <param name="runId">Physical run identifier.</param>
-    /// <param name="category">Business sync category.</param>
-    /// <param name="mode">Execution mode.</param>
-    /// <param name="interval">Optional interval selector.</param>
-    /// <param name="pageNumber">Optional page selector.</param>
-    /// <param name="genesysJobId">Optional external provider job id.</param>
-    /// <param name="ct">Cancellation token.</param>
+    /// <param name="runId">The sync run identifier.</param>
+    /// <param name="category">The sync category to dispatch.</param>
+    /// <param name="mode">The sync mode for the selected category.</param>
+    /// <param name="interval">An optional interval selector for interval-based scopes.</param>
+    /// <param name="pageNumber">An optional page selector for page-based scopes.</param>
+    /// <param name="genesysJobId">An optional external job identifier from Genesys.</param>
+    /// <param name="ct">The cancellation token for the operation.</param>
     Task ExecuteAsync(long runId,
-                      SyncCategory category,
+                      string category,
                       SyncMode mode,
                       string? interval,
                       int? pageNumber,
