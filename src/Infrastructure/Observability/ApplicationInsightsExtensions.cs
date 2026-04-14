@@ -47,11 +47,10 @@ public static class ApplicationInsightsExtensions
     /// <param name="services">DI container.</param>
     private static void ConfigureTelemetryOptions(IServiceCollection services)
     {
-        services
-           .AddOptions<ApplicationInsightsServiceOptions>()
-           .Configure<IOptions<ApplicationInsightsOptions>>((telemetryOptions, appOptions) =>
-                                                                ApplyTelemetryOptions(telemetryOptions,
-                                                                 appOptions.Value));
+        services.AddOptions<ApplicationInsightsServiceOptions>()
+                .Configure<IOptions<ApplicationInsightsOptions>>((telemetryOptions, appOptions) =>
+                                                                     ApplyTelemetryOptions(telemetryOptions,
+                                                                      appOptions.Value));
     }
 
     /// <summary>
@@ -82,34 +81,48 @@ public static class ApplicationInsightsExtensions
     /// <param name="appCategory">Logger category prefix for app logs.</param>
     private static void ConfigureLoggingFilters(IServiceCollection services, string appCategory)
     {
-        services.Configure<LoggerFilterOptions>(options =>
-                                                {
-                                                    // Mute noisy Microsoft infrastructure logs globally.
-                                                    options.Rules.Add(new LoggerFilterRule(null,
-                                                                       "Microsoft",
-                                                                       LogLevel.Error,
-                                                                       null));
+        services.AddOptions<LoggerFilterOptions>()
+                .Configure<IOptions<ApplicationInsightsOptions>>((options, appOptionsAccessor) =>
+                                                                 {
+                                                                     ApplicationInsightsOptions appOptions =
+                                                                         appOptionsAccessor.Value;
+                                                                     const string aiProvider =
+                                                                         "Microsoft.Extensions.Logging.ApplicationInsights.ApplicationInsightsLoggerProvider";
 
-                                                    // Mute EF Core logs globally (SQL/command spam).
-                                                    options.Rules.Add(new LoggerFilterRule(null,
-                                                                       "Microsoft.EntityFrameworkCore",
-                                                                       LogLevel.Warning,
-                                                                       null));
+                                                                     LogLevel efLevel =
+                                                                         appOptions.EnableEfCommandLogging
+                                                                             ? LogLevel.Information
+                                                                             : LogLevel.Warning;
 
-                                                    // Ensure app logs
-                                                    options.Rules.Add(new LoggerFilterRule(null,
-                                                                       appCategory,
-                                                                       LogLevel.Debug,
-                                                                       null));
+                                                                     // Mute noisy Microsoft infrastructure logs globally.
+                                                                     options.Rules.Add(new LoggerFilterRule(null,
+                                                                      "Microsoft",
+                                                                      LogLevel.Error,
+                                                                      null));
 
-                                                    // AI provider filters (optional)
-                                                    options.Rules
-                                                           .Add(new
-                                                                    LoggerFilterRule("Microsoft.Extensions.Logging.ApplicationInsights.ApplicationInsightsLoggerProvider",
-                                                                     null,
-                                                                     LogLevel.Information,
-                                                                     null));
-                                                });
+                                                                     // App logs.
+                                                                     options.Rules.Add(new LoggerFilterRule(null,
+                                                                      appCategory,
+                                                                      LogLevel.Debug,
+                                                                      null));
+
+                                                                     // AI provider baseline.
+                                                                     options.Rules.Add(new LoggerFilterRule(aiProvider,
+                                                                      null,
+                                                                      LogLevel.Information,
+                                                                      null));
+
+                                                                     // EF logs: global + AI-specific (consistent switch).
+                                                                     options.Rules.Add(new LoggerFilterRule(null,
+                                                                      "Microsoft.EntityFrameworkCore",
+                                                                      efLevel,
+                                                                      null));
+
+                                                                     options.Rules.Add(new LoggerFilterRule(aiProvider,
+                                                                      "Microsoft.EntityFrameworkCore",
+                                                                      efLevel,
+                                                                      null));
+                                                                 });
     }
 
     #endregion
