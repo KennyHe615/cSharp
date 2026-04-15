@@ -1,21 +1,18 @@
-using System.Diagnostics.CodeAnalysis;
-
 using Application.Abstractions.Persistence;
 using Application.DTOs.SyncTracking;
 using Application.Enums;
 
-using Infrastructure.Persistence;
 using Infrastructure.Persistence.DbContext;
 using Infrastructure.Persistence.Entities.SyncTracking;
-using Infrastructure.Persistence.Interceptors;
 using Infrastructure.Persistence.Repositories.SyncTracking;
 
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Options;
 
 using Moq;
 
-using tests.TestSupport.Context;
+using SharedKernel.Time;
+
+using tests.TestSupport.Persistence;
 using tests.TestSupport.Time;
 
 using Xunit;
@@ -25,10 +22,14 @@ namespace tests.Integration.Persistence;
 
 public sealed class SyncRequestRepositoryTests
 {
+    #region ========== *** CreateOrGetByScopeAsync *** ==========
+
     [Fact]
     public async Task CreateOrGetByScopeAsync_WhenScopeAlreadyExists_ReturnsExistingId_AndSkipsUnitOfWork()
     {
-        await using AppDbContext dbContext = CreateDbContext();
+        Mock<IDateTimeProvider> dateTimeProvider = DateTimeProviderTestFactory.Create();
+
+        await using AppDbContext dbContext = PersistenceTestFactory.CreateDbContext(dateTimeProvider.Object);
 
         SyncRequestEntity existing = new SyncRequestEntity
                                      {
@@ -63,7 +64,9 @@ public sealed class SyncRequestRepositoryTests
     [Fact]
     public async Task CreateOrGetByScopeAsync_WhenScopeDoesNotExist_CreatesAndReturnsNewId()
     {
-        await using AppDbContext dbContext = CreateDbContext();
+        Mock<IDateTimeProvider> dateTimeProvider = DateTimeProviderTestFactory.Create();
+
+        await using AppDbContext dbContext = PersistenceTestFactory.CreateDbContext(dateTimeProvider.Object);
         Mock<IUnitOfWork> uow = new Mock<IUnitOfWork>(MockBehavior.Strict);
 
         uow.Setup(x => x.UpsertAsync(It.IsAny<SyncRequestEntity>(), null, It.IsAny<CancellationToken>()))
@@ -107,7 +110,10 @@ public sealed class SyncRequestRepositoryTests
     {
         string dbName = Guid.NewGuid()
                             .ToString("N");
-        await using AppDbContext dbContext = CreateDbContext(dbName);
+
+        Mock<IDateTimeProvider> dateTimeProvider = DateTimeProviderTestFactory.Create();
+
+        await using AppDbContext dbContext = PersistenceTestFactory.CreateDbContext(dateTimeProvider.Object, dbName);
         Mock<IUnitOfWork> uow = new Mock<IUnitOfWork>(MockBehavior.Strict);
 
         const string category = nameof(SyncReferenceCategory.WrapUpCode);
@@ -119,7 +125,12 @@ public sealed class SyncRequestRepositoryTests
         uow.Setup(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()))
            .Callback<CancellationToken>(_ =>
                                         {
-                                            using AppDbContext raceContext = CreateDbContext(dbName);
+                                            Mock<IDateTimeProvider> raceDateTimeProvider =
+                                                DateTimeProviderTestFactory.Create();
+
+                                            using AppDbContext raceContext =
+                                                PersistenceTestFactory.CreateDbContext(raceDateTimeProvider.Object,
+                                                 dbName);
 
                                             SyncRequestEntity winner = new SyncRequestEntity
                                                                        {
@@ -154,10 +165,16 @@ public sealed class SyncRequestRepositoryTests
         Assert.Equal(winnerRow.Id, result);
     }
 
+    #endregion
+
+    #region ========== *** GetByIdAsync *** ==========
+
     [Fact]
     public async Task GetByIdAsync_WhenExists_ReturnsProjectedDto()
     {
-        await using AppDbContext dbContext = CreateDbContext();
+        Mock<IDateTimeProvider> dateTimeProvider = DateTimeProviderTestFactory.Create();
+
+        await using AppDbContext dbContext = PersistenceTestFactory.CreateDbContext(dateTimeProvider.Object);
 
         SyncRequestEntity entity = new SyncRequestEntity
                                    {
@@ -190,10 +207,16 @@ public sealed class SyncRequestRepositoryTests
         Assert.Equal(entity.CurrentRunId, dto.CurrentRunId);
     }
 
+    #endregion
+
+    #region ========== *** SetCurrentRunAsync *** ==========
+
     [Fact]
     public async Task SetCurrentRunAsync_WhenRunBelongsToRequest_SetsPointer_AndSaves()
     {
-        await using AppDbContext dbContext = CreateDbContext();
+        Mock<IDateTimeProvider> dateTimeProvider = DateTimeProviderTestFactory.Create();
+
+        await using AppDbContext dbContext = PersistenceTestFactory.CreateDbContext(dateTimeProvider.Object);
 
         SyncRequestEntity request = new SyncRequestEntity
                                     {
@@ -231,7 +254,9 @@ public sealed class SyncRequestRepositoryTests
     [Fact]
     public async Task SetCurrentRunAsync_WhenRunBelongsToDifferentRequest_ThrowsInvalidOperationException()
     {
-        await using AppDbContext dbContext = CreateDbContext();
+        Mock<IDateTimeProvider> dateTimeProvider = DateTimeProviderTestFactory.Create();
+
+        await using AppDbContext dbContext = PersistenceTestFactory.CreateDbContext(dateTimeProvider.Object);
 
         SyncRequestEntity request1 = new SyncRequestEntity
                                      {
@@ -272,30 +297,6 @@ public sealed class SyncRequestRepositoryTests
 
         Assert.Contains("does not belong", ex.Message, StringComparison.Ordinal);
         uow.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
-    }
-
-    #region ========== *** Private Section *** ==========
-
-    [ExcludeFromCodeCoverage]
-    private static AppDbContext CreateDbContext(string? dbName = null)
-    {
-        DbContextOptions<AppDbContext> options = new DbContextOptionsBuilder<AppDbContext>().UseInMemoryDatabase(dbName
-             ?? Guid.NewGuid()
-                    .ToString("N"))
-           .Options;
-
-        FixedEstDateTimeProvider dateTimeProvider = new FixedEstDateTimeProvider();
-        AuditSaveChangesInterceptor auditInterceptor = new AuditSaveChangesInterceptor(dateTimeProvider);
-
-        AppDbContext dbContext = new AppDbContext(options,
-                                                  Options.Create(new DatabaseOptions()),
-                                                  new StubLobContext(),
-                                                  dateTimeProvider,
-                                                  auditInterceptor);
-
-        dbContext.Database.EnsureCreated();
-
-        return dbContext;
     }
 
     #endregion
