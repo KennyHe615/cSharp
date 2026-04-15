@@ -2,7 +2,7 @@ using Application.Abstractions.Orchestration;
 using Application.Abstractions.Persistence;
 
 
-namespace Application.Features.SyncTracking;
+namespace Application.Features.SyncTracking.Shared;
 
 /// <summary>
 /// Default coordinator that delegates run lifecycle operations to persistence.

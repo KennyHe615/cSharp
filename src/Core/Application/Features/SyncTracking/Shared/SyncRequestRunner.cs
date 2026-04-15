@@ -3,7 +3,7 @@ using Application.Abstractions.Persistence;
 using Application.DTOs.SyncTracking;
 
 
-namespace Application.Features.SyncTracking;
+namespace Application.Features.SyncTracking.Shared;
 
 /// <summary>
 /// Default sync request runner that coordinates run lifecycle and dispatch execution.
