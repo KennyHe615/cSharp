@@ -64,7 +64,7 @@ public sealed class SyncRequestRunner(ISyncRunCoordinator syncRunCoordinator,
         }
         catch (Exception ex)
         {
-            await syncRunCoordinator.MarkFailedAsync(runId, ex.Message, ct)
+            await syncRunCoordinator.MarkFailedAsync(runId, ex.Message, CancellationToken.None)
                                     .ConfigureAwait(false);
 
             throw;

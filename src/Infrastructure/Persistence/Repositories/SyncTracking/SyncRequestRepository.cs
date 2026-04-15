@@ -5,7 +5,6 @@ using Application.Enums;
 using Infrastructure.Persistence.DbContext;
 using Infrastructure.Persistence.Entities.SyncTracking;
 
-using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 
 using SharedKernel.Sync;
@@ -34,7 +33,7 @@ public sealed class SyncRequestRepository(AppDbContext dbContext,
                                                        genesysJobId);
 
         SyncRequestEntity? existing = await FindByScopeKeyAsync(scopeKey, ct)
-           .ConfigureAwait(false);
+                                         .ConfigureAwait(false);
 
         if (existing is not null) return existing.Id;
 
@@ -54,11 +53,11 @@ public sealed class SyncRequestRepository(AppDbContext dbContext,
 
             return entity.Id;
         }
-        catch (DbUpdateException ex) when (IsScopeKeyUniqueViolation(ex))
+        catch (DbUpdateException ex) when (UniqueViolationDetector.IsScopeKeyUniqueViolation(ex))
         {
             // Scale-out race: another instance inserted same scope key first.
             SyncRequestEntity winner = await GetByScopeKeyOrThrowAsync(scopeKey, ct)
-               .ConfigureAwait(false);
+                                          .ConfigureAwait(false);
 
             return winner.Id;
         }
@@ -89,7 +88,7 @@ public sealed class SyncRequestRepository(AppDbContext dbContext,
     public async Task SetCurrentRunAsync(long requestId, long runId, CancellationToken ct)
     {
         SyncRequestEntity request = await GetRequestOrThrowAsync(requestId, ct)
-           .ConfigureAwait(false);
+                                       .ConfigureAwait(false);
 
         await EnsureRunBelongsToRequestAsync(runId, requestId, ct)
            .ConfigureAwait(false);
@@ -143,29 +142,6 @@ public sealed class SyncRequestRepository(AppDbContext dbContext,
         entity.RebuildScopeKey();
 
         return entity;
-    }
-
-    /// <summary>
-    /// Determines whether the update exception represents the expected unique-scope race condition.
-    /// </summary>
-    /// <param name="ex">Database update exception.</param>
-    /// <returns><c>true</c> when the exception indicates scope-key uniqueness conflict; otherwise <c>false</c>.</returns>
-    private static bool IsScopeKeyUniqueViolation(DbUpdateException ex)
-    {
-        if (ex.InnerException is SqlException sqlEx)
-        {
-            // 2601: Cannot insert duplicate key row with unique index
-            // 2627: Violation of UNIQUE KEY constraint / PRIMARY KEY
-            return sqlEx.Number is 2601 or 2627;
-        }
-
-        string message = ex.InnerException?.Message ?? ex.Message;
-
-        if (string.IsNullOrWhiteSpace(message)) return false;
-
-        return message.Contains("UX_sync_request_scope_key", StringComparison.OrdinalIgnoreCase)
-               || message.Contains("UQ_sync_request_scope_key", StringComparison.OrdinalIgnoreCase)
-               || message.Contains("scope_key", StringComparison.OrdinalIgnoreCase);
     }
 
     /// <summary>

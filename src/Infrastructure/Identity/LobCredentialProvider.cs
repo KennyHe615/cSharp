@@ -127,8 +127,8 @@ public sealed class LobCredentialProvider(ISecretProvider secretProvider,
                                            .ConfigureAwait(false);
 
         return !string.IsNullOrWhiteSpace(value)
-            ? value
-            : throw new InvalidOperationException($"Key Vault secret '{secretName}' is missing or empty.");
+                   ? value
+                   : throw new InvalidOperationException($"Key Vault secret '{secretName}' is missing or empty.");
     }
 
     /// <summary>
@@ -146,7 +146,7 @@ public sealed class LobCredentialProvider(ISecretProvider secretProvider,
 
     /// <summary>
     /// Builds a LOB-specific secret name following the convention:
-    /// <c>{Prefix}-{EnvironmentAlias}-{Lob}</c>.
+    /// <c>{Prefix}-{Lob}-{EnvironmentAlias}</c>.
     /// </summary>
     private static string BuildLobSecretName(string prefix, string environmentAlias, string lob)
     {

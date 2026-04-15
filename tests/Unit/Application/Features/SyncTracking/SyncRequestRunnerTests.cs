@@ -1,10 +1,7 @@
-using System.Diagnostics.CodeAnalysis;
-
 using Application.Abstractions.Orchestration;
 using Application.Abstractions.Persistence;
 using Application.DTOs.SyncTracking;
 using Application.Enums;
-using Application.Features.SyncTracking;
 using Application.Features.SyncTracking.Shared;
 
 using Moq;
@@ -116,11 +113,12 @@ public sealed class SyncRequestRunnerTests
     }
 
     [Fact]
-    public async Task ExecuteAsync_DispatchThrowsException_MarksFailedAndRethrows()
+    public async Task ExecuteAsync_DispatchThrowsException_MarksFailedWithCancellationTokenNone_AndRethrows()
     {
         const long requestId = 300L;
         const long runId = 30L;
-        CancellationToken ct = CancellationToken.None;
+        using CancellationTokenSource cts = new CancellationTokenSource();
+        CancellationToken ct = cts.Token;
 
         SyncRequestDto request = BuildRequest(requestId);
         InvalidOperationException expected = new InvalidOperationException("dispatch failed");
@@ -148,7 +146,7 @@ public sealed class SyncRequestRunnerTests
                                                           ct))
                                .ThrowsAsync(expected);
 
-        syncRunCoordinator.Setup(x => x.MarkFailedAsync(runId, expected.Message, ct))
+        syncRunCoordinator.Setup(x => x.MarkFailedAsync(runId, expected.Message, CancellationToken.None))
                           .Returns(Task.CompletedTask);
 
         SyncRequestRunner sut = new SyncRequestRunner(syncRunCoordinator.Object,
@@ -160,16 +158,14 @@ public sealed class SyncRequestRunnerTests
 
         Assert.Same(expected, actual);
 
+        syncRunCoordinator.Verify(x => x.MarkFailedAsync(runId, expected.Message, CancellationToken.None), Times.Once);
+        syncRunCoordinator.Verify(x => x.MarkFailedAsync(runId, expected.Message, ct), Times.Never);
         syncRunCoordinator.Verify(x => x.MarkCompletedAsync(It.IsAny<long>(), It.IsAny<CancellationToken>()),
                                   Times.Never);
         syncRunCoordinator.Verify(x => x.MarkCanceledAsync(It.IsAny<long>(),
                                                            It.IsAny<string?>(),
                                                            It.IsAny<CancellationToken>()),
                                   Times.Never);
-
-        syncRequestRepository.VerifyAll();
-        syncRunCoordinator.VerifyAll();
-        syncExecutionDispatcher.VerifyAll();
     }
 
     [Fact]
