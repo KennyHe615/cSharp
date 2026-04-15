@@ -31,7 +31,7 @@ public interface ISyncCheckpointRepository
     /// <param name="runId">Physical run id.</param>
     /// <param name="step">Logical stage name.</param>
     /// <param name="ct">Cancellation token.</param>
-    /// <returns>The latest completed <see cref="SyncCheckpointDto"/> when found; otherwise <c>null</c>.</returns>
+    /// <returns>The latest completed checkpoint when found; otherwise <c>null</c>.</returns>
     Task<SyncCheckpointDto?> GetLatestCompletedAsync(long runId, string step, CancellationToken ct);
 
     /// <summary>
@@ -39,6 +39,6 @@ public interface ISyncCheckpointRepository
     /// </summary>
     /// <param name="runId">Physical run id.</param>
     /// <param name="ct">Cancellation token.</param>
-    /// <returns>Failed <see cref="SyncCheckpointDto"/> collection.</returns>
+    /// <returns>Failed checkpoint collection.</returns>
     Task<IReadOnlyCollection<SyncCheckpointDto>> GetFailedAsync(long runId, CancellationToken ct);
 }

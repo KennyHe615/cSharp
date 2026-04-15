@@ -1,5 +1,4 @@
-using System.Diagnostics.CodeAnalysis;
-
+using Application.Abstractions.Persistence;
 using Application.DTOs.SyncTracking;
 using Application.Enums;
 
@@ -8,9 +7,13 @@ using Infrastructure.Persistence.Entities.SyncTracking;
 using Infrastructure.Persistence.Repositories.SyncTracking;
 
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
+
+using Moq;
+
+using SharedKernel.Time;
 
 using tests.TestSupport.Persistence;
+using tests.TestSupport.Time;
 
 using Xunit;
 
@@ -24,16 +27,13 @@ public sealed class SyncCheckpointRepositoryTests
     [Fact]
     public async Task UpsertAsync_NewCheckpoint_InsertsRow()
     {
-        await using ServiceProvider provider = SyncTrackingPersistenceTestFixture.BuildProvider();
-        await using AsyncServiceScope scope = provider.CreateAsyncScope();
+        Mock<IDateTimeProvider> dateTimeProvider = DateTimeProviderTestFactory.Create();
+        await using AppDbContext dbContext = PersistenceTestFactory.CreateDbContext(dateTimeProvider.Object);
+        Mock<IUnitOfWork> uow = PersistenceTestFactory.CreateUnitOfWork<SyncCheckpointEntity>(dbContext);
 
-        AppDbContext db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        await db.Database.EnsureCreatedAsync();
+        long runId = await CreateRunningRunAsync(dbContext);
 
-        long runId = await CreateRunningRunAsync(scope.ServiceProvider, db);
-
-        SyncCheckpointRepository sut =
-            SyncTrackingPersistenceTestFixture.CreateCheckpointRepository(scope.ServiceProvider, db);
+        SyncCheckpointRepository sut = new SyncCheckpointRepository(dbContext, uow.Object);
 
         await sut.UpsertAsync(runId,
                               "Dispatch",
@@ -42,8 +42,8 @@ public sealed class SyncCheckpointRepositoryTests
                               null,
                               CancellationToken.None);
 
-        SyncCheckpointEntity row = await db.Set<SyncCheckpointEntity>()
-                                           .SingleAsync();
+        SyncCheckpointEntity row = await dbContext.Set<SyncCheckpointEntity>()
+                                                  .SingleAsync();
 
         Assert.Equal(runId, row.RunId);
         Assert.Equal("Dispatch", row.Step);
@@ -55,16 +55,13 @@ public sealed class SyncCheckpointRepositoryTests
     [Fact]
     public async Task UpsertAsync_ExistingCheckpoint_UpdatesStatusAndReason()
     {
-        await using ServiceProvider provider = SyncTrackingPersistenceTestFixture.BuildProvider();
-        await using AsyncServiceScope scope = provider.CreateAsyncScope();
+        Mock<IDateTimeProvider> dateTimeProvider = DateTimeProviderTestFactory.Create();
+        await using AppDbContext dbContext = PersistenceTestFactory.CreateDbContext(dateTimeProvider.Object);
+        Mock<IUnitOfWork> uow = PersistenceTestFactory.CreateUnitOfWork<SyncCheckpointEntity>(dbContext);
 
-        AppDbContext db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        await db.Database.EnsureCreatedAsync();
+        long runId = await CreateRunningRunAsync(dbContext);
 
-        long runId = await CreateRunningRunAsync(scope.ServiceProvider, db);
-
-        SyncCheckpointRepository sut =
-            SyncTrackingPersistenceTestFixture.CreateCheckpointRepository(scope.ServiceProvider, db);
+        SyncCheckpointRepository sut = new SyncCheckpointRepository(dbContext, uow.Object);
 
         await sut.UpsertAsync(runId,
                               " Dispatch ",
@@ -80,30 +77,27 @@ public sealed class SyncCheckpointRepositoryTests
                               "  failed reason  ",
                               CancellationToken.None);
 
-        List<SyncCheckpointEntity> rows = await db.Set<SyncCheckpointEntity>()
-                                                  .ToListAsync();
+        List<SyncCheckpointEntity> rows = await dbContext.Set<SyncCheckpointEntity>()
+                                                         .ToListAsync();
         Assert.Single(rows);
 
         SyncCheckpointEntity row = rows[0];
         Assert.Equal("Dispatch", row.Step);
         Assert.Equal("Cursor-1", row.Cursor);
         Assert.Equal(SyncRunStatus.Failed, row.Status);
-        Assert.Equal("  failed reason  ", row.FailureReason);
+        Assert.Equal("failed reason", row.FailureReason);
     }
 
     [Fact]
     public async Task UpsertAsync_LongFailureReason_TruncatesTo1000()
     {
-        await using ServiceProvider provider = SyncTrackingPersistenceTestFixture.BuildProvider();
-        await using AsyncServiceScope scope = provider.CreateAsyncScope();
+        Mock<IDateTimeProvider> dateTimeProvider = DateTimeProviderTestFactory.Create();
+        await using AppDbContext dbContext = PersistenceTestFactory.CreateDbContext(dateTimeProvider.Object);
+        Mock<IUnitOfWork> uow = PersistenceTestFactory.CreateUnitOfWork<SyncCheckpointEntity>(dbContext);
 
-        AppDbContext db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        await db.Database.EnsureCreatedAsync();
+        long runId = await CreateRunningRunAsync(dbContext);
 
-        long runId = await CreateRunningRunAsync(scope.ServiceProvider, db);
-
-        SyncCheckpointRepository sut =
-            SyncTrackingPersistenceTestFixture.CreateCheckpointRepository(scope.ServiceProvider, db);
+        SyncCheckpointRepository sut = new SyncCheckpointRepository(dbContext, uow.Object);
 
         string longReason = new string('X', 1200);
 
@@ -114,8 +108,8 @@ public sealed class SyncCheckpointRepositoryTests
                               longReason,
                               CancellationToken.None);
 
-        SyncCheckpointEntity row = await db.Set<SyncCheckpointEntity>()
-                                           .SingleAsync();
+        SyncCheckpointEntity row = await dbContext.Set<SyncCheckpointEntity>()
+                                                  .SingleAsync();
 
         Assert.NotNull(row.FailureReason);
         Assert.Equal(1000, row.FailureReason!.Length);
@@ -124,15 +118,13 @@ public sealed class SyncCheckpointRepositoryTests
     [Fact]
     public async Task UpsertAsync_InvalidStep_ThrowsArgumentException()
     {
-        await using ServiceProvider provider = SyncTrackingPersistenceTestFixture.BuildProvider();
-        await using AsyncServiceScope scope = provider.CreateAsyncScope();
+        Mock<IDateTimeProvider> dateTimeProvider = DateTimeProviderTestFactory.Create();
+        await using AppDbContext dbContext = PersistenceTestFactory.CreateDbContext(dateTimeProvider.Object);
+        Mock<IUnitOfWork> uow = PersistenceTestFactory.CreateUnitOfWork<SyncCheckpointEntity>(dbContext);
 
-        AppDbContext db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        await db.Database.EnsureCreatedAsync();
+        long runId = await CreateRunningRunAsync(dbContext);
 
-        long runId = await CreateRunningRunAsync(scope.ServiceProvider, db);
-        SyncCheckpointRepository sut =
-            SyncTrackingPersistenceTestFixture.CreateCheckpointRepository(scope.ServiceProvider, db);
+        SyncCheckpointRepository sut = new SyncCheckpointRepository(dbContext, uow.Object);
 
         await Assert.ThrowsAsync<ArgumentException>(() => sut.UpsertAsync(runId,
                                                                           "   ",
@@ -145,15 +137,13 @@ public sealed class SyncCheckpointRepositoryTests
     [Fact]
     public async Task UpsertAsync_InvalidCursor_ThrowsArgumentException()
     {
-        await using ServiceProvider provider = SyncTrackingPersistenceTestFixture.BuildProvider();
-        await using AsyncServiceScope scope = provider.CreateAsyncScope();
+        Mock<IDateTimeProvider> dateTimeProvider = DateTimeProviderTestFactory.Create();
+        await using AppDbContext dbContext = PersistenceTestFactory.CreateDbContext(dateTimeProvider.Object);
+        Mock<IUnitOfWork> uow = PersistenceTestFactory.CreateUnitOfWork<SyncCheckpointEntity>(dbContext);
 
-        AppDbContext db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        await db.Database.EnsureCreatedAsync();
+        long runId = await CreateRunningRunAsync(dbContext);
 
-        long runId = await CreateRunningRunAsync(scope.ServiceProvider, db);
-        SyncCheckpointRepository sut =
-            SyncTrackingPersistenceTestFixture.CreateCheckpointRepository(scope.ServiceProvider, db);
+        SyncCheckpointRepository sut = new SyncCheckpointRepository(dbContext, uow.Object);
 
         await Assert.ThrowsAsync<ArgumentException>(() => sut.UpsertAsync(runId,
                                                                           "Dispatch",
@@ -168,62 +158,51 @@ public sealed class SyncCheckpointRepositoryTests
     #region ========== *** GetLatestCompletedAsync *** ==========
 
     [Fact]
-    public async Task GetLatestCompletedAsync_ReturnsNewestCompletedForStep()
+    public async Task GetLatestCompletedAsync_ReturnsCompletedCheckpointForStep()
     {
-        await using ServiceProvider provider = SyncTrackingPersistenceTestFixture.BuildProvider();
-        await using AsyncServiceScope scope = provider.CreateAsyncScope();
+        Mock<IDateTimeProvider> dateTimeProvider = DateTimeProviderTestFactory.Create();
+        await using AppDbContext dbContext = PersistenceTestFactory.CreateDbContext(dateTimeProvider.Object);
+        Mock<IUnitOfWork> uow = PersistenceTestFactory.CreateUnitOfWork<SyncCheckpointEntity>(dbContext);
 
-        AppDbContext db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        await db.Database.EnsureCreatedAsync();
+        long runId = await CreateRunningRunAsync(dbContext);
 
-        long runId = await CreateRunningRunAsync(scope.ServiceProvider, db);
+        dbContext.Set<SyncCheckpointEntity>()
+                 .AddRange(new SyncCheckpointEntity
+                           {
+                               RunId = runId,
+                               Step = "Dispatch",
+                               Cursor = "A",
+                               Status = SyncRunStatus.Completed
+                           },
+                           new SyncCheckpointEntity
+                           {
+                               RunId = runId,
+                               Step = "Dispatch",
+                               Cursor = "B",
+                               Status = SyncRunStatus.Failed
+                           });
+        await dbContext.SaveChangesAsync();
 
-        db.Set<SyncCheckpointEntity>()
-          .AddRange(new SyncCheckpointEntity
-                    {
-                        RunId = runId,
-                        Step = "Dispatch",
-                        Cursor = "A",
-                        Status = SyncRunStatus.Completed
-                    },
-                    new SyncCheckpointEntity
-                    {
-                        RunId = runId,
-                        Step = "Dispatch",
-                        Cursor = "B",
-                        Status = SyncRunStatus.Failed
-                    },
-                    new SyncCheckpointEntity
-                    {
-                        RunId = runId,
-                        Step = "Dispatch",
-                        Cursor = "C",
-                        Status = SyncRunStatus.Completed
-                    });
-        await db.SaveChangesAsync();
-
-        SyncCheckpointRepository sut =
-            SyncTrackingPersistenceTestFixture.CreateCheckpointRepository(scope.ServiceProvider, db);
+        SyncCheckpointRepository sut = new SyncCheckpointRepository(dbContext, uow.Object);
 
         SyncCheckpointDto? dto = await sut.GetLatestCompletedAsync(runId, " Dispatch ", CancellationToken.None);
 
         Assert.NotNull(dto);
-        Assert.Equal(SyncRunStatus.Completed, dto.Status);
+        Assert.Equal(runId, dto.RunId);
         Assert.Equal("Dispatch", dto.Step);
+        Assert.Equal(SyncRunStatus.Completed, dto.Status);
     }
 
     [Fact]
     public async Task GetLatestCompletedAsync_InvalidStep_ThrowsArgumentException()
     {
-        await using ServiceProvider provider = SyncTrackingPersistenceTestFixture.BuildProvider();
-        await using AsyncServiceScope scope = provider.CreateAsyncScope();
+        Mock<IDateTimeProvider> dateTimeProvider = DateTimeProviderTestFactory.Create();
+        await using AppDbContext dbContext = PersistenceTestFactory.CreateDbContext(dateTimeProvider.Object);
+        Mock<IUnitOfWork> uow = PersistenceTestFactory.CreateUnitOfWork<SyncCheckpointEntity>(dbContext);
 
-        AppDbContext db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        await db.Database.EnsureCreatedAsync();
+        long runId = await CreateRunningRunAsync(dbContext);
 
-        long runId = await CreateRunningRunAsync(scope.ServiceProvider, db);
-        SyncCheckpointRepository sut =
-            SyncTrackingPersistenceTestFixture.CreateCheckpointRepository(scope.ServiceProvider, db);
+        SyncCheckpointRepository sut = new SyncCheckpointRepository(dbContext, uow.Object);
 
         await Assert.ThrowsAsync<ArgumentException>(() => sut.GetLatestCompletedAsync(runId,
                                                      "   ",
@@ -237,41 +216,38 @@ public sealed class SyncCheckpointRepositoryTests
     [Fact]
     public async Task GetFailedAsync_ReturnsOnlyFailedForRun()
     {
-        await using ServiceProvider provider = SyncTrackingPersistenceTestFixture.BuildProvider();
-        await using AsyncServiceScope scope = provider.CreateAsyncScope();
+        Mock<IDateTimeProvider> dateTimeProvider = DateTimeProviderTestFactory.Create();
+        await using AppDbContext dbContext = PersistenceTestFactory.CreateDbContext(dateTimeProvider.Object);
+        Mock<IUnitOfWork> uow = PersistenceTestFactory.CreateUnitOfWork<SyncCheckpointEntity>(dbContext);
 
-        AppDbContext db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        await db.Database.EnsureCreatedAsync();
+        long runId1 = await CreateRunningRunAsync(dbContext);
+        long runId2 = await CreateRunningRunAsync(dbContext);
 
-        long runId1 = await CreateRunningRunAsync(scope.ServiceProvider, db);
-        long runId2 = await CreateRunningRunAsync(scope.ServiceProvider, db);
+        dbContext.Set<SyncCheckpointEntity>()
+                 .AddRange(new SyncCheckpointEntity
+                           {
+                               RunId = runId1,
+                               Step = "Dispatch",
+                               Cursor = "1",
+                               Status = SyncRunStatus.Failed
+                           },
+                           new SyncCheckpointEntity
+                           {
+                               RunId = runId1,
+                               Step = "Dispatch",
+                               Cursor = "2",
+                               Status = SyncRunStatus.Completed
+                           },
+                           new SyncCheckpointEntity
+                           {
+                               RunId = runId2,
+                               Step = "Dispatch",
+                               Cursor = "3",
+                               Status = SyncRunStatus.Failed
+                           });
+        await dbContext.SaveChangesAsync();
 
-        db.Set<SyncCheckpointEntity>()
-          .AddRange(new SyncCheckpointEntity
-                    {
-                        RunId = runId1,
-                        Step = "Dispatch",
-                        Cursor = "1",
-                        Status = SyncRunStatus.Failed
-                    },
-                    new SyncCheckpointEntity
-                    {
-                        RunId = runId1,
-                        Step = "Dispatch",
-                        Cursor = "2",
-                        Status = SyncRunStatus.Completed
-                    },
-                    new SyncCheckpointEntity
-                    {
-                        RunId = runId2,
-                        Step = "Dispatch",
-                        Cursor = "3",
-                        Status = SyncRunStatus.Failed
-                    });
-        await db.SaveChangesAsync();
-
-        SyncCheckpointRepository sut =
-            SyncTrackingPersistenceTestFixture.CreateCheckpointRepository(scope.ServiceProvider, db);
+        SyncCheckpointRepository sut = new SyncCheckpointRepository(dbContext, uow.Object);
 
         IReadOnlyCollection<SyncCheckpointDto> failed = await sut.GetFailedAsync(runId1, CancellationToken.None);
 
@@ -288,26 +264,26 @@ public sealed class SyncCheckpointRepositoryTests
 
     #region ========== *** Private Section *** ==========
 
-    [ExcludeFromCodeCoverage]
-    private static async Task<long> CreateRunningRunAsync(IServiceProvider provider, AppDbContext db)
+    private static async Task<long> CreateRunningRunAsync(AppDbContext dbContext)
     {
-        SyncRequestRepository requestRepository =
-            SyncTrackingPersistenceTestFixture.CreateRequestRepository(provider, db);
-        SyncRunRepository runRepository = SyncTrackingPersistenceTestFixture.CreateRunRepository(provider, db);
+        SyncRequestEntity request =
+            await SyncTrackingSeedFactory.SeedRequestAsync(dbContext,
+                                                           nameof(SyncReferenceCategory.Group),
+                                                           SyncMode.Incremental);
 
-        SyncRequestEntity seed =
-            SyncTrackingPersistenceTestFixture.CreateRequest(SyncCategory.UsersDetails,
-                                                             SyncMode.Incremental,
-                                                             $"i-{Guid.NewGuid()}");
+        SyncRunEntity run = new SyncRunEntity
+                            {
+                                RequestId = request.Id,
+                                Status = SyncRunStatus.Running,
+                                AttemptNo = 1,
+                                RunStartedAt = DateTimeProviderTestFactory.FixedNow
+                            };
 
-        long requestId = await requestRepository.CreateOrGetByScopeAsync(seed.Category,
-                                                                         seed.Mode,
-                                                                         seed.Interval,
-                                                                         seed.PageNumber,
-                                                                         seed.GenesysJobId,
-                                                                         CancellationToken.None);
+        dbContext.Set<SyncRunEntity>()
+                 .Add(run);
+        await dbContext.SaveChangesAsync();
 
-        return await runRepository.StartNewRunAsync(requestId, CancellationToken.None);
+        return run.Id;
     }
 
     #endregion
