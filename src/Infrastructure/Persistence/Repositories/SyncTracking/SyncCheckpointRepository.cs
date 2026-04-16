@@ -39,7 +39,7 @@ public sealed class SyncCheckpointRepository(AppDbContext dbContext,
                                                                    normalizedStep,
                                                                    normalizedCursor,
                                                                    ct)
-           .ConfigureAwait(false);
+                                            .ConfigureAwait(false);
 
         if (existing is not null)
         {
@@ -113,8 +113,8 @@ public sealed class SyncCheckpointRepository(AppDbContext dbContext,
     private static string NormalizeStep(string step)
     {
         return string.IsNullOrWhiteSpace(step)
-            ? throw new ArgumentException("Step is required.", nameof(step))
-            : step.Trim();
+                   ? throw new ArgumentException("Step is required.", nameof(step))
+                   : step.Trim();
     }
 
     private static string? NormalizeFailureReason(string? failureReason)
@@ -160,7 +160,7 @@ public sealed class SyncCheckpointRepository(AppDbContext dbContext,
             await uow.SaveChangesAsync(ct)
                      .ConfigureAwait(false);
         }
-        catch (DbUpdateException ex) when (IsCheckpointUniqueViolation(ex))
+        catch (DbUpdateException ex) when (UniqueViolationDetector.IsCheckpointUniqueViolation(ex))
         {
             dbContext.Entry(entity)
                      .State = EntityState.Detached;
@@ -169,7 +169,7 @@ public sealed class SyncCheckpointRepository(AppDbContext dbContext,
                                                                      step,
                                                                      cursor,
                                                                      ct)
-               .ConfigureAwait(false);
+                                              .ConfigureAwait(false);
 
             if (winner == null)
             {
@@ -183,17 +183,6 @@ public sealed class SyncCheckpointRepository(AppDbContext dbContext,
             await uow.SaveChangesAsync(ct)
                      .ConfigureAwait(false);
         }
-    }
-
-    private static bool IsCheckpointUniqueViolation(DbUpdateException ex)
-    {
-        string message = ex.InnerException?.Message ?? ex.Message;
-
-        if (string.IsNullOrWhiteSpace(message)) return false;
-
-        return message.Contains("UX_sync_checkpoint_run_step_cursor", StringComparison.OrdinalIgnoreCase)
-               || message.Contains("run_step_cursor", StringComparison.OrdinalIgnoreCase)
-               || message.Contains("uq_sync_checkpoint_run_step_cursor", StringComparison.OrdinalIgnoreCase);
     }
 
     private static Expression<Func<SyncCheckpointEntity, SyncCheckpointDto>> MapToDto()

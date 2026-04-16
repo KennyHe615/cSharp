@@ -1,5 +1,7 @@
 using Application.Enums;
 
+using SharedKernel.Sync;
+
 
 namespace Infrastructure.Persistence.Entities.SyncTracking;
 
@@ -11,8 +13,8 @@ public sealed class SyncRequestEntity : Audit
 {
     public long Id { get; set; }
 
-    // Business-facing category: UsersDetails / ConversationsDetails / References...
-    public SyncCategory Category { get; set; }
+    // Business-facing category within the domain: User / Queue / UsersDetails / etc.
+    public string Category { get; set; } = string.Empty;
 
     // Execution mode: Incremental / Recovery
     public SyncMode Mode { get; set; }
@@ -35,25 +37,12 @@ public sealed class SyncRequestEntity : Audit
 
     public ICollection<SyncRunEntity> Runs { get; set; } = [];
 
-    public static string BuildScopeKey(SyncCategory category,
-                                       SyncMode mode,
-                                       string? interval,
-                                       int? pageNumber,
-                                       string? genesysJobId)
-    {
-        string intervalPart = string.IsNullOrWhiteSpace(interval) ? "-" : interval.Trim();
-        string pagePart = pageNumber.HasValue ? pageNumber.Value.ToString() : "-";
-        string genesysPart = string.IsNullOrWhiteSpace(genesysJobId) ? "-" : genesysJobId.Trim();
-
-        return $"{category}|{mode}|{intervalPart}|{pagePart}|{genesysPart}";
-    }
-
     public void RebuildScopeKey()
     {
-        ScopeKey = BuildScopeKey(Category,
-                                 Mode,
-                                 Interval,
-                                 PageNumber,
-                                 GenesysJobId);
+        ScopeKey = SyncScopeKeyFormatter.Format(Category,
+                                                Mode.ToString(),
+                                                Interval,
+                                                PageNumber,
+                                                GenesysJobId);
     }
 }

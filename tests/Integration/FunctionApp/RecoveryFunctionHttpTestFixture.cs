@@ -12,6 +12,7 @@ using FunctionApp.Http;
 using Microsoft.Azure.Functions.Worker.Http;
 using Microsoft.Extensions.Logging;
 
+using tests.TestSupport.Context;
 using tests.TestSupport.Functions;
 using tests.TestSupport.Logging;
 
@@ -76,21 +77,10 @@ internal static class RecoveryFunctionHttpTestFixture
             LastCommand = command;
 
             CreateRecoveryRequestResponse response = await OnSend(command, ct)
-               .ConfigureAwait(false);
+                                                        .ConfigureAwait(false);
 
             return (TResponse)(object)response;
         }
-    }
-
-    private sealed class StubLobContextAccessor : ILobContextAccessor
-    {
-        public string? LobName { get; set; }
-
-        public string? GenesysClientId { get; set; }
-
-        public string? GenesysClientSecret { get; set; }
-
-        public string? DbConnectionString { get; set; }
     }
 
     private sealed class StubCredentialProvider : ICredentialProvider

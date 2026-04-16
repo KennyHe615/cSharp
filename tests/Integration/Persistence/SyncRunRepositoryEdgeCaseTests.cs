@@ -1,3 +1,4 @@
+using Application.Abstractions.Persistence;
 using Application.Enums;
 
 using Infrastructure.Persistence.DbContext;
@@ -5,9 +6,13 @@ using Infrastructure.Persistence.Entities.SyncTracking;
 using Infrastructure.Persistence.Repositories.SyncTracking;
 
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
+
+using Moq;
+
+using SharedKernel.Time;
 
 using tests.TestSupport.Persistence;
+using tests.TestSupport.Time;
 
 using Xunit;
 
@@ -19,68 +24,64 @@ public sealed class SyncRunRepositoryEdgeCaseTests
     [Fact]
     public async Task StartNewRunAsync_RequestNotFound_ThrowsInvalidOperationException()
     {
-        await using ServiceProvider provider = SyncTrackingPersistenceTestFixture.BuildProvider();
-        await using AsyncServiceScope scope = provider.CreateAsyncScope();
+        Mock<IDateTimeProvider> dateTimeProvider = DateTimeProviderTestFactory.Create();
 
-        AppDbContext db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        await db.Database.EnsureCreatedAsync();
+        await using AppDbContext dbContext = PersistenceTestFactory.CreateDbContext(dateTimeProvider.Object);
+        Mock<IUnitOfWork> uow = PersistenceTestFactory.CreateUnitOfWork<SyncRunEntity>(dbContext);
 
-        SyncRunRepository sut = SyncTrackingPersistenceTestFixture.CreateRunRepository(scope.ServiceProvider, db);
+        SyncRunRepository sut = new SyncRunRepository(dbContext, uow.Object, dateTimeProvider.Object);
 
         InvalidOperationException ex =
             await Assert.ThrowsAsync<InvalidOperationException>(() => sut.StartNewRunAsync(9999L,
                                                                  CancellationToken.None));
 
-        Assert.Contains("Sync request '9999' was not found.", ex.Message);
+        Assert.Contains("Sync request '9999' was not found.", ex.Message, StringComparison.Ordinal);
     }
 
     [Fact]
     public async Task MarkCompletedAsync_RunNotFound_ThrowsInvalidOperationException()
     {
-        await using ServiceProvider provider = SyncTrackingPersistenceTestFixture.BuildProvider();
-        await using AsyncServiceScope scope = provider.CreateAsyncScope();
+        Mock<IDateTimeProvider> dateTimeProvider = DateTimeProviderTestFactory.Create();
 
-        AppDbContext db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        await db.Database.EnsureCreatedAsync();
+        await using AppDbContext dbContext = PersistenceTestFactory.CreateDbContext(dateTimeProvider.Object);
+        Mock<IUnitOfWork> uow = PersistenceTestFactory.CreateUnitOfWork<SyncRunEntity>(dbContext);
 
-        SyncRunRepository sut = SyncTrackingPersistenceTestFixture.CreateRunRepository(scope.ServiceProvider, db);
+        SyncRunRepository sut = new SyncRunRepository(dbContext, uow.Object, dateTimeProvider.Object);
 
         InvalidOperationException ex =
             await Assert.ThrowsAsync<InvalidOperationException>(() => sut.MarkCompletedAsync(7777L,
                                                                  CancellationToken.None));
 
-        Assert.Contains("Sync run '7777' was not found.", ex.Message);
+        Assert.Contains("Sync run '7777' was not found.", ex.Message, StringComparison.Ordinal);
     }
 
     [Fact]
     public async Task MarkFailedAsync_WhenRunAlreadyCompleted_DoesNotOverwriteStatusOrReason()
     {
-        await using ServiceProvider provider = SyncTrackingPersistenceTestFixture.BuildProvider();
-        await using AsyncServiceScope scope = provider.CreateAsyncScope();
+        Mock<IDateTimeProvider> dateTimeProvider = DateTimeProviderTestFactory.Create();
 
-        AppDbContext db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        await db.Database.EnsureCreatedAsync();
+        await using AppDbContext dbContext = PersistenceTestFactory.CreateDbContext(dateTimeProvider.Object);
+        Mock<IUnitOfWork> uow = PersistenceTestFactory.CreateUnitOfWork<SyncRunEntity>(dbContext);
 
         SyncRequestEntity request =
-            SyncTrackingPersistenceTestFixture.CreateRequest(SyncCategory.UsersDetails, SyncMode.Incremental, "edge-1");
-        db.Set<SyncRequestEntity>()
-          .Add(request);
-        await db.SaveChangesAsync();
+            await SyncTrackingSeedFactory.SeedRequestAsync(dbContext,
+                                                           nameof(SyncReferenceCategory.Group),
+                                                           SyncMode.Incremental);
 
-        SyncRunRepository sut = SyncTrackingPersistenceTestFixture.CreateRunRepository(scope.ServiceProvider, db);
+        SyncRunRepository sut = new SyncRunRepository(dbContext, uow.Object, dateTimeProvider.Object);
 
         long runId = await sut.StartNewRunAsync(request.Id, CancellationToken.None);
         await sut.MarkCompletedAsync(runId, CancellationToken.None);
 
-        SyncRunEntity before = await db.Set<SyncRunEntity>()
-                                       .AsNoTracking()
-                                       .SingleAsync(x => x.Id == runId);
+        SyncRunEntity before = await dbContext.Set<SyncRunEntity>()
+                                              .AsNoTracking()
+                                              .SingleAsync(x => x.Id == runId);
 
         await sut.MarkFailedAsync(runId, "should-not-apply", CancellationToken.None);
 
-        SyncRunEntity after = await db.Set<SyncRunEntity>()
-                                      .AsNoTracking()
-                                      .SingleAsync(x => x.Id == runId);
+        SyncRunEntity after = await dbContext.Set<SyncRunEntity>()
+                                             .AsNoTracking()
+                                             .SingleAsync(x => x.Id == runId);
 
         Assert.Equal(SyncRunStatus.Completed, after.Status);
         Assert.Equal(before.RunCompletedAt, after.RunCompletedAt);
@@ -90,32 +91,30 @@ public sealed class SyncRunRepositoryEdgeCaseTests
     [Fact]
     public async Task MarkSupersededAsync_WhenRunAlreadyCanceled_DoesNotOverwriteFinalState()
     {
-        await using ServiceProvider provider = SyncTrackingPersistenceTestFixture.BuildProvider();
-        await using AsyncServiceScope scope = provider.CreateAsyncScope();
+        Mock<IDateTimeProvider> dateTimeProvider = DateTimeProviderTestFactory.Create();
 
-        AppDbContext db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        await db.Database.EnsureCreatedAsync();
+        await using AppDbContext dbContext = PersistenceTestFactory.CreateDbContext(dateTimeProvider.Object);
+        Mock<IUnitOfWork> uow = PersistenceTestFactory.CreateUnitOfWork<SyncRunEntity>(dbContext);
 
         SyncRequestEntity request =
-            SyncTrackingPersistenceTestFixture.CreateRequest(SyncCategory.UsersDetails, SyncMode.Recovery, "edge-2");
-        db.Set<SyncRequestEntity>()
-          .Add(request);
-        await db.SaveChangesAsync();
+            await SyncTrackingSeedFactory.SeedRequestAsync(dbContext,
+                                                           nameof(SyncReferenceCategory.Skill),
+                                                           SyncMode.Recovery);
 
-        SyncRunRepository sut = SyncTrackingPersistenceTestFixture.CreateRunRepository(scope.ServiceProvider, db);
+        SyncRunRepository sut = new SyncRunRepository(dbContext, uow.Object, dateTimeProvider.Object);
 
         long runId = await sut.StartNewRunAsync(request.Id, CancellationToken.None);
         await sut.MarkCanceledAsync(runId, "cancelled", CancellationToken.None);
 
-        SyncRunEntity before = await db.Set<SyncRunEntity>()
-                                       .AsNoTracking()
-                                       .SingleAsync(x => x.Id == runId);
+        SyncRunEntity before = await dbContext.Set<SyncRunEntity>()
+                                              .AsNoTracking()
+                                              .SingleAsync(x => x.Id == runId);
 
         await sut.MarkSupersededAsync(runId, 123456L, CancellationToken.None);
 
-        SyncRunEntity after = await db.Set<SyncRunEntity>()
-                                      .AsNoTracking()
-                                      .SingleAsync(x => x.Id == runId);
+        SyncRunEntity after = await dbContext.Set<SyncRunEntity>()
+                                             .AsNoTracking()
+                                             .SingleAsync(x => x.Id == runId);
 
         Assert.Equal(SyncRunStatus.Canceled, after.Status);
         Assert.Equal(before.SupersededByRunId, after.SupersededByRunId);

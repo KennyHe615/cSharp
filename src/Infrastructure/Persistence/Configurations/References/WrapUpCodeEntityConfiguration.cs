@@ -41,6 +41,7 @@ public sealed class WrapUpCodeEntityConfiguration : IEntityTypeConfiguration<Wra
                .HasMaxLength(36);
 
         builder.Property(x => x.State)
+               .IsRequired()
                .HasMaxLength(8);
 
         #endregion

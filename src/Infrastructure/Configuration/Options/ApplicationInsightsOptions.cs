@@ -54,4 +54,11 @@ public sealed class ApplicationInsightsOptions
     /// </summary>
     [Range(1, 100, ErrorMessage = "Sampling rate must be between 1-100%")]
     public int SamplingPercentage { get; set; } = 100;
+
+    /// <summary>
+    /// Controls EF Core logger verbosity in Application Insights.
+    /// <c>false</c> (default): EF logs at Warning+.
+    /// <c>true</c>: EF logs at Trace+ (includes SQL command diagnostics).
+    /// </summary>
+    public bool EnableEfCommandLogging { get; set; } = false;
 }

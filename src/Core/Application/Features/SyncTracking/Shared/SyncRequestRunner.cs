@@ -3,7 +3,7 @@ using Application.Abstractions.Persistence;
 using Application.DTOs.SyncTracking;
 
 
-namespace Application.Features.SyncTracking;
+namespace Application.Features.SyncTracking.Shared;
 
 /// <summary>
 /// Default sync request runner that coordinates run lifecycle and dispatch execution.
@@ -64,7 +64,7 @@ public sealed class SyncRequestRunner(ISyncRunCoordinator syncRunCoordinator,
         }
         catch (Exception ex)
         {
-            await syncRunCoordinator.MarkFailedAsync(runId, ex.Message, ct)
+            await syncRunCoordinator.MarkFailedAsync(runId, ex.Message, CancellationToken.None)
                                     .ConfigureAwait(false);
 
             throw;

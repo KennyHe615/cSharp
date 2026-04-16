@@ -36,6 +36,7 @@ csharp_new_line_before_finally = true
 resharper_csharp_max_line_length = 120
 resharper_keep_existing_attribute_arrangement = false
 resharper_wrap_chained_method_calls = chop_always
+resharper_align_multiline_expression = true
 
 
 ############################################################

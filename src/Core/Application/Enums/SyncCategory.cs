@@ -1,24 +1,19 @@
 namespace Application.Enums;
 
-public enum SyncCategory
+public enum SyncReferenceCategory
 {
-    #region References
-
     User,
     Queue,
     Flow,
     Group,
     Skill,
     PresenceDefinition,
-    WrapUpCode,
+    WrapUpCode
+}
 
-    #endregion
-
-    #region Analytics
-
+public enum SyncAnalyticsCategory
+{
     UsersDetails,
     ConversationsDetails,
-    ConversationsAggregates,
-
-    #endregion
+    ConversationsAggregates
 }

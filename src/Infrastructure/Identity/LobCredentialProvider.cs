@@ -31,6 +31,8 @@ public sealed class LobCredentialProvider(ISecretProvider secretProvider,
                                           AppEnvironment appEnvironment,
                                           ILogger<LobCredentialProvider> logger) : ICredentialProvider
 {
+    private const string LogCategory = "CredentialResolution";
+
     /// <inheritdoc />
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="accessor"/> is null.</exception>
     /// <exception cref="InvalidOperationException">
@@ -39,14 +41,14 @@ public sealed class LobCredentialProvider(ISecretProvider secretProvider,
     public async Task PopulateAsync(ILobContextAccessor accessor, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(accessor);
-
+        const string logEntity = "Populate";
         string? lob = accessor.LobName;
         if (string.IsNullOrWhiteSpace(lob))
         {
             throw new InvalidOperationException("LobName must be set before resolving credentials.");
         }
 
-        using IDisposable scope = logger.BeginOperationScope(new LobName(lob), "CredentialResolution");
+        using IDisposable scope = logger.BeginOperationScope(new LobName(lob), LogCategory);
 
         (string clientIdSecretName, string clientSecretName, string dbConnSecretName) = BuildSecretNames(lob);
 
@@ -62,7 +64,10 @@ public sealed class LobCredentialProvider(ISecretProvider secretProvider,
                          clientSecret,
                          dbConnectionString);
 
-        logger.LogInformation("Successfully populated runtime credentials for LOB '{LobName}'.", lob);
+        logger.LogInformation(LobLogTemplates.LobCategoryEntity + "Successfully populated runtime credentials.",
+                              lob,
+                              LogCategory,
+                              logEntity);
     }
 
     #region ========== *** Private Methods *** ==========
@@ -74,13 +79,17 @@ public sealed class LobCredentialProvider(ISecretProvider secretProvider,
     {
         KeyVaultOptions options = keyVaultOptions.Value;
         string env = appEnvironment.Alias;
+        const string logEntity = "BuildSecretNames";
 
         string clientIdSecretName = BuildLobSecretName(options.GenesysClientIdSecretPrefix, env, lob);
         string clientSecretName = BuildLobSecretName(options.GenesysClientSecretSecretPrefix, env, lob);
         string dbConnSecretName = BuildLobSecretName(options.LandingDbConnStrSecretPrefix, env, lob);
 
-        logger.LogInformation("Resolving required credentials from Key Vault for LOB '{LobName}' in environment '{EnvironmentAlias}'.",
+        logger.LogInformation(LobLogTemplates.LobCategoryEntity
+                              + "Resolving required credentials from Key Vault in environment '{EnvironmentAlias}'.",
                               lob,
+                              LogCategory,
+                              logEntity,
                               env);
 
         return (clientIdSecretName, clientSecretName, dbConnSecretName);
@@ -118,8 +127,8 @@ public sealed class LobCredentialProvider(ISecretProvider secretProvider,
                                            .ConfigureAwait(false);
 
         return !string.IsNullOrWhiteSpace(value)
-            ? value
-            : throw new InvalidOperationException($"Key Vault secret '{secretName}' is missing or empty.");
+                   ? value
+                   : throw new InvalidOperationException($"Key Vault secret '{secretName}' is missing or empty.");
     }
 
     /// <summary>
@@ -137,7 +146,7 @@ public sealed class LobCredentialProvider(ISecretProvider secretProvider,
 
     /// <summary>
     /// Builds a LOB-specific secret name following the convention:
-    /// <c>{Prefix}-{EnvironmentAlias}-{Lob}</c>.
+    /// <c>{Prefix}-{Lob}-{EnvironmentAlias}</c>.
     /// </summary>
     private static string BuildLobSecretName(string prefix, string environmentAlias, string lob)
     {

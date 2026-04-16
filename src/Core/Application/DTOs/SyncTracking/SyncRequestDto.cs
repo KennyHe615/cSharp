@@ -3,11 +3,14 @@ using Application.Enums;
 
 namespace Application.DTOs.SyncTracking;
 
+/// <summary>
+/// DTO representation of sync request persistence model.
+/// </summary>
 public sealed class SyncRequestDto
 {
     public long Id { get; set; }
 
-    public SyncCategory Category { get; set; }
+    public string Category { get; set; } = string.Empty;
 
     public SyncMode Mode { get; set; }
 

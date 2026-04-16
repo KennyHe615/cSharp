@@ -14,14 +14,14 @@ public interface ISyncRequestRepository
     /// Creates a new sync request for the specified scope, or returns the existing request id
     /// when the same scope already exists.
     /// </summary>
-    /// <param name="category">Business sync category.</param>
+    /// <param name="category">Sync category.</param>
     /// <param name="mode">Execution mode (Incremental or Recovery).</param>
     /// <param name="interval">Optional interval selector.</param>
     /// <param name="pageNumber">Optional page selector.</param>
     /// <param name="genesysJobId">Optional external Genesys job selector.</param>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>The existing or newly created sync request id for this scope.</returns>
-    Task<long> CreateOrGetByScopeAsync(SyncCategory category,
+    Task<long> CreateOrGetByScopeAsync(string category,
                                        SyncMode mode,
                                        string? interval,
                                        int? pageNumber,

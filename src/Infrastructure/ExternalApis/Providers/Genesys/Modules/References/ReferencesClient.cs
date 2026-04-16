@@ -10,6 +10,8 @@ using Infrastructure.ExternalApis.Shared.Http;
 
 using Microsoft.Extensions.Options;
 
+using System.Net;
+
 
 namespace Infrastructure.ExternalApis.Providers.Genesys.Modules.References;
 
@@ -19,6 +21,11 @@ namespace Infrastructure.ExternalApis.Providers.Genesys.Modules.References;
 public sealed class ReferencesClient : IReferenceApiClient
 {
     private const int MaxPaginationIterations = 100;
+
+    private const string SkillsEndpoint = "/api/v2/routing/skills";
+    private const string PresenceDefinitionsEndpoint = "/api/v2/presence/definitions";
+    private const string GroupsEndpoint = "/api/v2/groups";
+    private const string WrapUpCodesEndpoint = "/api/v2/routing/wrapupcodes";
 
     private readonly IGenesysApiClient _genesysApiClient;
     private readonly GenesysOptions _options;
@@ -32,46 +39,62 @@ public sealed class ReferencesClient : IReferenceApiClient
         _options = options.Value ?? throw new ArgumentNullException(nameof(options));
     }
 
-    public async Task<IReadOnlyCollection<SkillRawContract>> GetSkillsAsync(CancellationToken ct = default)
+    /// <inheritdoc />
+    public Task<IReadOnlyCollection<SkillRawContract>> GetSkillsAsync(CancellationToken ct = default)
     {
-        string initialUrl = $"/api/v2/routing/skills?pageSize={_options.DefaultPageSize}";
-
-        IReadOnlyCollection<SkillResponse> provider = await GetPaginatedAsync<SkillResponse>(initialUrl, "Skill", ct);
-
-        return _mapper.Map<List<SkillRawContract>>(provider);
+        return GetMappedReferencesAsync<SkillResponse, SkillRawContract>(SkillsEndpoint, "Skill", ct);
     }
 
-    public async Task<IReadOnlyCollection<PresenceDefinitionRawContract>> GetPresenceDefinitionsAsync(
+    /// <inheritdoc />
+    public Task<IReadOnlyCollection<PresenceDefinitionRawContract>> GetPresenceDefinitionsAsync(
         CancellationToken ct = default)
     {
-        string initialUrl = $"/api/v2/presence/definitions?pageSize={_options.DefaultPageSize}";
-
-        IReadOnlyCollection<PresenceDefinitionResponse> provider =
-            await GetPaginatedAsync<PresenceDefinitionResponse>(initialUrl, "PresenceDefinition", ct);
-
-        return _mapper.Map<List<PresenceDefinitionRawContract>>(provider);
+        return
+            GetMappedReferencesAsync<PresenceDefinitionResponse,
+                PresenceDefinitionRawContract>(PresenceDefinitionsEndpoint, "PresenceDefinition", ct);
     }
 
-    public async Task<IReadOnlyCollection<GroupRawContract>> GetGroupsAsync(CancellationToken ct = default)
+    /// <inheritdoc />
+    public Task<IReadOnlyCollection<GroupRawContract>> GetGroupsAsync(CancellationToken ct = default)
     {
-        string initialUrl = $"/api/v2/groups?pageSize={_options.DefaultPageSize}";
-
-        IReadOnlyCollection<GroupResponse> provider = await GetPaginatedAsync<GroupResponse>(initialUrl, "Group", ct);
-
-        return _mapper.Map<List<GroupRawContract>>(provider);
+        return GetMappedReferencesAsync<GroupResponse, GroupRawContract>(GroupsEndpoint, "Group", ct);
     }
 
-    public async Task<IReadOnlyCollection<WrapUpCodeRawContract>> GetWrapUpCodesAsync(CancellationToken ct = default)
+    /// <inheritdoc />
+    public Task<IReadOnlyCollection<WrapUpCodeRawContract>> GetWrapUpCodesAsync(CancellationToken ct = default)
     {
-        string initialUrl = $"/api/v2/routing/wrapupcodes?pageSize={_options.DefaultPageSize}";
-
-        IReadOnlyCollection<WrapUpCodeResponse> provider =
-            await GetPaginatedAsync<WrapUpCodeResponse>(initialUrl, "WrapUpCode", ct);
-
-        return _mapper.Map<List<WrapUpCodeRawContract>>(provider);
+        return GetMappedReferencesAsync<WrapUpCodeResponse, WrapUpCodeRawContract>(WrapUpCodesEndpoint,
+         "WrapUpCode",
+         ct);
     }
 
     #region ========== *** Private Methods *** ==========
+
+    /// <summary>
+    /// Fetches a paged Genesys reference endpoint and maps provider DTOs to application raw contracts.
+    /// </summary>
+    private async Task<IReadOnlyCollection<TContract>> GetMappedReferencesAsync<TProvider, TContract>(
+        string endpointPath,
+        string entityName,
+        CancellationToken ct)
+    {
+        string initialUrl = BuildInitialUrl(endpointPath);
+
+        IReadOnlyCollection<TProvider> provider = await GetPaginatedAsync<TProvider>(initialUrl, entityName, ct)
+           .ConfigureAwait(false);
+
+        return _mapper.Map<List<TContract>>(provider);
+    }
+
+    /// <summary>
+    /// Builds the first paged request URL from endpoint path and configured page size.
+    /// </summary>
+    private string BuildInitialUrl(string endpointPath)
+    {
+        return string.IsNullOrWhiteSpace(endpointPath)
+            ? throw new ArgumentException("Endpoint path must be provided.", nameof(endpointPath))
+            : $"{endpointPath}?pageSize={_options.DefaultPageSize}";
+    }
 
     /// <summary>
     /// Iterates a Genesys paged endpoint by following <c>nextUri</c> until exhausted.
@@ -95,7 +118,7 @@ public sealed class ReferencesClient : IReferenceApiClient
 
             if (iterations >= MaxPaginationIterations)
             {
-                throw new ExternalServiceHttpException(System.Net.HttpStatusCode.InternalServerError,
+                throw new ExternalServiceHttpException(HttpStatusCode.InternalServerError,
                                                        "GET",
                                                        currentUrl,
                                                        $"Exceeded pagination limit ({MaxPaginationIterations}) for {entityName}.");
@@ -107,7 +130,7 @@ public sealed class ReferencesClient : IReferenceApiClient
 
             if (response?.Entities is null)
             {
-                throw new ExternalServiceHttpException(System.Net.HttpStatusCode.OK,
+                throw new ExternalServiceHttpException(HttpStatusCode.OK,
                                                        "GET",
                                                        currentUrl,
                                                        $"Genesys {entityName} response payload is missing entities.");

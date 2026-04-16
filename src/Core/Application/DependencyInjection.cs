@@ -1,7 +1,10 @@
+using Application.Abstractions.Normalization;
 using Application.Abstractions.Orchestration;
 using Application.Behaviors;
-using Application.Features.SyncTracking;
+using Application.Features.SyncTracking.References;
+using Application.Features.SyncTracking.Shared;
 using Application.Mediator;
+using Application.Normalizers.Genesys;
 
 using FluentValidation;
 
@@ -27,8 +30,12 @@ public static class DependencyInjection
                                   .AsImplementedInterfaces()
                                   .WithScopedLifetime());
 
+        services.AddScoped<IReferencesNormalizer, ReferencesNormalizer>();
+        services.AddScoped<IUsersDetailsNormalizer, UsersDetailsNormalizer>();
+
         services.AddScoped<ISyncRunCoordinator, SyncRunCoordinator>();
         services.AddScoped<ISyncRequestRunner, SyncRequestRunner>();
+        services.AddScoped<IReferencesSyncOrchestrator, ReferencesSyncOrchestrator>();
         services.AddScoped<ISyncExecutionDispatcher, SyncExecutionDispatcher>();
     }
 }

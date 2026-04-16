@@ -13,6 +13,7 @@ namespace Application.Normalizers.Genesys;
 /// </summary>
 public sealed class ReferencesNormalizer : IReferencesNormalizer
 {
+    /// <inheritdoc />
     public IReadOnlyCollection<SkillDto> NormalizeSkills(IReadOnlyCollection<SkillRawContract> responses)
     {
         ArgumentNullException.ThrowIfNull(responses);
@@ -28,6 +29,7 @@ public sealed class ReferencesNormalizer : IReferencesNormalizer
                         .ToList();
     }
 
+    /// <inheritdoc />
     public IReadOnlyCollection<PresenceDefinitionDto> NormalizePresenceDefinitions(
         IReadOnlyCollection<PresenceDefinitionRawContract> responses)
     {
@@ -47,6 +49,7 @@ public sealed class ReferencesNormalizer : IReferencesNormalizer
                         .ToList();
     }
 
+    /// <inheritdoc />
     public IReadOnlyCollection<GroupDto> NormalizeGroups(IReadOnlyCollection<GroupRawContract> responses)
     {
         ArgumentNullException.ThrowIfNull(responses);
@@ -70,6 +73,12 @@ public sealed class ReferencesNormalizer : IReferencesNormalizer
                         .ToList();
     }
 
+    /// <inheritdoc />
+    /// <remarks>
+    /// Genesys wrap-up-code payloads currently do not provide state, so normalized entries are assigned
+    /// <see cref="StateKind.Active"/> by default.
+    /// </remarks>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="responses"/> is <c>null</c>.</exception>
     public IReadOnlyCollection<WrapUpCodeDto> NormalizeWrapUpCodes(IReadOnlyCollection<WrapUpCodeRawContract> responses)
     {
         ArgumentNullException.ThrowIfNull(responses);
@@ -85,20 +94,21 @@ public sealed class ReferencesNormalizer : IReferencesNormalizer
                                             CreatedBy = code.CreatedBy,
                                             ModifiedBy = code.ModifiedBy,
                                             // Genesys wrap-up response currently does not provide state.
-                                            State = null
+                                            State = StateKind.Active
                                         })
                         .ToList();
     }
 
+    #region ========== *** Private Section *** ==========
+
     private static string? ResolveLanguageLabel(Dictionary<string, string>? labels)
     {
-        if (labels is null || labels.Count == 0)
-        {
-            return null;
-        }
+        if (labels is null || labels.Count == 0) return null;
 
         return labels.GetStringByPath("en_US")
                ?? labels.GetStringByPath("en")
                ?? labels.Values.FirstOrDefault(value => !string.IsNullOrWhiteSpace(value));
     }
+
+    #endregion
 }

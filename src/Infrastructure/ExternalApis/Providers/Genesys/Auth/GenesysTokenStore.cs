@@ -12,6 +12,8 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 using SharedKernel.Environment;
+using SharedKernel.Lobs;
+using SharedKernel.Logging;
 
 
 namespace Infrastructure.ExternalApis.Providers.Genesys.Auth;
@@ -39,6 +41,7 @@ public sealed class GenesysTokenStore : IGenesysTokenStore
     private readonly KeyVaultOptions _keyVaultOptions;
     private readonly AppEnvironment _appEnvironment;
     private readonly ILogger<GenesysTokenStore> _logger;
+    private const string LogCategory = "GenesysTokenStore";
 
     /// <summary>
     /// Initializes a new instance of the <see cref="GenesysTokenStore"/> class.
@@ -74,6 +77,9 @@ public sealed class GenesysTokenStore : IGenesysTokenStore
             throw new ArgumentException("LOB key cannot be null, empty, or whitespace.", nameof(lobKey));
         }
 
+        const string logEntity = "TryGetValid";
+        using IDisposable scope = _logger.BeginOperationScope(new LobName(lobKey), LogCategory, logEntity);
+
         string cacheKey = BuildCacheKey(lobKey);
 
         if (TryGetValidFromMemory(cacheKey, out GenesysTokenCacheEntry? memoryEntry)) return memoryEntry;
@@ -94,7 +100,13 @@ public sealed class GenesysTokenStore : IGenesysTokenStore
             }
             catch (JsonException ex)
             {
-                _logger.LogWarning(ex, "Invalid token payload format in Key Vault secret '{SecretName}'.", secretName);
+                _logger.LogWarningWithDetails(ex,
+                                              LobLogTemplates.LobCategoryEntity
+                                              + "Invalid token payload format in Key Vault secret '{SecretName}'.",
+                                              new LobName(lobKey).Value,
+                                              LogCategory,
+                                              logEntity,
+                                              secretName);
 
                 return null;
             }
@@ -108,7 +120,13 @@ public sealed class GenesysTokenStore : IGenesysTokenStore
         catch (KeyVaultSecretException ex)
         {
             // Degraded mode: continue to OAuth flow when Key Vault is unavailable.
-            _logger.LogWarning(ex, "Key Vault unavailable while reading token secret '{SecretName}'.", secretName);
+            _logger.LogWarningWithDetails(ex,
+                                          LobLogTemplates.LobCategoryEntity
+                                          + "Key Vault unavailable while reading token secret '{SecretName}'.",
+                                          new LobName(lobKey).Value,
+                                          LogCategory,
+                                          logEntity,
+                                          secretName);
 
             return null;
         }
@@ -126,6 +144,9 @@ public sealed class GenesysTokenStore : IGenesysTokenStore
 
         ArgumentNullException.ThrowIfNull(entry);
 
+        const string logEntity = "Upsert";
+        using IDisposable scope = _logger.BeginOperationScope(new LobName(lobKey), LogCategory, logEntity);
+
         string cacheKey = BuildCacheKey(lobKey);
         string secretName = BuildTokenSecretName(lobKey);
 
@@ -141,9 +162,13 @@ public sealed class GenesysTokenStore : IGenesysTokenStore
         catch (KeyVaultSecretException ex)
         {
             // Degraded mode: in-memory still available for current run.
-            _logger.LogWarning(ex,
-                               "Failed to persist token to Key Vault secret '{SecretName}'. Using in-memory token only.",
-                               secretName);
+            _logger.LogWarningWithDetails(ex,
+                                          LobLogTemplates.LobCategoryEntity
+                                          + "Failed to persist token to Key Vault secret '{SecretName}'. Using in-memory token only.",
+                                          new LobName(lobKey).Value,
+                                          LogCategory,
+                                          logEntity,
+                                          secretName);
         }
     }
 
@@ -155,6 +180,9 @@ public sealed class GenesysTokenStore : IGenesysTokenStore
         {
             throw new ArgumentException("LOB key cannot be null, empty, or whitespace.", nameof(lobKey));
         }
+
+        const string logEntity = "Remove";
+        using IDisposable scope = _logger.BeginOperationScope(new LobName(lobKey), LogCategory, logEntity);
 
         string cacheKey = BuildCacheKey(lobKey);
         string secretName = BuildTokenSecretName(lobKey);
@@ -169,7 +197,13 @@ public sealed class GenesysTokenStore : IGenesysTokenStore
         catch (KeyVaultSecretException ex)
         {
             // Degraded mode: treat as best-effort delete on backing store.
-            _logger.LogWarning(ex, "Failed to delete token secret '{SecretName}' from Key Vault.", secretName);
+            _logger.LogWarningWithDetails(ex,
+                                          LobLogTemplates.LobCategoryEntity
+                                          + "Failed to delete token secret '{SecretName}' from Key Vault.",
+                                          new LobName(lobKey).Value,
+                                          LogCategory,
+                                          logEntity,
+                                          secretName);
         }
     }
 

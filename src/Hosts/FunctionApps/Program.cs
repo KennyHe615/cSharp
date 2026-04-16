@@ -1,10 +1,13 @@
 using Application;
 
+using FunctionApps.Timer;
+
 using Infrastructure;
 using Infrastructure.Observability;
 
 using Microsoft.Azure.Functions.Worker.Builder;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
 
@@ -20,6 +23,7 @@ builder.ConfigureFunctionsWebApplication();
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddApplicationInsightsForFunctions("FunctionApps");
+builder.Services.AddScoped<IReferencesTimerRunner, ReferencesTimerRunner>();
 
 builder.Build()
        .Run();

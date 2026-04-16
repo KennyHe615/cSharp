@@ -21,5 +21,5 @@ public sealed class WrapUpCodeDto
 
     public string? ModifiedBy { get; set; }
 
-    public StateKind? State { get; set; }
+    public StateKind State { get; set; }
 }

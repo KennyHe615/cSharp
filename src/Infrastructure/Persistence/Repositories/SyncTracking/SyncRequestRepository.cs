@@ -7,6 +7,8 @@ using Infrastructure.Persistence.Entities.SyncTracking;
 
 using Microsoft.EntityFrameworkCore;
 
+using SharedKernel.Sync;
+
 
 namespace Infrastructure.Persistence.Repositories.SyncTracking;
 
@@ -17,21 +19,21 @@ public sealed class SyncRequestRepository(AppDbContext dbContext,
                                           IUnitOfWork uow) : ISyncRequestRepository
 {
     /// <inheritdoc />
-    public async Task<long> CreateOrGetByScopeAsync(SyncCategory category,
+    public async Task<long> CreateOrGetByScopeAsync(string category,
                                                     SyncMode mode,
                                                     string? interval,
                                                     int? pageNumber,
                                                     string? genesysJobId,
                                                     CancellationToken ct)
     {
-        string scopeKey = BuildScopeKey(category,
-                                        mode,
-                                        interval,
-                                        pageNumber,
-                                        genesysJobId);
+        string scopeKey = SyncScopeKeyFormatter.Format(category,
+                                                       mode.ToString(),
+                                                       interval,
+                                                       pageNumber,
+                                                       genesysJobId);
 
         SyncRequestEntity? existing = await FindByScopeKeyAsync(scopeKey, ct)
-           .ConfigureAwait(false);
+                                         .ConfigureAwait(false);
 
         if (existing is not null) return existing.Id;
 
@@ -51,11 +53,11 @@ public sealed class SyncRequestRepository(AppDbContext dbContext,
 
             return entity.Id;
         }
-        catch (DbUpdateException ex) when (IsScopeKeyUniqueViolation(ex))
+        catch (DbUpdateException ex) when (UniqueViolationDetector.IsScopeKeyUniqueViolation(ex))
         {
             // Scale-out race: another instance inserted same scope key first.
             SyncRequestEntity winner = await GetByScopeKeyOrThrowAsync(scopeKey, ct)
-               .ConfigureAwait(false);
+                                          .ConfigureAwait(false);
 
             return winner.Id;
         }
@@ -83,14 +85,10 @@ public sealed class SyncRequestRepository(AppDbContext dbContext,
     }
 
     /// <inheritdoc />
-    /// <exception cref="InvalidOperationException">
-    /// Thrown when the request does not exist, the run does not exist,
-    /// or the run does not belong to the specified request.
-    /// </exception>
     public async Task SetCurrentRunAsync(long requestId, long runId, CancellationToken ct)
     {
         SyncRequestEntity request = await GetRequestOrThrowAsync(requestId, ct)
-           .ConfigureAwait(false);
+                                       .ConfigureAwait(false);
 
         await EnsureRunBelongsToRequestAsync(runId, requestId, ct)
            .ConfigureAwait(false);
@@ -102,28 +100,6 @@ public sealed class SyncRequestRepository(AppDbContext dbContext,
     }
 
     #region ========== *** Private Section *** ==========
-
-    /// <summary>
-    /// Builds a deterministic scope key for request deduplication.
-    /// </summary>
-    /// <param name="category">Sync category.</param>
-    /// <param name="mode">Sync mode.</param>
-    /// <param name="interval">Optional interval selector.</param>
-    /// <param name="pageNumber">Optional page selector.</param>
-    /// <param name="genesysJobId">Optional Genesys job selector.</param>
-    /// <returns>Normalized scope key string.</returns>
-    private static string BuildScopeKey(SyncCategory category,
-                                        SyncMode mode,
-                                        string? interval,
-                                        int? pageNumber,
-                                        string? genesysJobId)
-    {
-        return SyncRequestEntity.BuildScopeKey(category,
-                                               mode,
-                                               interval,
-                                               pageNumber,
-                                               genesysJobId);
-    }
 
     /// <summary>
     /// Finds a sync request by scope key.
@@ -148,7 +124,7 @@ public sealed class SyncRequestRepository(AppDbContext dbContext,
     /// <param name="pageNumber">Optional page selector.</param>
     /// <param name="genesysJobId">Optional Genesys job selector.</param>
     /// <returns>Initialized <see cref="SyncRequestEntity"/> with scope key rebuilt.</returns>
-    private static SyncRequestEntity BuildNewEntity(SyncCategory category,
+    private static SyncRequestEntity BuildNewEntity(string category,
                                                     SyncMode mode,
                                                     string? interval,
                                                     int? pageNumber,
@@ -166,22 +142,6 @@ public sealed class SyncRequestRepository(AppDbContext dbContext,
         entity.RebuildScopeKey();
 
         return entity;
-    }
-
-    /// <summary>
-    /// Determines whether the update exception represents the expected unique-scope race condition.
-    /// </summary>
-    /// <param name="ex">Database update exception.</param>
-    /// <returns><c>true</c> when the exception indicates scope-key uniqueness conflict; otherwise <c>false</c>.</returns>
-    private static bool IsScopeKeyUniqueViolation(DbUpdateException ex)
-    {
-        string message = ex.InnerException?.Message ?? ex.Message;
-
-        if (string.IsNullOrWhiteSpace(message)) return false;
-
-        return message.Contains("UX_sync_request_scope_key", StringComparison.OrdinalIgnoreCase)
-               || message.Contains("scope_key", StringComparison.OrdinalIgnoreCase)
-               || message.Contains("uq_sync_request_scope_key", StringComparison.OrdinalIgnoreCase);
     }
 
     /// <summary>
