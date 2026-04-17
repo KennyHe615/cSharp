@@ -6,41 +6,36 @@ namespace Application.Abstractions.Persistence;
 
 /// <summary>
 /// Persistence contract for logical sync request records.
-/// A sync request represents one unique scope identity (category + mode + selectors).
+/// Incremental mode keeps one logical request per scope; recovery mode resolves by active/reopen/create rules.
 /// </summary>
 public interface ISyncRequestRepository
 {
     /// <summary>
-    /// Creates a new sync request for the specified scope, or returns the existing request id
-    /// when the same scope already exists.
+    /// Resolves a sync request for the specified scope.
+    /// Incremental mode reuses the existing scope row when present.
+    /// Recovery mode returns an active row, reopens latest failed/canceled row, or creates a new row.
     /// </summary>
-    /// <param name="category">Sync category.</param>
+    /// <param name="category">Sync category token.</param>
     /// <param name="mode">Execution mode (Incremental or Recovery).</param>
     /// <param name="interval">Optional interval selector.</param>
     /// <param name="pageNumber">Optional page selector.</param>
-    /// <param name="genesysJobId">Optional external Genesys job selector.</param>
+    /// <param name="genesysJobId">Optional external provider job selector.</param>
     /// <param name="ct">Cancellation token.</param>
-    /// <returns>The existing or newly created sync request id for this scope.</returns>
-    Task<long> CreateOrGetByScopeAsync(string category,
-                                       SyncMode mode,
-                                       string? interval,
-                                       int? pageNumber,
-                                       string? genesysJobId,
-                                       CancellationToken ct);
+    /// <returns>
+    /// Internal id, public id, and the resolution action applied by persistence.
+    /// </returns>
+    Task<SyncRequestResolveResult> CreateOrGetByScopeAsync(string category,
+                                                           SyncMode mode,
+                                                           string? interval,
+                                                           int? pageNumber,
+                                                           string? genesysJobId,
+                                                           CancellationToken ct);
 
     /// <summary>
-    /// Gets one sync request by id.
+    /// Gets one sync request by internal database id.
     /// </summary>
-    /// <param name="id">Sync request id.</param>
+    /// <param name="id">Internal sync request id.</param>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>The request <see cref="SyncRequestDto"/> when found; otherwise <c>null</c>.</returns>
     Task<SyncRequestDto?> GetByIdAsync(long id, CancellationToken ct);
-
-    /// <summary>
-    /// Updates the request pointer to the current run id.
-    /// </summary>
-    /// <param name="requestId">Sync request id.</param>
-    /// <param name="runId">Run id to set as current.</param>
-    /// <param name="ct">Cancellation token.</param>
-    Task SetCurrentRunAsync(long requestId, long runId, CancellationToken ct);
 }

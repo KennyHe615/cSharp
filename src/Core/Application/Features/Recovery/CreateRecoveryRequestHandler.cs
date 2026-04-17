@@ -1,5 +1,6 @@
 using Application.Abstractions.Persistence;
 using Application.Contracts.InternalApis.Recovery;
+using Application.DTOs.SyncTracking;
 using Application.Enums;
 using Application.Mediator;
 
@@ -7,7 +8,7 @@ using Application.Mediator;
 namespace Application.Features.Recovery;
 
 /// <summary>
-/// Handles creation of recovery requests in SyncTracking (request table only).
+/// Handles recovery request resolution in SyncTracking (create/reuse/reopen by scope rules).
 /// </summary>
 public sealed class CreateRecoveryRequestHandler(ISyncRequestRepository syncRequestRepository)
     : IRequestHandler<CreateRecoveryRequestCommand, CreateRecoveryRequestResponse>
@@ -18,19 +19,24 @@ public sealed class CreateRecoveryRequestHandler(ISyncRequestRepository syncRequ
     public async Task<CreateRecoveryRequestResponse> Handle(CreateRecoveryRequestCommand request,
                                                             CancellationToken ct = default)
     {
-        long requestId = await _syncRequestRepository.CreateOrGetByScopeAsync(MapCategory(request.Category),
-                                                                              SyncMode.Recovery,
-                                                                              request.Interval?.ToString(),
-                                                                              null,
-                                                                              request.GenesysJobId,
-                                                                              ct)
-                                                     .ConfigureAwait(false);
+        string category = MapCategory(request.Category)
+           .ToString();
+
+        SyncRequestResolveResult resolveResult =
+            await _syncRequestRepository.CreateOrGetByScopeAsync(category,
+                                                                 SyncMode.Recovery,
+                                                                 request.Interval?.ToString(),
+                                                                 null,
+                                                                 request.GenesysJobId,
+                                                                 ct)
+                                        .ConfigureAwait(false);
 
         return new CreateRecoveryRequestResponse(true,
-                                                 "Recovery request created successfully.",
+                                                 "Recovery request resolved successfully.",
                                                  new
                                                  {
-                                                     Id = requestId,
+                                                     RequestId = resolveResult.PublicId,
+                                                     RequestAction = resolveResult.RequestAction.ToString(),
                                                      Lob = request.Lob.ToString(),
                                                      Category = request.Category.ToString(),
                                                      request.Interval,
@@ -40,13 +46,17 @@ public sealed class CreateRecoveryRequestHandler(ISyncRequestRepository syncRequ
 
     #region ========== *** Private Methods *** ==========
 
-    private static SyncCategory MapCategory(RecoveryCategory category)
+    /// <summary>
+    /// Maps API-level recovery categories to analytics sync categories.
+    /// Kept explicit to preserve contract boundary between HTTP request model and sync domain enum.
+    /// </summary>
+    private static SyncAnalyticsCategory MapCategory(RecoveryCategory category)
     {
         return category switch
                {
-                   RecoveryCategory.UsersDetails => SyncCategory.UsersDetails,
-                   RecoveryCategory.ConversationsDetails => SyncCategory.ConversationsDetails,
-                   RecoveryCategory.ConversationsAggregates => SyncCategory.ConversationsAggregates,
+                   RecoveryCategory.UsersDetails => SyncAnalyticsCategory.UsersDetails,
+                   RecoveryCategory.ConversationsDetails => SyncAnalyticsCategory.ConversationsDetails,
+                   RecoveryCategory.ConversationsAggregates => SyncAnalyticsCategory.ConversationsAggregates,
                    _ => throw new InvalidOperationException($"Unsupported recovery category '{category}'.")
                };
     }

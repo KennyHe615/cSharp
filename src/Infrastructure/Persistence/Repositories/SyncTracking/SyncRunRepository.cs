@@ -67,7 +67,7 @@ public sealed class SyncRunRepository(AppDbContext dbContext,
                                                             .ConfigureAwait(false);
                                                }
 
-                                               // 5) Move request pointer to the new current run and commit atomically.
+                                               // 5) Move request pointer to the new current run and mark request as RUNNING.
                                                await SetCurrentRunAsync(request, newRun.Id, ct)
                                                   .ConfigureAwait(false);
 
@@ -195,16 +195,9 @@ public sealed class SyncRunRepository(AppDbContext dbContext,
     }
 
     /// <summary>
-    /// Applies a terminal status transition for an active run and persists the change.
+    /// Applies a terminal run transition and mirrors terminal state to its parent request.
+    /// Request status is intentionally derived from current run terminal state for dedupe/reopen flows.
     /// </summary>
-    /// <param name="runId">Run id.</param>
-    /// <param name="finalStatus">Final status to set.</param>
-    /// <param name="supersededByRunId">Optional superseding run id.</param>
-    /// <param name="failureReason">Optional failure/cancel reason.</param>
-    /// <param name="ct">Cancellation token.</param>
-    /// <exception cref="InvalidOperationException">
-    /// Thrown when the specified run id does not exist.
-    /// </exception>
     private async Task ApplyFinalStatusAsync(long runId,
                                              SyncRunStatus finalStatus,
                                              long? supersededByRunId,
@@ -223,6 +216,15 @@ public sealed class SyncRunRepository(AppDbContext dbContext,
 
         run.FailureReason = failureReason;
 
+        SyncRequestEntity request = await GetRequestOrThrowAsync(run.RequestId, ct)
+                                       .ConfigureAwait(false);
+
+        SyncRequestStatus? requestFinalStatus = MapRequestFinalStatus(finalStatus);
+        if (requestFinalStatus.HasValue)
+        {
+            request.Status = requestFinalStatus.Value;
+        }
+
         await uow.SaveChangesAsync(ct)
                  .ConfigureAwait(false);
     }
@@ -230,6 +232,7 @@ public sealed class SyncRunRepository(AppDbContext dbContext,
     private async Task SetCurrentRunAsync(SyncRequestEntity request, long runId, CancellationToken ct)
     {
         request.CurrentRunId = runId;
+        request.Status = SyncRequestStatus.Running;
 
         await uow.SaveChangesAsync(ct)
                  .ConfigureAwait(false);
@@ -286,6 +289,21 @@ public sealed class SyncRunRepository(AppDbContext dbContext,
     private static bool IsActive(SyncRunStatus status)
     {
         return status is SyncRunStatus.Pending or SyncRunStatus.Running;
+    }
+
+    /// <summary>
+    /// Maps run terminal status to request terminal status.
+    /// Superseded does not map because request lifecycle is represented by the latest current run.
+    /// </summary>
+    private static SyncRequestStatus? MapRequestFinalStatus(SyncRunStatus runFinalStatus)
+    {
+        return runFinalStatus switch
+               {
+                   SyncRunStatus.Completed => SyncRequestStatus.Completed,
+                   SyncRunStatus.Failed => SyncRequestStatus.Failed,
+                   SyncRunStatus.Canceled => SyncRequestStatus.Canceled,
+                   _ => null
+               };
     }
 
     private static string NormalizeRunFailureSummary(SyncRunStatus finalStatus, string? rawReason)

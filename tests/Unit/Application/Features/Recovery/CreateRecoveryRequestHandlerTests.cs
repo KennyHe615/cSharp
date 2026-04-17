@@ -1,10 +1,10 @@
-using System.Diagnostics.CodeAnalysis;
-
 using Application.Abstractions.Persistence;
 using Application.Contracts.InternalApis.Recovery;
 using Application.DTOs.SyncTracking;
 using Application.Enums;
 using Application.Features.Recovery;
+
+using Moq;
 
 using SharedKernel.Lobs;
 using SharedKernel.Time;
@@ -17,62 +17,120 @@ namespace tests.Unit.Application.Features.Recovery;
 public sealed class CreateRecoveryRequestHandlerTests
 {
     [Theory]
-    [InlineData(RecoveryCategory.UsersDetails, SyncCategory.UsersDetails)]
-    [InlineData(RecoveryCategory.ConversationsDetails, SyncCategory.ConversationsDetails)]
-    [InlineData(RecoveryCategory.ConversationsAggregates, SyncCategory.ConversationsAggregates)]
-    public async Task Handle_MapsCategoryAndCreatesRequest(RecoveryCategory category, SyncCategory expectedCategory)
+    [InlineData(RecoveryCategory.UsersDetails, SyncAnalyticsCategory.UsersDetails)]
+    [InlineData(RecoveryCategory.ConversationsDetails, SyncAnalyticsCategory.ConversationsDetails)]
+    [InlineData(RecoveryCategory.ConversationsAggregates, SyncAnalyticsCategory.ConversationsAggregates)]
+    public async Task Handle_MapsCategoryAndResolvesRequest(RecoveryCategory category,
+                                                            SyncAnalyticsCategory expectedCategory)
     {
-        StubSyncRequestRepository repository = new StubSyncRequestRepository { NextCreatedId = 101L };
-        CreateRecoveryRequestHandler sut = new CreateRecoveryRequestHandler(repository);
+        Guid publicId = Guid.Parse("aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee");
+        SyncRequestResolveResult resolveResult = new SyncRequestResolveResult
+                                                 {
+                                                     Id = 101L,
+                                                     PublicId = publicId,
+                                                     RequestAction =
+                                                         SyncRequestResolveAction.Created
+                                                 };
 
-        UtcInterval interval = new UtcInterval(new DateTimeOffset(2025,
-                                                                  1,
-                                                                  1,
-                                                                  0,
-                                                                  0,
-                                                                  0,
-                                                                  TimeSpan.Zero),
-                                               new DateTimeOffset(2025,
-                                                                  1,
-                                                                  1,
-                                                                  1,
-                                                                  0,
-                                                                  0,
-                                                                  TimeSpan.Zero));
+        Mock<ISyncRequestRepository> repository = new Mock<ISyncRequestRepository>(MockBehavior.Strict);
+        repository.Setup(x => x.CreateOrGetByScopeAsync(expectedCategory.ToString(),
+                                                        SyncMode.Recovery,
+                                                        It.IsAny<string?>(),
+                                                        null,
+                                                        null,
+                                                        It.IsAny<CancellationToken>()))
+                  .ReturnsAsync(resolveResult);
+
+        CreateRecoveryRequestHandler sut = new CreateRecoveryRequestHandler(repository.Object);
+
+        UtcInterval interval = BuildInterval();
 
         CreateRecoveryRequestCommand command = new CreateRecoveryRequestCommand(new LobName("CRC"),
                                                                                 category,
                                                                                 interval,
-                                                                                "JOB-123");
+                                                                                null);
 
-        CreateRecoveryRequestResponse response = await sut.Handle(command, CancellationToken.None);
+        (bool success, string message, object detail) = await sut.Handle(command, CancellationToken.None);
 
-        Assert.Equal(1, repository.CreateOrGetCalls);
-        Assert.Equal(expectedCategory, repository.LastCategory);
-        Assert.Equal(SyncMode.Recovery, repository.LastMode);
-        Assert.Equal(interval.ToString(), repository.LastInterval);
-        Assert.Null(repository.LastPageNumber);
-        Assert.Equal("JOB-123", repository.LastGenesysJobId);
+        repository.Verify(x => x.CreateOrGetByScopeAsync(expectedCategory.ToString(),
+                                                         SyncMode.Recovery,
+                                                         interval.ToString(),
+                                                         null,
+                                                         null,
+                                                         It.IsAny<CancellationToken>()),
+                          Times.Once);
 
-        Assert.True(response.Success);
-        Assert.Equal("Recovery request created successfully.", response.Message);
+        repository.VerifyNoOtherCalls();
 
-        object detail = response.Data;
+        Assert.True(success);
+        Assert.Equal("Recovery request resolved successfully.", message);
+
         Assert.NotNull(detail);
 
         Type detailType = detail.GetType();
-        Assert.Equal(101L, (long)detailType.GetProperty("Id")!.GetValue(detail)!);
+        Assert.Equal(publicId, (Guid)detailType.GetProperty("RequestId")!.GetValue(detail)!);
+        Assert.Equal(nameof(SyncRequestResolveAction.Created),
+                     (string)detailType.GetProperty("RequestAction")!.GetValue(detail)!);
         Assert.Equal("CRC", (string)detailType.GetProperty("Lob")!.GetValue(detail)!);
         Assert.Equal(category.ToString(), (string)detailType.GetProperty("Category")!.GetValue(detail)!);
         Assert.Equal(interval, (UtcInterval?)detailType.GetProperty("Interval")!.GetValue(detail)!);
-        Assert.Equal("JOB-123", (string?)detailType.GetProperty("GenesysJobId")!.GetValue(detail)!);
+        Assert.Null((string?)detailType.GetProperty("GenesysJobId")!.GetValue(detail));
+    }
+
+    [Fact]
+    public async Task Handle_WithGenesysJobId_PassesGenesysJobIdToRepository()
+    {
+        Guid publicId = Guid.Parse("11111111-2222-3333-4444-555555555555");
+        SyncRequestResolveResult resolveResult = new SyncRequestResolveResult
+                                                 {
+                                                     Id = 202L,
+                                                     PublicId = publicId,
+                                                     RequestAction =
+                                                         SyncRequestResolveAction
+                                                            .ReusedActive
+                                                 };
+
+        Mock<ISyncRequestRepository> repository = new Mock<ISyncRequestRepository>(MockBehavior.Strict);
+        repository.Setup(x => x.CreateOrGetByScopeAsync(nameof(SyncAnalyticsCategory.ConversationsDetails),
+                                                        SyncMode.Recovery,
+                                                        null,
+                                                        null,
+                                                        "JOB-123",
+                                                        It.IsAny<CancellationToken>()))
+                  .ReturnsAsync(resolveResult);
+
+        CreateRecoveryRequestHandler sut = new CreateRecoveryRequestHandler(repository.Object);
+
+        CreateRecoveryRequestCommand command =
+            new CreateRecoveryRequestCommand(new LobName("LCL"),
+                                             RecoveryCategory.ConversationsDetails,
+                                             null,
+                                             "JOB-123");
+
+        CreateRecoveryRequestResponse response = await sut.Handle(command, CancellationToken.None);
+
+        repository.Verify(x => x.CreateOrGetByScopeAsync(nameof(SyncAnalyticsCategory.ConversationsDetails),
+                                                         SyncMode.Recovery,
+                                                         null,
+                                                         null,
+                                                         "JOB-123",
+                                                         It.IsAny<CancellationToken>()),
+                          Times.Once);
+
+        repository.VerifyNoOtherCalls();
+
+        Type detailType = response.Data.GetType();
+        Assert.Equal(publicId, (Guid)detailType.GetProperty("RequestId")!.GetValue(response.Data)!);
+        Assert.Equal(nameof(SyncRequestResolveAction.ReusedActive),
+                     (string)detailType.GetProperty("RequestAction")!.GetValue(response.Data)!);
+        Assert.Equal("JOB-123", (string?)detailType.GetProperty("GenesysJobId")!.GetValue(response.Data));
     }
 
     [Fact]
     public async Task Handle_UnsupportedCategory_ThrowsInvalidOperationException()
     {
-        StubSyncRequestRepository repository = new StubSyncRequestRepository();
-        CreateRecoveryRequestHandler sut = new CreateRecoveryRequestHandler(repository);
+        Mock<ISyncRequestRepository> repository = new Mock<ISyncRequestRepository>(MockBehavior.Strict);
+        CreateRecoveryRequestHandler sut = new CreateRecoveryRequestHandler(repository.Object);
 
         CreateRecoveryRequestCommand command =
             new CreateRecoveryRequestCommand(new LobName("CRC"),
@@ -84,54 +142,27 @@ public sealed class CreateRecoveryRequestHandlerTests
             await Assert.ThrowsAsync<InvalidOperationException>(() => sut.Handle(command, CancellationToken.None));
 
         Assert.Contains("Unsupported recovery category", ex.Message);
-        Assert.Equal(0, repository.CreateOrGetCalls);
+        repository.VerifyNoOtherCalls();
     }
 
     #region ========== *** Private Section *** ==========
 
-    [ExcludeFromCodeCoverage]
-    private sealed class StubSyncRequestRepository : ISyncRequestRepository
+    private static UtcInterval BuildInterval()
     {
-        public int CreateOrGetCalls { get; private set; }
-
-        public long NextCreatedId { get; set; } = 1L;
-
-        public SyncCategory? LastCategory { get; private set; }
-
-        public SyncMode? LastMode { get; private set; }
-
-        public string? LastInterval { get; private set; }
-
-        public int? LastPageNumber { get; private set; }
-
-        public string? LastGenesysJobId { get; private set; }
-
-        public Task<long> CreateOrGetByScopeAsync(SyncCategory category,
-                                                  SyncMode mode,
-                                                  string? interval,
-                                                  int? pageNumber,
-                                                  string? genesysJobId,
-                                                  CancellationToken ct)
-        {
-            CreateOrGetCalls++;
-            LastCategory = category;
-            LastMode = mode;
-            LastInterval = interval;
-            LastPageNumber = pageNumber;
-            LastGenesysJobId = genesysJobId;
-
-            return Task.FromResult(NextCreatedId);
-        }
-
-        public Task<SyncRequestDto?> GetByIdAsync(long id, CancellationToken ct)
-        {
-            return Task.FromResult<SyncRequestDto?>(null);
-        }
-
-        public Task SetCurrentRunAsync(long requestId, long runId, CancellationToken ct)
-        {
-            return Task.CompletedTask;
-        }
+        return new UtcInterval(new DateTimeOffset(2025,
+                                                  1,
+                                                  1,
+                                                  0,
+                                                  0,
+                                                  0,
+                                                  TimeSpan.Zero),
+                               new DateTimeOffset(2025,
+                                                  1,
+                                                  1,
+                                                  1,
+                                                  0,
+                                                  0,
+                                                  TimeSpan.Zero));
     }
 
     #endregion

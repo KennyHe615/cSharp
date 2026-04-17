@@ -1,5 +1,6 @@
 using Application.Abstractions.Orchestration;
 using Application.Abstractions.Persistence;
+using Application.DTOs.SyncTracking;
 using Application.Enums;
 using Application.Mediator;
 
@@ -7,7 +8,7 @@ using Application.Mediator;
 namespace Application.Features.SyncTracking.References;
 
 /// <summary>
-/// Handles references full-sync command by delegating to the sync request/run orchestration pipeline.
+/// Handles references full-sync by resolving incremental request scope and delegating execution.
 /// </summary>
 public sealed class RunReferencesFullSyncCommandHandler(ISyncRequestRepository syncRequestRepository,
                                                         ISyncRequestRunner syncRequestRunner)
@@ -18,17 +19,18 @@ public sealed class RunReferencesFullSyncCommandHandler(ISyncRequestRepository s
     {
         const SyncMode mode = SyncMode.Incremental;// References supports full-refresh via incremental mode only.
 
-        long requestId = await syncRequestRepository.CreateOrGetByScopeAsync(request.Category.ToString(),
-                                                                             mode,
-                                                                             null,
-                                                                             null,
-                                                                             null,
-                                                                             ct)
-                                                    .ConfigureAwait(false);
+        SyncRequestResolveResult resolveResult =
+            await syncRequestRepository.CreateOrGetByScopeAsync(request.Category.ToString(),
+                                                                mode,
+                                                                null,
+                                                                null,
+                                                                null,
+                                                                ct)
+                                       .ConfigureAwait(false);
 
-        await syncRequestRunner.ExecuteAsync(requestId, ct)
+        await syncRequestRunner.ExecuteAsync(resolveResult.Id, ct)
                                .ConfigureAwait(false);
 
-        return requestId;
+        return resolveResult.Id;
     }
 }

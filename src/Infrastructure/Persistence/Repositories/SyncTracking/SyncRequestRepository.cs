@@ -13,18 +13,18 @@ using SharedKernel.Sync;
 namespace Infrastructure.Persistence.Repositories.SyncTracking;
 
 /// <summary>
-/// Repository implementation for sync request persistence and scope deduplication.
+/// Repository implementation for sync request persistence and scope resolution.
 /// </summary>
 public sealed class SyncRequestRepository(AppDbContext dbContext,
                                           IUnitOfWork uow) : ISyncRequestRepository
 {
     /// <inheritdoc />
-    public async Task<long> CreateOrGetByScopeAsync(string category,
-                                                    SyncMode mode,
-                                                    string? interval,
-                                                    int? pageNumber,
-                                                    string? genesysJobId,
-                                                    CancellationToken ct)
+    public async Task<SyncRequestResolveResult> CreateOrGetByScopeAsync(string category,
+                                                                        SyncMode mode,
+                                                                        string? interval,
+                                                                        int? pageNumber,
+                                                                        string? genesysJobId,
+                                                                        CancellationToken ct)
     {
         string scopeKey = SyncScopeKeyFormatter.Format(category,
                                                        mode.ToString(),
@@ -32,10 +32,78 @@ public sealed class SyncRequestRepository(AppDbContext dbContext,
                                                        pageNumber,
                                                        genesysJobId);
 
-        SyncRequestEntity? existing = await FindByScopeKeyAsync(scopeKey, ct)
+        return mode switch
+               {
+                   SyncMode.Incremental => await ResolveIncrementalAsync(category,
+                                                                         mode,
+                                                                         interval,
+                                                                         pageNumber,
+                                                                         genesysJobId,
+                                                                         scopeKey,
+                                                                         ct)
+                                              .ConfigureAwait(false),
+
+                   SyncMode.Recovery => await ResolveRecoveryAsync(category,
+                                                                   mode,
+                                                                   interval,
+                                                                   pageNumber,
+                                                                   genesysJobId,
+                                                                   scopeKey,
+                                                                   ct)
+                                           .ConfigureAwait(false),
+
+                   _ => throw new InvalidOperationException($"Unsupported sync mode '{mode}'.")
+               };
+    }
+
+    /// <inheritdoc />
+    public async Task<SyncRequestDto?> GetByIdAsync(long id, CancellationToken ct)
+    {
+        return await dbContext.Set<SyncRequestEntity>()
+                              .AsNoTracking()
+                              .Where(x => x.Id == id)
+                              .Select(x => new SyncRequestDto
+                                           {
+                                               Id = x.Id,
+                                               PublicId = x.PublicId,
+                                               Category = x.Category,
+                                               Mode = x.Mode,
+                                               Status = x.Status,
+                                               ReopenCount = x.ReopenCount,
+                                               Interval = x.Interval,
+                                               PageNumber = x.PageNumber,
+                                               GenesysJobId = x.GenesysJobId,
+                                               ScopeKey = x.ScopeKey,
+                                               CurrentRunId = x.CurrentRunId
+                                           })
+                              .FirstOrDefaultAsync(ct)
+                              .ConfigureAwait(false);
+    }
+
+    #region ========== *** Private Section *** ==========
+
+    /// <summary>
+    /// Incremental semantics: one logical request row per scope.
+    /// Existing scope is reused; otherwise a new row is created.
+    /// </summary>
+    private async Task<SyncRequestResolveResult> ResolveIncrementalAsync(string category,
+                                                                         SyncMode mode,
+                                                                         string? interval,
+                                                                         int? pageNumber,
+                                                                         string? genesysJobId,
+                                                                         string scopeKey,
+                                                                         CancellationToken ct)
+    {
+        SyncRequestEntity? existing = await FindByModeAndScopeKeyAsync(mode,
+                                                                       scopeKey,
+                                                                       true,
+                                                                       ct)
                                          .ConfigureAwait(false);
 
-        if (existing is not null) return existing.Id;
+        if (existing is not null)
+        {
+            return ToResolveResult(existing, SyncRequestResolveAction.ReusedActive);
+        }
 
         SyncRequestEntity entity = BuildNewEntity(category,
                                                   mode,
@@ -51,79 +119,148 @@ public sealed class SyncRequestRepository(AppDbContext dbContext,
             await uow.SaveChangesAsync(ct)
                      .ConfigureAwait(false);
 
-            return entity.Id;
+            return ToResolveResult(entity, SyncRequestResolveAction.Created);
         }
         catch (DbUpdateException ex) when (UniqueViolationDetector.IsScopeKeyUniqueViolation(ex))
         {
-            // Scale-out race: another instance inserted same scope key first.
-            SyncRequestEntity winner = await GetByScopeKeyOrThrowAsync(scopeKey, ct)
+            // Scale-out race: another instance inserted same incremental scope first.
+            SyncRequestEntity winner = await GetByModeAndScopeKeyOrThrowAsync(mode, scopeKey, ct)
                                           .ConfigureAwait(false);
 
-            return winner.Id;
+            return ToResolveResult(winner, SyncRequestResolveAction.ReusedActive);
         }
     }
 
-    /// <inheritdoc />
-    public async Task<SyncRequestDto?> GetByIdAsync(long id, CancellationToken ct)
+    /// <summary>
+    /// Recovery semantics (latest-row rule):
+    /// - latest active => reuse active
+    /// - latest failed/canceled => reopen same row
+    /// - latest completed (or missing) => create new row
+    /// </summary>
+    private async Task<SyncRequestResolveResult> ResolveRecoveryAsync(string category,
+                                                                      SyncMode mode,
+                                                                      string? interval,
+                                                                      int? pageNumber,
+                                                                      string? genesysJobId,
+                                                                      string scopeKey,
+                                                                      CancellationToken ct)
     {
-        return await dbContext.Set<SyncRequestEntity>()
-                              .AsNoTracking()
-                              .Where(x => x.Id == id)
-                              .Select(x => new SyncRequestDto
-                                           {
-                                               Id = x.Id,
-                                               Category = x.Category,
-                                               Mode = x.Mode,
-                                               Interval = x.Interval,
-                                               PageNumber = x.PageNumber,
-                                               GenesysJobId = x.GenesysJobId,
-                                               ScopeKey = x.ScopeKey,
-                                               CurrentRunId = x.CurrentRunId
-                                           })
-                              .FirstOrDefaultAsync(ct)
-                              .ConfigureAwait(false);
-    }
-
-    /// <inheritdoc />
-    public async Task SetCurrentRunAsync(long requestId, long runId, CancellationToken ct)
-    {
-        SyncRequestEntity request = await GetRequestOrThrowAsync(requestId, ct)
+        SyncRequestEntity? latest = await FindLatestRecoveryByScopeKeyAsync(scopeKey, false, ct)
                                        .ConfigureAwait(false);
 
-        await EnsureRunBelongsToRequestAsync(runId, requestId, ct)
-           .ConfigureAwait(false);
+        if (latest is not null)
+        {
+            if (latest.Status is SyncRequestStatus.Pending or SyncRequestStatus.Running)
+            {
+                return ToResolveResult(latest, SyncRequestResolveAction.ReusedActive);
+            }
 
-        request.CurrentRunId = runId;
+            if (latest.Status is SyncRequestStatus.Failed or SyncRequestStatus.Canceled)
+            {
+                latest.Status = SyncRequestStatus.Pending;
+                latest.CurrentRunId = null;
+                latest.ReopenCount += 1;
 
-        await uow.SaveChangesAsync(ct)
+                await uow.SaveChangesAsync(ct)
+                         .ConfigureAwait(false);
+
+                return ToResolveResult(latest, SyncRequestResolveAction.ReusedFailed);
+            }
+
+            // Important: latest COMPLETED is treated as explicit rerun intent and creates a new row.
+        }
+
+        SyncRequestEntity entity = BuildNewEntity(category,
+                                                  mode,
+                                                  interval,
+                                                  pageNumber,
+                                                  genesysJobId);
+
+        await uow.UpsertAsync(entity, ct: ct)
                  .ConfigureAwait(false);
+
+        try
+        {
+            await uow.SaveChangesAsync(ct)
+                     .ConfigureAwait(false);
+
+            return ToResolveResult(entity, SyncRequestResolveAction.Created);
+        }
+        catch (DbUpdateException ex) when (UniqueViolationDetector.IsScopeKeyUniqueViolation(ex))
+        {
+            // Scale-out race: another instance created active recovery scope first.
+            SyncRequestEntity winner = await GetActiveRecoveryByScopeKeyOrThrowAsync(scopeKey, ct)
+                                          .ConfigureAwait(false);
+
+            return ToResolveResult(winner, SyncRequestResolveAction.ReusedActive);
+        }
     }
 
-    #region ========== *** Private Section *** ==========
+    private async Task<SyncRequestEntity?> FindByModeAndScopeKeyAsync(SyncMode mode,
+                                                                      string scopeKey,
+                                                                      bool asNoTracking,
+                                                                      CancellationToken ct)
+    {
+        IQueryable<SyncRequestEntity> query = dbContext.Set<SyncRequestEntity>();
 
-    /// <summary>
-    /// Finds a sync request by scope key.
-    /// </summary>
-    /// <param name="scopeKey">Normalized scope key.</param>
-    /// <param name="ct">Cancellation token.</param>
-    /// <returns>The matching <see cref="SyncRequestEntity"/> when found; otherwise <c>null</c>.</returns>
-    private async Task<SyncRequestEntity?> FindByScopeKeyAsync(string scopeKey, CancellationToken ct)
+        if (asNoTracking)
+        {
+            query = query.AsNoTracking();
+        }
+
+        return await query.FirstOrDefaultAsync(x => x.Mode == mode && x.ScopeKey == scopeKey, ct)
+                          .ConfigureAwait(false);
+    }
+
+    private async Task<SyncRequestEntity> GetByModeAndScopeKeyOrThrowAsync(SyncMode mode,
+                                                                           string scopeKey,
+                                                                           CancellationToken ct)
     {
         return await dbContext.Set<SyncRequestEntity>()
                               .AsNoTracking()
-                              .FirstOrDefaultAsync(x => x.ScopeKey == scopeKey, ct)
+                              .FirstAsync(x => x.Mode == mode && x.ScopeKey == scopeKey, ct)
                               .ConfigureAwait(false);
     }
 
     /// <summary>
-    /// Builds a new sync request entity from scope selectors and rebuilds its persisted scope key.
+    /// Used only after recovery unique-index race on active scope creation.
     /// </summary>
-    /// <param name="category">Sync category.</param>
-    /// <param name="mode">Sync mode.</param>
-    /// <param name="interval">Optional interval selector.</param>
-    /// <param name="pageNumber">Optional page selector.</param>
-    /// <param name="genesysJobId">Optional Genesys job selector.</param>
-    /// <returns>Initialized <see cref="SyncRequestEntity"/> with scope key rebuilt.</returns>
+    private async Task<SyncRequestEntity> GetActiveRecoveryByScopeKeyOrThrowAsync(string scopeKey, CancellationToken ct)
+    {
+        return await dbContext.Set<SyncRequestEntity>()
+                              .AsNoTracking()
+                              .Where(x => x.Mode        == SyncMode.Recovery
+                                          && x.ScopeKey == scopeKey
+                                          && (x.Status    == SyncRequestStatus.Pending
+                                              || x.Status == SyncRequestStatus.Running))
+                              .OrderByDescending(x => x.AppUpdatedAt)
+                              .ThenByDescending(x => x.Id)
+                              .FirstAsync(ct)
+                              .ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Returns latest recovery request row for one scope.
+    /// Decision logic is based on this latest row's status.
+    /// </summary>
+    private async Task<SyncRequestEntity?> FindLatestRecoveryByScopeKeyAsync(string scopeKey,
+                                                                             bool asNoTracking,
+                                                                             CancellationToken ct)
+    {
+        IQueryable<SyncRequestEntity> query = dbContext.Set<SyncRequestEntity>();
+
+        if (asNoTracking)
+        {
+            query = query.AsNoTracking();
+        }
+
+        return await query.Where(x => x.Mode == SyncMode.Recovery && x.ScopeKey == scopeKey)
+                          .OrderByDescending(x => x.AppUpdatedAt)
+                          .ThenByDescending(x => x.Id)
+                          .FirstOrDefaultAsync(ct)
+                          .ConfigureAwait(false);
+    }
+
     private static SyncRequestEntity BuildNewEntity(string category,
                                                     SyncMode mode,
                                                     string? interval,
@@ -134,6 +271,8 @@ public sealed class SyncRequestRepository(AppDbContext dbContext,
                                    {
                                        Category = category,
                                        Mode = mode,
+                                       Status = SyncRequestStatus.Pending,
+                                       ReopenCount = 0,
                                        Interval = interval,
                                        PageNumber = pageNumber,
                                        GenesysJobId = genesysJobId
@@ -144,68 +283,14 @@ public sealed class SyncRequestRepository(AppDbContext dbContext,
         return entity;
     }
 
-    /// <summary>
-    /// Gets a sync request by scope key.
-    /// </summary>
-    /// <param name="scopeKey">Normalized scope key.</param>
-    /// <param name="ct">Cancellation token.</param>
-    /// <returns>The matching <see cref="SyncRequestEntity"/>.</returns>
-    /// <exception cref="InvalidOperationException">
-    /// Thrown when the request cannot be found for the provided scope key.
-    /// </exception>
-    private async Task<SyncRequestEntity> GetByScopeKeyOrThrowAsync(string scopeKey, CancellationToken ct)
+    private static SyncRequestResolveResult ToResolveResult(SyncRequestEntity entity, SyncRequestResolveAction action)
     {
-        return await dbContext.Set<SyncRequestEntity>()
-                              .AsNoTracking()
-                              .FirstAsync(x => x.ScopeKey == scopeKey, ct)
-                              .ConfigureAwait(false);
-    }
-
-    /// <summary>
-    /// Gets a sync request by id.
-    /// </summary>
-    /// <param name="requestId">Sync request id.</param>
-    /// <param name="ct">Cancellation token.</param>
-    /// <returns>The matching  <see cref="SyncRequestEntity"/>.</returns>
-    /// <exception cref="InvalidOperationException">
-    /// Thrown when the sync request does not exist.
-    /// </exception>
-    private async Task<SyncRequestEntity> GetRequestOrThrowAsync(long requestId, CancellationToken ct)
-    {
-        SyncRequestEntity? request = await dbContext.Set<SyncRequestEntity>()
-                                                    .FirstOrDefaultAsync(x => x.Id == requestId, ct)
-                                                    .ConfigureAwait(false);
-
-        return request ?? throw new InvalidOperationException($"Sync request '{requestId}' was not found.");
-    }
-
-    /// <summary>
-    /// Validates that the run exists and belongs to the provided request.
-    /// </summary>
-    /// <param name="runId">Run id to validate.</param>
-    /// <param name="requestId">Expected owner request id.</param>
-    /// <param name="ct">Cancellation token.</param>
-    /// <exception cref="InvalidOperationException">
-    /// Thrown when the run does not exist or belongs to a different request.
-    /// </exception>
-    private async Task EnsureRunBelongsToRequestAsync(long runId, long requestId, CancellationToken ct)
-    {
-        long? runOwnerRequestId = await dbContext.Set<SyncRunEntity>()
-                                                 .AsNoTracking()
-                                                 .Where(x => x.Id == runId)
-                                                 .Select(x => (long?)x.RequestId)
-                                                 .FirstOrDefaultAsync(ct)
-                                                 .ConfigureAwait(false);
-
-        if (!runOwnerRequestId.HasValue)
-        {
-            throw new InvalidOperationException($"Sync run '{runId}' was not found.");
-        }
-
-        if (runOwnerRequestId.Value != requestId)
-        {
-            throw new InvalidOperationException($"Sync run '{runId}' does not belong to sync request '{requestId}'.");
-        }
+        return new SyncRequestResolveResult
+               {
+                   Id = entity.Id,
+                   PublicId = entity.PublicId,
+                   RequestAction = action
+               };
     }
 
     #endregion
