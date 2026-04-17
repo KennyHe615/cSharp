@@ -6,11 +6,14 @@ namespace Infrastructure.Persistence.Repositories.SyncTracking;
 
 /// <summary>
 /// Centralized detector for unique-key violations used by sync-tracking repositories.
+/// For sync_request, this covers both incremental scope uniqueness and active recovery scope uniqueness.
 /// </summary>
 public static class UniqueViolationDetector
 {
     private static readonly string[] ScopeKeyTokens =
     [
+        "UX_sync_request_scope_key_incremental",
+        "UX_sync_request_scope_key_recovery_active",
         "UX_sync_request_scope_key",
         "UQ_sync_request_scope_key",
         "scope_key"
@@ -24,7 +27,7 @@ public static class UniqueViolationDetector
     ];
 
     /// <summary>
-    /// Determines whether the exception represents a duplicate-key violation for sync_request scope key.
+    /// Determines whether the exception represents a duplicate-key violation for sync_request scope-key constraints.
     /// </summary>
     public static bool IsScopeKeyUniqueViolation(DbUpdateException ex)
     {

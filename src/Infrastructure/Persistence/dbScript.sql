@@ -288,17 +288,29 @@ IF NOT EXISTS (SELECT 1
 GO
 /* endregion */
 
-/* region ========== *** Sync Tracking: Request *** ========== */
+/* region ========== *** Sync Tracking *** ========== */
+
+/* region ========== ** Sync Tracking: Request ** ========== */
 IF OBJECT_ID(N'dbo.sync_request', N'U') IS NULL
     BEGIN
         CREATE TABLE [dbo].[sync_request]
         (
             [id]             [bigint] IDENTITY (1,1) NOT NULL,
+            -- Client-facing immutable identifier (internal joins still use bigint id).
+            [public_id]      [uniqueidentifier]      NOT NULL
+                CONSTRAINT [DF_sync_request_public_id] DEFAULT (NEWSEQUENTIALID()),
             [category]       [nvarchar](50)          NOT NULL,
             [mode]           [nvarchar](20)          NOT NULL,
+            -- Request-level lifecycle state used by recovery reuse/create decision logic.
+            [status]         [nvarchar](20)          NOT NULL
+                CONSTRAINT [DF_sync_request_status] DEFAULT ('PENDING'),
+            -- Number of reopen operations applied to this request.
+            [reopen_count]   [int]                   NOT NULL
+                CONSTRAINT [DF_sync_request_reopen_count] DEFAULT ((0)),
             [interval]       [nvarchar](50)          NULL,
             [page_number]    [int]                   NULL,
             [genesys_job_id] [nvarchar](100)         NULL,
+            -- Canonical scope identity: category|mode|interval|page|job
             [scope_key]      [nvarchar](255)         NOT NULL,
             [current_run_id] [bigint]                NULL,
             [app_created_at] DATETIMEOFFSET(0)       NOT NULL
@@ -319,11 +331,46 @@ GO
 
 IF NOT EXISTS (SELECT 1
                FROM sys.indexes
-               WHERE name = N'UX_sync_request_scope_key'
+               WHERE name = N'UX_sync_request_public_id'
                  AND object_id = OBJECT_ID(N'dbo.sync_request'))
     BEGIN
-        CREATE UNIQUE NONCLUSTERED INDEX [UX_sync_request_scope_key]
-            ON [dbo].[sync_request] ([scope_key]);
+        CREATE UNIQUE NONCLUSTERED INDEX [UX_sync_request_public_id]
+            ON [dbo].[sync_request] ([public_id]);
+    END
+GO
+
+IF NOT EXISTS (SELECT 1
+               FROM sys.indexes
+               WHERE name = N'UX_sync_request_scope_key_incremental'
+                 AND object_id = OBJECT_ID(N'dbo.sync_request'))
+    BEGIN
+        -- Incremental mode: one logical request row per scope.
+        CREATE UNIQUE NONCLUSTERED INDEX [UX_sync_request_scope_key_incremental]
+            ON [dbo].[sync_request] ([scope_key])
+            WHERE [mode] = 'INCREMENTAL';
+    END
+GO
+
+IF NOT EXISTS (SELECT 1
+               FROM sys.indexes
+               WHERE name = N'UX_sync_request_scope_key_recovery_active'
+                 AND object_id = OBJECT_ID(N'dbo.sync_request'))
+    BEGIN
+        -- Recovery mode: allow history, but enforce only one active request per scope.
+        CREATE UNIQUE NONCLUSTERED INDEX [UX_sync_request_scope_key_recovery_active]
+            ON [dbo].[sync_request] ([scope_key])
+            WHERE [mode] = 'RECOVERY' AND [status] IN ('PENDING', 'RUNNING');
+    END
+GO
+
+IF NOT EXISTS (SELECT 1
+               FROM sys.indexes
+               WHERE name = N'IX_sync_request_mode_scope_key_app_updated_at'
+                 AND object_id = OBJECT_ID(N'dbo.sync_request'))
+    BEGIN
+        -- Supports latest-recovery-row lookup by scope.
+        CREATE NONCLUSTERED INDEX [IX_sync_request_mode_scope_key_app_updated_at]
+            ON [dbo].[sync_request] ([mode], [scope_key], [app_updated_at]);
     END
 GO
 
@@ -358,7 +405,7 @@ IF NOT EXISTS (SELECT 1
 GO
 /* endregion */
 
-/* region ========== *** Sync Tracking: Run *** ========== */
+/* region ========== ** Sync Tracking: Run ** ========== */
 IF OBJECT_ID(N'dbo.sync_run', N'U') IS NULL
     BEGIN
         CREATE TABLE [dbo].[sync_run]
@@ -442,7 +489,7 @@ IF NOT EXISTS (SELECT 1
 GO
 /* endregion */
 
-/* region ========== *** Cross-table FK (sync_request.current_run_id -> sync_run.id) *** ========== */
+/* region ========== ** Cross-table FK (sync_request.current_run_id -> sync_run.id) ** ========== */
 IF NOT EXISTS (SELECT 1
                FROM sys.foreign_keys
                WHERE name = N'FK_sync_request_current_run_id'
@@ -455,7 +502,7 @@ IF NOT EXISTS (SELECT 1
 GO
 /* endregion */
 
-/* region ========== *** Sync Tracking: Checkpoint *** ========== */
+/* region ========== ** Sync Tracking: Checkpoint ** ========== */
 IF OBJECT_ID(N'dbo.sync_checkpoint', N'U') IS NULL
     BEGIN
         CREATE TABLE [dbo].[sync_checkpoint]
@@ -512,4 +559,6 @@ IF NOT EXISTS (SELECT 1
             ON [dbo].[sync_checkpoint] ([app_updated_at]);
     END
 GO
+/* endregion */
+
 /* endregion */

@@ -1,5 +1,6 @@
 using Application.Abstractions.Orchestration;
 using Application.Abstractions.Persistence;
+using Application.DTOs.SyncTracking;
 using Application.Enums;
 using Application.Features.SyncTracking.References;
 
@@ -13,14 +14,23 @@ namespace tests.Unit.Application.Features.SyncTracking.References;
 public sealed class RunReferencesFullSyncCommandHandlerTests
 {
     [Fact]
-    public async Task Handle_ShouldCreateOrGetRequest_ExecuteRunner_AndReturnRequestId()
+    public async Task Handle_ShouldResolveIncrementalRequest_ExecuteRunner_AndReturnRequestId()
     {
         Mock<ISyncRequestRepository> syncRequestRepository = new Mock<ISyncRequestRepository>(MockBehavior.Strict);
         Mock<ISyncRequestRunner> syncRequestRunner = new Mock<ISyncRequestRunner>(MockBehavior.Strict);
 
         RunReferencesFullSyncCommand request = new RunReferencesFullSyncCommand(SyncReferenceCategory.WrapUpCode);
         CancellationToken ct = new CancellationTokenSource().Token;
-        const long expectedRequestId = 12345L;
+
+        SyncRequestResolveResult resolveResult = new SyncRequestResolveResult
+                                                 {
+                                                     Id = 12345L,
+                                                     PublicId =
+                                                         Guid
+                                                            .Parse("aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"),
+                                                     RequestAction =
+                                                         SyncRequestResolveAction.Created
+                                                 };
 
         syncRequestRepository
            .Setup(x => x.CreateOrGetByScopeAsync(request.Category.ToString(),
@@ -29,9 +39,9 @@ public sealed class RunReferencesFullSyncCommandHandlerTests
                                                  null,
                                                  null,
                                                  ct))
-           .ReturnsAsync(expectedRequestId);
+           .ReturnsAsync(resolveResult);
 
-        syncRequestRunner.Setup(x => x.ExecuteAsync(expectedRequestId, ct))
+        syncRequestRunner.Setup(x => x.ExecuteAsync(resolveResult.Id, ct))
                          .Returns(Task.CompletedTask);
 
         RunReferencesFullSyncCommandHandler sut =
@@ -39,7 +49,7 @@ public sealed class RunReferencesFullSyncCommandHandlerTests
 
         long actualRequestId = await sut.Handle(request, ct);
 
-        Assert.Equal(expectedRequestId, actualRequestId);
+        Assert.Equal(resolveResult.Id, actualRequestId);
 
         syncRequestRepository.Verify(x => x.CreateOrGetByScopeAsync(request.Category.ToString(),
                                                                     SyncMode.Incremental,
@@ -49,7 +59,7 @@ public sealed class RunReferencesFullSyncCommandHandlerTests
                                                                     ct),
                                      Times.Once);
 
-        syncRequestRunner.Verify(x => x.ExecuteAsync(expectedRequestId, ct), Times.Once);
+        syncRequestRunner.Verify(x => x.ExecuteAsync(resolveResult.Id, ct), Times.Once);
 
         syncRequestRepository.VerifyNoOtherCalls();
         syncRequestRunner.VerifyNoOtherCalls();
@@ -63,7 +73,17 @@ public sealed class RunReferencesFullSyncCommandHandlerTests
 
         RunReferencesFullSyncCommand request = new RunReferencesFullSyncCommand(SyncReferenceCategory.Group);
         CancellationToken ct = new CancellationTokenSource().Token;
-        const long requestId = 77L;
+
+        SyncRequestResolveResult resolveResult = new SyncRequestResolveResult
+                                                 {
+                                                     Id = 77L,
+                                                     PublicId =
+                                                         Guid
+                                                            .Parse("11111111-2222-3333-4444-555555555555"),
+                                                     RequestAction =
+                                                         SyncRequestResolveAction
+                                                            .ReusedActive
+                                                 };
 
         InvalidOperationException expected = new InvalidOperationException("runner failed");
 
@@ -74,9 +94,9 @@ public sealed class RunReferencesFullSyncCommandHandlerTests
                                                  null,
                                                  null,
                                                  ct))
-           .ReturnsAsync(requestId);
+           .ReturnsAsync(resolveResult);
 
-        syncRequestRunner.Setup(x => x.ExecuteAsync(requestId, ct))
+        syncRequestRunner.Setup(x => x.ExecuteAsync(resolveResult.Id, ct))
                          .ThrowsAsync(expected);
 
         RunReferencesFullSyncCommandHandler sut =
@@ -94,7 +114,8 @@ public sealed class RunReferencesFullSyncCommandHandlerTests
                                                                     null,
                                                                     ct),
                                      Times.Once);
-        syncRequestRunner.Verify(x => x.ExecuteAsync(requestId, ct), Times.Once);
+
+        syncRequestRunner.Verify(x => x.ExecuteAsync(resolveResult.Id, ct), Times.Once);
 
         syncRequestRepository.VerifyNoOtherCalls();
         syncRequestRunner.VerifyNoOtherCalls();

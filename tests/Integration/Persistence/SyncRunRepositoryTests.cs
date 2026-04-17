@@ -21,6 +21,8 @@ namespace tests.Integration.Persistence;
 
 public sealed class SyncRunRepositoryTests
 {
+    #region ========== *** StartNewRunAsync *** ==========
+
     [Fact]
     public async Task StartNewRunAsync_NoActiveRun_CreatesRunningRun_AndSetsCurrentRun()
     {
@@ -47,6 +49,7 @@ public sealed class SyncRunRepositoryTests
         Assert.Equal(DateTimeProviderTestFactory.FixedNow, run.RunStartedAt);
         Assert.Null(run.RunCompletedAt);
         Assert.Equal(runId, reloaded.CurrentRunId);
+        Assert.Equal(SyncRequestStatus.Running, reloaded.Status);
     }
 
     [Fact]
@@ -80,7 +83,10 @@ public sealed class SyncRunRepositoryTests
         Assert.Equal(2, secondRun.AttemptNo);
         Assert.Equal(DateTimeProviderTestFactory.FixedNow, secondRun.RunStartedAt);
         Assert.Equal(secondRunId, reloaded.CurrentRunId);
+        Assert.Equal(SyncRequestStatus.Running, reloaded.Status);
     }
+
+    #endregion
 
     [Fact]
     public async Task IsCurrentRunAsync_ReturnsFalse_AfterRunCompleted()
@@ -102,12 +108,16 @@ public sealed class SyncRunRepositoryTests
         await sut.MarkCompletedAsync(runId, CancellationToken.None);
         bool after = await sut.IsCurrentRunAsync(runId, CancellationToken.None);
 
+        SyncRequestEntity reloaded = await dbContext.Set<SyncRequestEntity>()
+                                                    .SingleAsync(x => x.Id == request.Id);
+
         Assert.True(before);
         Assert.False(after);
+        Assert.Equal(SyncRequestStatus.Completed, reloaded.Status);
     }
 
     [Fact]
-    public async Task MarkFailedAsync_StoresRunLevelSummary_InsteadOfRawCheckpointMessage()
+    public async Task MarkFailedAsync_StoresRunLevelSummary_AndMarksRequestFailed()
     {
         Mock<IDateTimeProvider> dateTimeProvider = DateTimeProviderTestFactory.Create();
         await using AppDbContext dbContext = PersistenceTestFactory.CreateDbContext(dateTimeProvider.Object);
@@ -126,14 +136,17 @@ public sealed class SyncRunRepositoryTests
 
         SyncRunEntity run = await dbContext.Set<SyncRunEntity>()
                                            .SingleAsync(x => x.Id == runId);
+        SyncRequestEntity reloaded = await dbContext.Set<SyncRequestEntity>()
+                                                    .SingleAsync(x => x.Id == request.Id);
 
         Assert.Equal(SyncRunStatus.Failed, run.Status);
         Assert.Equal("Requested sync category is not supported in the current release.", run.FailureReason);
         Assert.Equal(DateTimeProviderTestFactory.FixedNow, run.RunCompletedAt);
+        Assert.Equal(SyncRequestStatus.Failed, reloaded.Status);
     }
 
     [Fact]
-    public async Task MarkCanceledAsync_NullReason_StoresDefaultRunSummary()
+    public async Task MarkCanceledAsync_NullReason_StoresDefaultRunSummary_AndMarksRequestCanceled()
     {
         Mock<IDateTimeProvider> dateTimeProvider = DateTimeProviderTestFactory.Create();
         await using AppDbContext dbContext = PersistenceTestFactory.CreateDbContext(dateTimeProvider.Object);
@@ -152,9 +165,12 @@ public sealed class SyncRunRepositoryTests
 
         SyncRunEntity run = await dbContext.Set<SyncRunEntity>()
                                            .SingleAsync(x => x.Id == runId);
+        SyncRequestEntity reloaded = await dbContext.Set<SyncRequestEntity>()
+                                                    .SingleAsync(x => x.Id == request.Id);
 
         Assert.Equal(SyncRunStatus.Canceled, run.Status);
         Assert.Equal("Run was canceled.", run.FailureReason);
         Assert.Equal(DateTimeProviderTestFactory.FixedNow, run.RunCompletedAt);
+        Assert.Equal(SyncRequestStatus.Canceled, reloaded.Status);
     }
 }
