@@ -33,11 +33,12 @@ csharp_new_line_before_catch = true
 csharp_new_line_before_finally = true
 
 # ReSharper properties
+resharper_csharp_continuous_indent_multiplier = 4
 resharper_csharp_max_line_length = 120
 resharper_keep_existing_attribute_arrangement = false
 resharper_wrap_chained_method_calls = chop_always
 resharper_align_multiline_expression = true
-
+resharper_align_multiline_argument = true
 
 ############################################################
 # DTOs, Mapper Profiles and Entities - Suppress ReSharper warnings
@@ -50,3 +51,4 @@ resharper_unused_auto_property_accessor_global_highlighting = none
 resharper_auto_property_can_be_made_get_only_global_highlighting = none
 resharper_property_can_be_made_init_only_global_highlighting = none
 resharper_collection_never_updated_global_highlighting = none
+

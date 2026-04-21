@@ -11,37 +11,34 @@ namespace Application.Features.Recovery;
 /// Handles recovery request resolution in SyncTracking (create/reuse/reopen by scope rules).
 /// </summary>
 public sealed class CreateRecoveryRequestHandler(ISyncRequestRepository syncRequestRepository)
-    : IRequestHandler<CreateRecoveryRequestCommand, CreateRecoveryRequestResponse>
+                : IRequestHandler<CreateRecoveryRequestCommand, CreateRecoveryRequestResponse>
 {
     private readonly ISyncRequestRepository _syncRequestRepository =
-        syncRequestRepository ?? throw new ArgumentNullException(nameof(syncRequestRepository));
+                    syncRequestRepository ?? throw new ArgumentNullException(nameof(syncRequestRepository));
 
     public async Task<CreateRecoveryRequestResponse> Handle(CreateRecoveryRequestCommand request,
                                                             CancellationToken ct = default)
     {
         string category = MapCategory(request.Category)
-           .ToString();
+                       .ToString();
 
         SyncRequestResolveResult resolveResult =
-            await _syncRequestRepository.CreateOrGetByScopeAsync(category,
-                                                                 SyncMode.Recovery,
-                                                                 request.Interval?.ToString(),
-                                                                 null,
-                                                                 request.GenesysJobId,
-                                                                 ct)
-                                        .ConfigureAwait(false);
+                        await _syncRequestRepository.CreateOrGetByScopeAsync(category,
+                                                                             SyncMode.Recovery,
+                                                                             request.Interval?.ToString(),
+                                                                             null,
+                                                                             request.GenesysJobId,
+                                                                             ct)
+                                                    .ConfigureAwait(false);
 
-        return new CreateRecoveryRequestResponse(true,
-                                                 "Recovery request resolved successfully.",
-                                                 new
-                                                 {
-                                                     RequestId = resolveResult.PublicId,
-                                                     RequestAction = resolveResult.RequestAction.ToString(),
-                                                     Lob = request.Lob.ToString(),
-                                                     Category = request.Category.ToString(),
-                                                     request.Interval,
-                                                     request.GenesysJobId
-                                                 });
+        CreateRecoveryRequestResponseData data = new CreateRecoveryRequestResponseData(resolveResult.PublicId,
+            resolveResult.RequestAction.ToString(),
+            request.Lob.ToString(),
+            request.Category.ToString(),
+            request.Interval,
+            request.GenesysJobId);
+
+        return new CreateRecoveryRequestResponse(true, "Recovery request accepted.", data);
     }
 
     #region ========== *** Private Methods *** ==========

@@ -29,7 +29,7 @@ public static class UniqueViolationDetector
     /// <summary>
     /// Determines whether the exception represents a duplicate-key violation for sync_request scope-key constraints.
     /// </summary>
-    public static bool IsScopeKeyUniqueViolation(DbUpdateException ex)
+    public static bool IsScopeKeyUniqueViolation(Exception ex)
     {
         return IsSqlUniqueViolation(ex) || ContainsAnyToken(ex, ScopeKeyTokens);
     }
@@ -44,21 +44,28 @@ public static class UniqueViolationDetector
 
     #region ========== *** Private Section *** ==========
 
-    private static bool IsSqlUniqueViolation(DbUpdateException ex)
+    private static bool IsSqlUniqueViolation(Exception ex)
     {
-        if (ex.InnerException is SqlException sqlEx)
-        {
-            // 2601: Cannot insert duplicate key row with unique index
-            // 2627: Violation of UNIQUE KEY constraint / PRIMARY KEY
-            return sqlEx.Number is 2601 or 2627;
-        }
+        return ex switch
+               {
+                   DbConstraintViolationException { InnerException: DbUpdateException dbUpdateException } =>
+                                   IsSqlUniqueViolation(dbUpdateException),
 
-        return false;
+                   DbUpdateException { InnerException: SqlException sqlEx } => sqlEx.Number is 2601 or 2627,
+
+                   _ => false
+               };
     }
 
-    private static bool ContainsAnyToken(DbUpdateException ex, IReadOnlyCollection<string> tokens)
+    private static bool ContainsAnyToken(Exception ex, IReadOnlyCollection<string> tokens)
     {
         string message = ex.InnerException?.Message ?? ex.Message;
+
+        if (ex is DbConstraintViolationException constraintException
+            && !string.IsNullOrWhiteSpace(constraintException.ConstraintName))
+        {
+            message = $"{constraintException.ConstraintName} {message}";
+        }
 
         return !string.IsNullOrWhiteSpace(message)
                && tokens.Any(token => message.Contains(token, StringComparison.OrdinalIgnoreCase));

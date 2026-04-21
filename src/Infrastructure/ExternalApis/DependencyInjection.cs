@@ -1,5 +1,6 @@
 using Application.Abstractions.External;
 using Application.Abstractions.Planning;
+using Application.Abstractions.Recovery;
 using Application.DTOs.Planning;
 
 using Infrastructure.ExternalApis.Abstractions;
@@ -50,6 +51,7 @@ public static class DependencyInjection
         services.AddScoped<IGenesysTokenStore, GenesysTokenStore>();
         services.AddScoped<IGenesysTokenProvider, GenesysTokenProvider>();
         services.AddScoped<IGenesysApiClient, GenesysApiClient>();
+        services.AddScoped<IRecoveryIntervalPolicy, GenesysRecoveryIntervalPolicy>();
 
         services.AddScoped<IAnalyticsUsersDetailsClient, UsersDetailsClient>();
         services.AddScoped<IReferenceApiClient, ReferencesClient>();

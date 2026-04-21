@@ -1,7 +1,7 @@
 using Microsoft.Azure.Functions.Worker.Http;
 
 
-namespace FunctionApp.Http.Common;
+namespace FunctionApps.Http.Common;
 
 /// <summary>
 /// Exception used to short-circuit HTTP trigger flow when a 400 response has already been created.
@@ -15,5 +15,5 @@ public sealed class BadRequestHandledException(HttpResponseData response) : Exce
     /// <summary>
     /// Gets the prebuilt HTTP response that should be returned to the caller.
     /// </summary>
-    public HttpResponseData Response { get; } = response;
+    public HttpResponseData Response { get; } = response ?? throw new ArgumentNullException(nameof(response));
 }

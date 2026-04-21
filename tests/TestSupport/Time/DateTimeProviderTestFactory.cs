@@ -19,6 +19,8 @@ public static class DateTimeProviderTestFactory
     {
         Mock<IDateTimeProvider> dateTimeProvider = new Mock<IDateTimeProvider>(MockBehavior.Loose);
 
+        dateTimeProvider.SetupGet(x => x.UtcNowOffset)
+                        .Returns(FixedNow);
         dateTimeProvider.SetupGet(x => x.EstNowOffset)
                         .Returns(FixedNow);
         dateTimeProvider.Setup(x => x.ConvertToEst(It.IsAny<DateTimeOffset>()))

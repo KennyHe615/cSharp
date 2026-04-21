@@ -2,7 +2,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Net;
 using System.Text.Json;
 
-using FunctionApp.Http.Common;
+using FunctionApps.Http.Common;
 
 using Microsoft.Azure.Functions.Worker.Http;
 

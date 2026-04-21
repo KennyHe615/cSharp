@@ -20,6 +20,9 @@ public class GenesysOptions
     [Range(1, 1_000_000)]
     public int MaxHitThreshold { get; init; } = 100_000;
 
+    [Range(0, 7)]
+    public int RecoveryFutureSkewDays { get; init; } = 1;
+
     // Restrictions by Genesys
     public const string OAuthEndpoint = "oauth/token";
 
