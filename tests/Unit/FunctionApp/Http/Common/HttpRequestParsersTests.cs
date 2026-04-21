@@ -2,7 +2,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-using FunctionApp.Http.Common;
+using FunctionApps.Http.Common;
 
 using tests.TestSupport.Functions;
 

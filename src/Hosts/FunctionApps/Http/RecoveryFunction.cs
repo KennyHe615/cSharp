@@ -4,12 +4,13 @@ using System.Text.Json.Serialization;
 using Application.Abstractions.Context;
 using Application.Abstractions.Identity;
 using Application.Contracts.InternalApis.Recovery;
+using Application.DTOs.SyncTracking;
 using Application.Features.Recovery;
 using Application.Mediator;
 
 using FluentValidation;
 
-using FunctionApp.Http.Common;
+using FunctionApps.Http.Common;
 
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Http;
@@ -19,7 +20,7 @@ using SharedKernel.Lobs;
 using SharedKernel.Logging;
 
 
-namespace FunctionApp.Http;
+namespace FunctionApps.Http;
 
 /// <summary>
 /// HTTP trigger for creating recovery requests.
@@ -33,53 +34,88 @@ public sealed class RecoveryFunction(ISimpleMediator mediator,
                                      ICredentialProvider credentialProvider,
                                      ILogger<RecoveryFunction> logger)
 {
+    #region ========== *** Fields and Properties *** ==========
+
+    private readonly ISimpleMediator _mediator = mediator ?? throw new ArgumentNullException(nameof(mediator));
+
+    private readonly ILobContextAccessor _lobContextAccessor =
+                    lobContextAccessor ?? throw new ArgumentNullException(nameof(lobContextAccessor));
+
+    private readonly ICredentialProvider _credentialProvider =
+                    credentialProvider ?? throw new ArgumentNullException(nameof(credentialProvider));
+
+    private readonly ILogger<RecoveryFunction> _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+
     private static readonly JsonSerializerOptions JsonOptions = new JsonSerializerOptions
                                                                 {
                                                                     PropertyNameCaseInsensitive = true,
+                                                                    UnmappedMemberHandling =
+                                                                                    JsonUnmappedMemberHandling
+                                                                                                   .Disallow,
                                                                     Converters =
                                                                     {
                                                                         new
-                                                                            JsonStringEnumConverter(allowIntegerValues
-                                                                             : false)
+                                                                                        JsonStringEnumConverter(allowIntegerValues
+                                                                                            : false)
                                                                     }
                                                                 };
 
+    private const string LogCategory = "Recovery";
+
+    #endregion
+
     /// <summary>
-    /// Creates a recovery request record for a given LOB/category and optional interval/GenesysJobId.
+    /// Creates a recovery request for the specified LOB and category, then dispatches it through the application mediator.
     /// </summary>
     /// <param name="req">Incoming HTTP request.</param>
     /// <param name="ct">Cancellation token.</param>
-    /// <returns>HTTP response containing either created payload or standardized error body.</returns>
+    /// <returns>
+    /// A <see cref="HttpResponseData"/> containing:
+    /// 201 with the created recovery payload on newly created recovery requests,
+    /// 202 with the accepted recovery payload on reused or reopened recovery requests,
+    /// 400 for invalid client input,
+    /// or 500 for unexpected server errors.
+    /// </returns>
     [Function("CreateRecoveryRequest")]
     public async Task<HttpResponseData> CreateRecoveryRequest(
-        // Easy Auth (Microsoft Entra ID) should be enforced at Function App level in Azure.
-        // Trigger key auth remains a secondary gate until the platform policy is finalized.
-        [HttpTrigger(AuthorizationLevel.Function, "post", Route = "recovery")] HttpRequestData req,
-        CancellationToken ct)
+                    // Easy Auth (Microsoft Entra ID) should be enforced at Function App level in Azure.
+                    // Trigger key auth remains a secondary gate until the platform policy is finalized.
+                    [HttpTrigger(AuthorizationLevel.Function, "post", Route = "recovery")] HttpRequestData req,
+                    CancellationToken ct)
     {
+        const string logEntity = "CreateRecoveryRequest";
+        LobName lob = default;
+
         try
         {
             RecoveryRequest request =
-                await HttpRequestParsers.DeserializeOrBadRequestAsync<RecoveryRequest>(req, JsonOptions, ct)
-                                        .ConfigureAwait(false);
+                            await HttpRequestParsers.DeserializeOrBadRequestAsync<RecoveryRequest>(req, JsonOptions, ct)
+                                                    .ConfigureAwait(false);
 
-            await ValidateRequiredRequestFieldsAsync(req, request, ct)
-               .ConfigureAwait(false);
+            RecoveryCategory category = await ValidateRequiredRequestFieldsAsync(req, request, ct)
+                                                       .ConfigureAwait(false);
 
-            LobName lob = await ParseLobOrWriteBadRequestAsync(req, request.Lob, ct)
-               .ConfigureAwait(false);
+            lob = await ParseLobOrWriteBadRequestAsync(req, request.Lob, ct)
+                                 .ConfigureAwait(false);
 
-            using IDisposable scope = logger.BeginOperationScope(lob, "Recovery", "CreateRecoveryRequest");
-            logger.LogInformation("Recovery request accepted for validation and processing.");
+            using IDisposable scope = _logger.BeginOperationScope(lob, LogCategory, logEntity);
+            _logger.LogInformation(LobLogTemplates.LobCategoryEntity
+                                   + "Request accepted for validation and processing.",
+                                   lob,
+                                   LogCategory,
+                                   logEntity);
 
             await PopulateCredentialsAsync(lob, ct)
-               .ConfigureAwait(false);
+                           .ConfigureAwait(false);
 
-            CreateRecoveryRequestResponse result = await ProcessRecoveryRequestAsync(request, lob, ct)
-               .ConfigureAwait(false);
+            CreateRecoveryRequestResponse result = await ProcessRecoveryRequestAsync(request,
+                                                                       lob,
+                                                                       category,
+                                                                       ct)
+                                                                  .ConfigureAwait(false);
 
-            return await HttpResponseFactory.CreatedAsync(req, result, ct)
-                                            .ConfigureAwait(false);
+            return await WriteSuccessfulRecoveryResponseAsync(req, result, ct)
+                                  .ConfigureAwait(false);
         }
         catch (BadRequestHandledException ex)
         {
@@ -87,8 +123,8 @@ public sealed class RecoveryFunction(ISimpleMediator mediator,
         }
         catch (ValidationException ex)
         {
-            string error = ex.Errors.FirstOrDefault()
-                            ?.ErrorMessage
+            string error = ex.Errors.Select(x => x.ErrorMessage)
+                             .FirstOrDefault(x => !string.IsNullOrWhiteSpace(x))
                            ?? ex.Message;
 
             return await HttpResponseFactory.BadRequestAsync(req, error, ct)
@@ -97,17 +133,24 @@ public sealed class RecoveryFunction(ISimpleMediator mediator,
         catch (JsonException ex)
         {
             return await HandleJsonExceptionAsync(req, ex, ct)
-               .ConfigureAwait(false);
+                                  .ConfigureAwait(false);
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
-            logger.LogWarning("Recovery request processing was canceled by caller/host.");
+            _logger.LogWarning(LobLogTemplates.LobCategoryEntity + "Request processing was canceled by caller/host.",
+                               lob,
+                               LogCategory,
+                               logEntity);
 
             throw;
         }
         catch (Exception ex)
         {
-            logger.LogErrorWithDetails(ex, "Error processing recovery request.");
+            _logger.LogErrorWithDetails(ex,
+                                        LobLogTemplates.LobCategoryEntity + "Error processing request.",
+                                        lob,
+                                        LogCategory,
+                                        logEntity);
 
             return await HttpResponseFactory.InternalServerErrorAsync(req,
                                                                       "An error occurred processing your request.",
@@ -119,17 +162,18 @@ public sealed class RecoveryFunction(ISimpleMediator mediator,
     #region ========== *** Private Section *** ==========
 
     /// <summary>
-    /// Validates mandatory top-level request fields required before business processing.
+    /// Validates required top-level fields and returns a non-null category value for downstream processing.
     /// </summary>
     /// <param name="req">Incoming HTTP request.</param>
-    /// <param name="request">Deserialized recovery request.</param>
+    /// <param name="request">Deserialized recovery request payload.</param>
     /// <param name="ct">Cancellation token.</param>
+    /// <returns>The validated <see cref="RecoveryCategory"/> value.</returns>
     /// <exception cref="BadRequestHandledException">
-    /// Thrown when a validation failure response has already been generated.
+    /// Thrown when required fields are missing and a 400 response has already been prepared.
     /// </exception>
-    private static async Task ValidateRequiredRequestFieldsAsync(HttpRequestData req,
-                                                                 RecoveryRequest request,
-                                                                 CancellationToken ct)
+    private static async Task<RecoveryCategory> ValidateRequiredRequestFieldsAsync(HttpRequestData req,
+        RecoveryRequest request,
+        CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(request.Lob))
         {
@@ -139,6 +183,7 @@ public sealed class RecoveryFunction(ISimpleMediator mediator,
             throw new BadRequestHandledException(response);
         }
 
+        // ReSharper disable once InvertIf
         if (!request.Category.HasValue)
         {
             HttpResponseData response = await HttpResponseFactory.BadRequestAsync(req, "Category is required.", ct)
@@ -146,6 +191,8 @@ public sealed class RecoveryFunction(ISimpleMediator mediator,
 
             throw new BadRequestHandledException(response);
         }
+
+        return request.Category.Value;
     }
 
     /// <summary>
@@ -166,10 +213,10 @@ public sealed class RecoveryFunction(ISimpleMediator mediator,
         {
             return new LobName(lobRaw);
         }
-        catch (Exception)
+        catch (ArgumentException)
         {
             string message =
-                $"Invalid value for 'lob': '{lobRaw}'. Available values: {string.Join(" / ", LobName.AllowedValues)}.";
+                            $"Invalid value for 'lob': '{lobRaw}'. Available values: {string.Join(" / ", LobName.AllowedValues)}.";
 
             HttpResponseData response = await HttpResponseFactory.BadRequestAsync(req, message, ct)
                                                                  .ConfigureAwait(false);
@@ -185,30 +232,57 @@ public sealed class RecoveryFunction(ISimpleMediator mediator,
     /// <param name="ct">Cancellation token.</param>
     private async Task PopulateCredentialsAsync(LobName lob, CancellationToken ct)
     {
-        lobContextAccessor.LobName = lob.Value;
-        await credentialProvider.PopulateAsync(lobContextAccessor, ct)
-                                .ConfigureAwait(false);
+        _lobContextAccessor.LobName = lob.Value;
+        await _credentialProvider.PopulateAsync(_lobContextAccessor, ct)
+                                 .ConfigureAwait(false);
     }
 
     /// <summary>
-    /// Builds and dispatches the recovery command to the application layer.
+    /// Builds the recovery command and dispatches it through the mediator.
     /// </summary>
-    /// <param name="request">Deserialized recovery request payload.</param>
-    /// <param name="lob">Validated LOB value.</param>
+    /// <param name="request">Validated recovery request payload.</param>
+    /// <param name="lob">Validated LOB value object.</param>
+    /// <param name="category">Validated recovery category.</param>
     /// <param name="ct">Cancellation token.</param>
-    /// <returns>Created recovery response from application layer.</returns>
+    /// <returns>The application-layer response for the created recovery request.</returns>
     private async Task<CreateRecoveryRequestResponse> ProcessRecoveryRequestAsync(RecoveryRequest request,
         LobName lob,
+        RecoveryCategory category,
         CancellationToken ct)
     {
-        CreateRecoveryRequestCommand command =
-            new CreateRecoveryRequestCommand(lob,
-                                             request.Category!.Value,
-                                             request.Interval,
-                                             request.GenesysJobId);
+        CreateRecoveryRequestCommand command = new CreateRecoveryRequestCommand(lob,
+                                                                                    category,
+                                                                                    request.Interval,
+                                                                                    request.GenesysJobId);
 
-        return await mediator.Send(command, ct)
-                             .ConfigureAwait(false);
+        return await _mediator.Send(command, ct)
+                              .ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Writes a success response for a resolved recovery request.
+    /// </summary>
+    /// <param name="req">Incoming HTTP request used to create the response.</param>
+    /// <param name="result">Resolved recovery request response from the application layer.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>
+    /// A 201 Created response when a new recovery request was created,
+    /// or a 202 Accepted response when an existing recovery request was reused or reopened.
+    /// </returns>
+    private static async Task<HttpResponseData> WriteSuccessfulRecoveryResponseAsync(HttpRequestData req,
+        CreateRecoveryRequestResponse result,
+        CancellationToken ct)
+    {
+        if (string.Equals(result.Data.RequestAction,
+                          nameof(SyncRequestResolveAction.Created),
+                          StringComparison.Ordinal))
+        {
+            return await HttpResponseFactory.CreatedAsync(req, result, ct)
+                                            .ConfigureAwait(false);
+        }
+
+        return await HttpResponseFactory.AcceptedAsync(req, result, ct)
+                                        .ConfigureAwait(false);
     }
 
     /// <summary>
@@ -228,13 +302,20 @@ public sealed class RecoveryFunction(ISimpleMediator mediator,
                                             .ConfigureAwait(false);
         }
 
+        if (JsonEnumParseErrorHelper.TryBuildUnsupportedFieldMessage<RecoveryRequest>(ex,
+                out string unsupportedFieldError))
+        {
+            return await HttpResponseFactory.BadRequestAsync(req, unsupportedFieldError, ct)
+                                            .ConfigureAwait(false);
+        }
+
         if (string.Equals(ex.Path, "$.interval", StringComparison.OrdinalIgnoreCase))
         {
             return await HttpResponseFactory.BadRequestAsync(req, ex.Message, ct)
                                             .ConfigureAwait(false);
         }
 
-        logger.LogWarningWithDetails(ex, "Invalid JSON payload for recovery request.");
+        _logger.LogWarningWithDetails(ex, "Invalid JSON payload for recovery request.");
 
         return await HttpResponseFactory.BadRequestAsync(req, "Invalid JSON payload.", ct)
                                         .ConfigureAwait(false);

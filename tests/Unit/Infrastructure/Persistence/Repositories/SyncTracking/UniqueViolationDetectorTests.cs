@@ -1,5 +1,6 @@
 using System.Reflection;
 
+using Infrastructure.Persistence;
 using Infrastructure.Persistence.Repositories.SyncTracking;
 
 using Microsoft.Data.SqlClient;
@@ -45,6 +46,21 @@ public sealed class UniqueViolationDetectorTests
         bool actual = UniqueViolationDetector.IsScopeKeyUniqueViolation(dbUpdateException);
 
         Assert.False(actual);
+    }
+
+    [Fact]
+    public void IsScopeKeyUniqueViolation_WhenWrappedConstraintViolationHasScopeConstraintName_ReturnsTrue()
+    {
+        DbUpdateException dbUpdateException = new DbUpdateException("database update failed");
+
+        DbConstraintViolationException wrappedException =
+                        new DbConstraintViolationException("A database constraint violation occurred.",
+                                                           dbUpdateException,
+                                                           "UX_sync_request_scope_key_recovery_active");
+
+        bool actual = UniqueViolationDetector.IsScopeKeyUniqueViolation(wrappedException);
+
+        Assert.True(actual);
     }
 
     #endregion
@@ -106,8 +122,8 @@ public sealed class UniqueViolationDetectorTests
         object sqlError = sqlErrorConstructor.Invoke(sqlErrorArgs);
 
         MethodInfo addMethod =
-            typeof(SqlErrorCollection).GetMethod("Add", BindingFlags.NonPublic | BindingFlags.Instance)
-            ?? throw new InvalidOperationException("SqlErrorCollection.Add not found.");
+                        typeof(SqlErrorCollection).GetMethod("Add", BindingFlags.NonPublic | BindingFlags.Instance)
+                        ?? throw new InvalidOperationException("SqlErrorCollection.Add not found.");
 
         addMethod.Invoke(errorCollection, [sqlError]);
 
@@ -165,15 +181,15 @@ public sealed class UniqueViolationDetectorTests
             }
 
             args[index] =
-                type == typeof(byte) ? (byte)0 :
-                type == typeof(short) ? (short)0 :
-                type == typeof(int) ? 0 :
-                type == typeof(uint) ? 0u :
-                type == typeof(long) ? 0L :
-                type == typeof(bool) ? false :
-                type == typeof(Guid) ? Guid.NewGuid() :
-                type == typeof(Exception) ? null :
-                type.IsValueType ? Activator.CreateInstance(type) : null;
+                            type == typeof(byte) ? (byte)0 :
+                            type == typeof(short) ? (short)0 :
+                            type == typeof(int) ? 0 :
+                            type == typeof(uint) ? 0u :
+                            type == typeof(long) ? 0L :
+                            type == typeof(bool) ? false :
+                            type == typeof(Guid) ? Guid.NewGuid() :
+                            type == typeof(Exception) ? null :
+                            type.IsValueType ? Activator.CreateInstance(type) : null;
         }
 
         return args;

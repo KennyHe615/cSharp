@@ -41,7 +41,7 @@ public sealed class SyncRequestRepository(AppDbContext dbContext,
                                                                          genesysJobId,
                                                                          scopeKey,
                                                                          ct)
-                                              .ConfigureAwait(false),
+                                                          .ConfigureAwait(false),
 
                    SyncMode.Recovery => await ResolveRecoveryAsync(category,
                                                                    mode,
@@ -50,7 +50,7 @@ public sealed class SyncRequestRepository(AppDbContext dbContext,
                                                                    genesysJobId,
                                                                    scopeKey,
                                                                    ct)
-                                           .ConfigureAwait(false),
+                                                       .ConfigureAwait(false),
 
                    _ => throw new InvalidOperationException($"Unsupported sync mode '{mode}'.")
                };
@@ -98,7 +98,7 @@ public sealed class SyncRequestRepository(AppDbContext dbContext,
                                                                        scopeKey,
                                                                        true,
                                                                        ct)
-                                         .ConfigureAwait(false);
+                                                     .ConfigureAwait(false);
 
         if (existing is not null)
         {
@@ -121,11 +121,13 @@ public sealed class SyncRequestRepository(AppDbContext dbContext,
 
             return ToResolveResult(entity, SyncRequestResolveAction.Created);
         }
-        catch (DbUpdateException ex) when (UniqueViolationDetector.IsScopeKeyUniqueViolation(ex))
+        catch (Exception ex) when (UniqueViolationDetector.IsScopeKeyUniqueViolation(ex))
         {
+            dbContext.ChangeTracker.Clear();
+
             // Scale-out race: another instance inserted same incremental scope first.
             SyncRequestEntity winner = await GetByModeAndScopeKeyOrThrowAsync(mode, scopeKey, ct)
-                                          .ConfigureAwait(false);
+                                                      .ConfigureAwait(false);
 
             return ToResolveResult(winner, SyncRequestResolveAction.ReusedActive);
         }
@@ -146,25 +148,32 @@ public sealed class SyncRequestRepository(AppDbContext dbContext,
                                                                       CancellationToken ct)
     {
         SyncRequestEntity? latest = await FindLatestRecoveryByScopeKeyAsync(scopeKey, false, ct)
-                                       .ConfigureAwait(false);
+                                                   .ConfigureAwait(false);
 
         if (latest is not null)
         {
-            if (latest.Status is SyncRequestStatus.Pending or SyncRequestStatus.Running)
+            switch (latest.Status)
             {
-                return ToResolveResult(latest, SyncRequestResolveAction.ReusedActive);
-            }
+                case SyncRequestStatus.Pending or SyncRequestStatus.Running:
+                    return ToResolveResult(latest, SyncRequestResolveAction.ReusedActive);
 
-            if (latest.Status is SyncRequestStatus.Failed or SyncRequestStatus.Canceled)
-            {
-                latest.Status = SyncRequestStatus.Pending;
-                latest.CurrentRunId = null;
-                latest.ReopenCount += 1;
+                case SyncRequestStatus.Failed or SyncRequestStatus.Canceled:
+                    latest.Status = SyncRequestStatus.Pending;
+                    latest.CurrentRunId = null;
+                    latest.ReopenCount += 1;
 
-                await uow.SaveChangesAsync(ct)
-                         .ConfigureAwait(false);
+                    try
+                    {
+                        await uow.SaveChangesAsync(ct)
+                                 .ConfigureAwait(false);
 
-                return ToResolveResult(latest, SyncRequestResolveAction.ReusedFailed);
+                        return ToResolveResult(latest, SyncRequestResolveAction.ReusedFailed);
+                    }
+                    catch (Exception ex) when (UniqueViolationDetector.IsScopeKeyUniqueViolation(ex))
+                    {
+                        return await GetActiveRecoveryRaceWinnerAsync(scopeKey, ct)
+                                              .ConfigureAwait(false);
+                    }
             }
 
             // Important: latest COMPLETED is treated as explicit rerun intent and creates a new row.
@@ -186,13 +195,10 @@ public sealed class SyncRequestRepository(AppDbContext dbContext,
 
             return ToResolveResult(entity, SyncRequestResolveAction.Created);
         }
-        catch (DbUpdateException ex) when (UniqueViolationDetector.IsScopeKeyUniqueViolation(ex))
+        catch (Exception ex) when (UniqueViolationDetector.IsScopeKeyUniqueViolation(ex))
         {
-            // Scale-out race: another instance created active recovery scope first.
-            SyncRequestEntity winner = await GetActiveRecoveryByScopeKeyOrThrowAsync(scopeKey, ct)
-                                          .ConfigureAwait(false);
-
-            return ToResolveResult(winner, SyncRequestResolveAction.ReusedActive);
+            return await GetActiveRecoveryRaceWinnerAsync(scopeKey, ct)
+                                  .ConfigureAwait(false);
         }
     }
 
@@ -291,6 +297,17 @@ public sealed class SyncRequestRepository(AppDbContext dbContext,
                    PublicId = entity.PublicId,
                    RequestAction = action
                };
+    }
+
+    private async Task<SyncRequestResolveResult> GetActiveRecoveryRaceWinnerAsync(string scopeKey, CancellationToken ct)
+    {
+        dbContext.ChangeTracker.Clear();
+
+        // Scale-out race: another instance created active recovery scope first.
+        SyncRequestEntity winner = await GetActiveRecoveryByScopeKeyOrThrowAsync(scopeKey, ct)
+                                                  .ConfigureAwait(false);
+
+        return ToResolveResult(winner, SyncRequestResolveAction.ReusedActive);
     }
 
     #endregion

@@ -2,7 +2,7 @@ using Application.Enums;
 using Application.Mediator;
 
 
-namespace Application.Features.SyncTracking;
+namespace Application.Features.SyncTracking.Analytics;
 
 /// <summary>
 /// Command to run a recovery sync for a single request scope.
@@ -19,7 +19,7 @@ namespace Application.Features.SyncTracking;
 /// Optional external Genesys job id selector for job-based recovery.
 /// Must not be provided together with <paramref name="Interval"/>.
 /// </param>
-public sealed record RunRecoverySyncCommand(SyncCategory Category,
-                                            string? Interval,
-                                            int? PageNumber,
-                                            string? GenesysJobId) : IRequest<long>;
+public sealed record RunAnalyticsRecoverySyncCommand(SyncAnalyticsCategory Category,
+                                                     string? Interval,
+                                                     int? PageNumber,
+                                                     string? GenesysJobId) : IRequest<long>;

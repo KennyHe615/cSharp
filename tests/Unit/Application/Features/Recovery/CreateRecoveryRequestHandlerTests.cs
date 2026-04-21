@@ -9,6 +9,8 @@ using Moq;
 using SharedKernel.Lobs;
 using SharedKernel.Time;
 
+using tests.TestSupport.Time;
+
 using Xunit;
 
 
@@ -29,7 +31,8 @@ public sealed class CreateRecoveryRequestHandlerTests
                                                      Id = 101L,
                                                      PublicId = publicId,
                                                      RequestAction =
-                                                         SyncRequestResolveAction.Created
+                                                                     SyncRequestResolveAction
+                                                                                    .Created
                                                  };
 
         Mock<ISyncRequestRepository> repository = new Mock<ISyncRequestRepository>(MockBehavior.Strict);
@@ -43,14 +46,14 @@ public sealed class CreateRecoveryRequestHandlerTests
 
         CreateRecoveryRequestHandler sut = new CreateRecoveryRequestHandler(repository.Object);
 
-        UtcInterval interval = BuildInterval();
+        UtcInterval interval = UtcIntervalTestFactory.Create();
 
         CreateRecoveryRequestCommand command = new CreateRecoveryRequestCommand(new LobName("CRC"),
-                                                                                category,
-                                                                                interval,
-                                                                                null);
+                                                                                    category,
+                                                                                    interval,
+                                                                                    null);
 
-        (bool success, string message, object detail) = await sut.Handle(command, CancellationToken.None);
+        CreateRecoveryRequestResponse response = await sut.Handle(command, CancellationToken.None);
 
         repository.Verify(x => x.CreateOrGetByScopeAsync(expectedCategory.ToString(),
                                                          SyncMode.Recovery,
@@ -62,19 +65,14 @@ public sealed class CreateRecoveryRequestHandlerTests
 
         repository.VerifyNoOtherCalls();
 
-        Assert.True(success);
-        Assert.Equal("Recovery request resolved successfully.", message);
-
-        Assert.NotNull(detail);
-
-        Type detailType = detail.GetType();
-        Assert.Equal(publicId, (Guid)detailType.GetProperty("RequestId")!.GetValue(detail)!);
-        Assert.Equal(nameof(SyncRequestResolveAction.Created),
-                     (string)detailType.GetProperty("RequestAction")!.GetValue(detail)!);
-        Assert.Equal("CRC", (string)detailType.GetProperty("Lob")!.GetValue(detail)!);
-        Assert.Equal(category.ToString(), (string)detailType.GetProperty("Category")!.GetValue(detail)!);
-        Assert.Equal(interval, (UtcInterval?)detailType.GetProperty("Interval")!.GetValue(detail)!);
-        Assert.Null((string?)detailType.GetProperty("GenesysJobId")!.GetValue(detail));
+        Assert.True(response.Success);
+        Assert.Equal("Recovery request accepted.", response.Message);
+        Assert.Equal(publicId, response.Data.RequestId);
+        Assert.Equal(nameof(SyncRequestResolveAction.Created), response.Data.RequestAction);
+        Assert.Equal("CRC", response.Data.Lob);
+        Assert.Equal(category.ToString(), response.Data.Category);
+        Assert.Equal(interval, response.Data.Interval);
+        Assert.Null(response.Data.GenesysJobId);
     }
 
     [Fact]
@@ -86,8 +84,8 @@ public sealed class CreateRecoveryRequestHandlerTests
                                                      Id = 202L,
                                                      PublicId = publicId,
                                                      RequestAction =
-                                                         SyncRequestResolveAction
-                                                            .ReusedActive
+                                                                     SyncRequestResolveAction
+                                                                                    .ReusedActive
                                                  };
 
         Mock<ISyncRequestRepository> repository = new Mock<ISyncRequestRepository>(MockBehavior.Strict);
@@ -102,10 +100,10 @@ public sealed class CreateRecoveryRequestHandlerTests
         CreateRecoveryRequestHandler sut = new CreateRecoveryRequestHandler(repository.Object);
 
         CreateRecoveryRequestCommand command =
-            new CreateRecoveryRequestCommand(new LobName("LCL"),
-                                             RecoveryCategory.ConversationsDetails,
-                                             null,
-                                             "JOB-123");
+                        new CreateRecoveryRequestCommand(new LobName("LCL"),
+                                                         RecoveryCategory.ConversationsDetails,
+                                                         null,
+                                                         "JOB-123");
 
         CreateRecoveryRequestResponse response = await sut.Handle(command, CancellationToken.None);
 
@@ -119,11 +117,11 @@ public sealed class CreateRecoveryRequestHandlerTests
 
         repository.VerifyNoOtherCalls();
 
-        Type detailType = response.Data.GetType();
-        Assert.Equal(publicId, (Guid)detailType.GetProperty("RequestId")!.GetValue(response.Data)!);
-        Assert.Equal(nameof(SyncRequestResolveAction.ReusedActive),
-                     (string)detailType.GetProperty("RequestAction")!.GetValue(response.Data)!);
-        Assert.Equal("JOB-123", (string?)detailType.GetProperty("GenesysJobId")!.GetValue(response.Data));
+        Assert.True(response.Success);
+        Assert.Equal("Recovery request accepted.", response.Message);
+        Assert.Equal(publicId, response.Data.RequestId);
+        Assert.Equal(nameof(SyncRequestResolveAction.ReusedActive), response.Data.RequestAction);
+        Assert.Equal("JOB-123", response.Data.GenesysJobId);
     }
 
     [Fact]
@@ -133,37 +131,16 @@ public sealed class CreateRecoveryRequestHandlerTests
         CreateRecoveryRequestHandler sut = new CreateRecoveryRequestHandler(repository.Object);
 
         CreateRecoveryRequestCommand command =
-            new CreateRecoveryRequestCommand(new LobName("CRC"),
-                                             (RecoveryCategory)999,
-                                             null,
-                                             null);
+                        new CreateRecoveryRequestCommand(new LobName("CRC"),
+                                                         (RecoveryCategory)999,
+                                                         null,
+                                                         null);
 
         InvalidOperationException ex =
-            await Assert.ThrowsAsync<InvalidOperationException>(() => sut.Handle(command, CancellationToken.None));
+                        await Assert.ThrowsAsync<InvalidOperationException>(() => sut.Handle(command,
+                                                                                CancellationToken.None));
 
         Assert.Contains("Unsupported recovery category", ex.Message);
         repository.VerifyNoOtherCalls();
     }
-
-    #region ========== *** Private Section *** ==========
-
-    private static UtcInterval BuildInterval()
-    {
-        return new UtcInterval(new DateTimeOffset(2025,
-                                                  1,
-                                                  1,
-                                                  0,
-                                                  0,
-                                                  0,
-                                                  TimeSpan.Zero),
-                               new DateTimeOffset(2025,
-                                                  1,
-                                                  1,
-                                                  1,
-                                                  0,
-                                                  0,
-                                                  TimeSpan.Zero));
-    }
-
-    #endregion
 }

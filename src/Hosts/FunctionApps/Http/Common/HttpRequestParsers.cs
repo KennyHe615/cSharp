@@ -3,7 +3,7 @@ using System.Text.Json;
 using Microsoft.Azure.Functions.Worker.Http;
 
 
-namespace FunctionApp.Http.Common;
+namespace FunctionApps.Http.Common;
 
 /// <summary>
 /// Shared HTTP request parsing helpers for FunctionApps HTTP triggers.
@@ -27,10 +27,15 @@ public static class HttpRequestParsers
     public static async Task<TRequest> DeserializeOrBadRequestAsync<TRequest>(HttpRequestData req,
                                                                               JsonSerializerOptions options,
                                                                               CancellationToken ct = default)
-        where TRequest : class
+                    where TRequest : class
     {
         ArgumentNullException.ThrowIfNull(req);
         ArgumentNullException.ThrowIfNull(options);
+
+        if (req.Body.CanSeek && req.Body.Position != 0)
+        {
+            req.Body.Position = 0;
+        }
 
         TRequest? request = await JsonSerializer.DeserializeAsync<TRequest>(req.Body, options, ct)
                                                 .ConfigureAwait(false);
