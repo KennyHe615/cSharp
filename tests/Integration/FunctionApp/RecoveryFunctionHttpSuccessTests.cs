@@ -49,7 +49,7 @@ public sealed class RecoveryFunctionHttpSuccessTests
                                                          await Task.Yield();
 
                                                          return RecoveryFunctionTestFactory
-                                                                        .CreateResponse();
+                                                                .CreateResponse();
                                                      }
                                         };
 
@@ -57,7 +57,7 @@ public sealed class RecoveryFunctionHttpSuccessTests
         FakeHttpRequestData req = RecoveryFunctionTestFactory.CreateRequest("""
                                                                             {
                                                                               "lob":"lcl",
-                                                                              "category":"UsersDetails",
+                                                                              "category":"ConversationsDetails",
                                                                               "GenesysJobId":"JOB-123"
                                                                             }
                                                                             """);
@@ -78,17 +78,16 @@ public sealed class RecoveryFunctionHttpSuccessTests
     {
         FakeRecoveryMediator mediator = new FakeRecoveryMediator
                                         {
-                                            OnSend = (_, _) =>
-                                                                     Task
-                                                                                    .FromResult(RecoveryFunctionTestFactory
-                                                                                                    .CreateResponse(action))
+                                            OnSend = (_, _) => Task.FromResult(
+                                                             RecoveryFunctionTestFactory
+                                                                    .CreateResponse(action))
                                         };
 
         RecoveryFunction sut = RecoveryFunctionTestFactory.Create(mediator);
         FakeHttpRequestData req = RecoveryFunctionTestFactory.CreateRequest("""
                                                                             {
                                                                               "lob":"crc",
-                                                                              "category":"UsersDetails",
+                                                                              "category":"ConversationsDetails",
                                                                               "GenesysJobId":"JOB-123"
                                                                             }
                                                                             """);

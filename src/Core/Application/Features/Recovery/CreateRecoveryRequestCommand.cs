@@ -13,7 +13,10 @@ namespace Application.Features.Recovery;
 /// <param name="Lob">Line-of-business identifier for the recovery request.</param>
 /// <param name="Category">Recovery category to execute.</param>
 /// <param name="Interval">Optional UTC interval to recover.</param>
-/// <param name="GenesysJobId">Optional existing job identifier to recover.</param>
+/// <param name="GenesysJobId">
+/// Optional existing Genesys job identifier to recover.
+/// Supported only for <see cref="RecoveryCategory.ConversationsDetails"/>.
+/// </param>
 public sealed record CreateRecoveryRequestCommand(LobName Lob,
                                                   RecoveryCategory Category,
                                                   UtcInterval? Interval,

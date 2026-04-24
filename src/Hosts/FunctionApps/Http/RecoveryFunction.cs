@@ -39,10 +39,10 @@ public sealed class RecoveryFunction(ISimpleMediator mediator,
     private readonly ISimpleMediator _mediator = mediator ?? throw new ArgumentNullException(nameof(mediator));
 
     private readonly ILobContextAccessor _lobContextAccessor =
-                    lobContextAccessor ?? throw new ArgumentNullException(nameof(lobContextAccessor));
+            lobContextAccessor ?? throw new ArgumentNullException(nameof(lobContextAccessor));
 
     private readonly ICredentialProvider _credentialProvider =
-                    credentialProvider ?? throw new ArgumentNullException(nameof(credentialProvider));
+            credentialProvider ?? throw new ArgumentNullException(nameof(credentialProvider));
 
     private readonly ILogger<RecoveryFunction> _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
@@ -50,13 +50,11 @@ public sealed class RecoveryFunction(ISimpleMediator mediator,
                                                                 {
                                                                     PropertyNameCaseInsensitive = true,
                                                                     UnmappedMemberHandling =
-                                                                                    JsonUnmappedMemberHandling
-                                                                                                   .Disallow,
+                                                                            JsonUnmappedMemberHandling.Disallow,
                                                                     Converters =
                                                                     {
-                                                                        new
-                                                                                        JsonStringEnumConverter(allowIntegerValues
-                                                                                            : false)
+                                                                        new JsonStringEnumConverter(
+                                                                                allowIntegerValues: false)
                                                                     }
                                                                 };
 
@@ -75,13 +73,16 @@ public sealed class RecoveryFunction(ISimpleMediator mediator,
     /// 202 with the accepted recovery payload on reused or reopened recovery requests,
     /// 400 for invalid client input,
     /// or 500 for unexpected server errors.
+    /// <para>
+    /// When provided, <c>GenesysJobId</c> is supported only for ConversationsDetails recovery.
+    /// </para>
     /// </returns>
     [Function("CreateRecoveryRequest")]
     public async Task<HttpResponseData> CreateRecoveryRequest(
-                    // Easy Auth (Microsoft Entra ID) should be enforced at Function App level in Azure.
-                    // Trigger key auth remains a secondary gate until the platform policy is finalized.
-                    [HttpTrigger(AuthorizationLevel.Function, "post", Route = "recovery")] HttpRequestData req,
-                    CancellationToken ct)
+            // Easy Auth (Microsoft Entra ID) should be enforced at Function App level in Azure.
+            // Trigger key auth remains a secondary gate until the platform policy is finalized.
+            [HttpTrigger(AuthorizationLevel.Function, "post", Route = "recovery")] HttpRequestData req,
+            CancellationToken ct)
     {
         const string logEntity = "CreateRecoveryRequest";
         LobName lob = default;
@@ -89,33 +90,33 @@ public sealed class RecoveryFunction(ISimpleMediator mediator,
         try
         {
             RecoveryRequest request =
-                            await HttpRequestParsers.DeserializeOrBadRequestAsync<RecoveryRequest>(req, JsonOptions, ct)
-                                                    .ConfigureAwait(false);
+                    await HttpRequestParsers.DeserializeOrBadRequestAsync<RecoveryRequest>(req, JsonOptions, ct)
+                                            .ConfigureAwait(false);
 
             RecoveryCategory category = await ValidateRequiredRequestFieldsAsync(req, request, ct)
-                                                       .ConfigureAwait(false);
+                                               .ConfigureAwait(false);
 
             lob = await ParseLobOrWriteBadRequestAsync(req, request.Lob, ct)
-                                 .ConfigureAwait(false);
+                         .ConfigureAwait(false);
 
             using IDisposable scope = _logger.BeginOperationScope(lob, LogCategory, logEntity);
-            _logger.LogInformation(LobLogTemplates.LobCategoryEntity
-                                   + "Request accepted for validation and processing.",
-                                   lob,
-                                   LogCategory,
-                                   logEntity);
+            _logger.LogInformation(
+                    LobLogTemplates.LobCategoryEntity + "Request accepted for validation and processing.",
+                    lob,
+                    LogCategory,
+                    logEntity);
 
             await PopulateCredentialsAsync(lob, ct)
-                           .ConfigureAwait(false);
+                   .ConfigureAwait(false);
 
             CreateRecoveryRequestResponse result = await ProcessRecoveryRequestAsync(request,
-                                                                       lob,
-                                                                       category,
-                                                                       ct)
-                                                                  .ConfigureAwait(false);
+                                                               lob,
+                                                               category,
+                                                               ct)
+                                                          .ConfigureAwait(false);
 
             return await WriteSuccessfulRecoveryResponseAsync(req, result, ct)
-                                  .ConfigureAwait(false);
+                          .ConfigureAwait(false);
         }
         catch (BadRequestHandledException ex)
         {
@@ -133,7 +134,7 @@ public sealed class RecoveryFunction(ISimpleMediator mediator,
         catch (JsonException ex)
         {
             return await HandleJsonExceptionAsync(req, ex, ct)
-                                  .ConfigureAwait(false);
+                          .ConfigureAwait(false);
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
@@ -216,7 +217,7 @@ public sealed class RecoveryFunction(ISimpleMediator mediator,
         catch (ArgumentException)
         {
             string message =
-                            $"Invalid value for 'lob': '{lobRaw}'. Available values: {string.Join(" / ", LobName.AllowedValues)}.";
+                    $"Invalid value for 'lob': '{lobRaw}'. Available values: {string.Join(" / ", LobName.AllowedValues)}.";
 
             HttpResponseData response = await HttpResponseFactory.BadRequestAsync(req, message, ct)
                                                                  .ConfigureAwait(false);
@@ -245,15 +246,18 @@ public sealed class RecoveryFunction(ISimpleMediator mediator,
     /// <param name="category">Validated recovery category.</param>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>The application-layer response for the created recovery request.</returns>
+    /// <remarks>
+    /// <c>GenesysJobId</c> is forwarded as part of the command only for supported recovery categories.
+    /// </remarks>
     private async Task<CreateRecoveryRequestResponse> ProcessRecoveryRequestAsync(RecoveryRequest request,
         LobName lob,
         RecoveryCategory category,
         CancellationToken ct)
     {
         CreateRecoveryRequestCommand command = new CreateRecoveryRequestCommand(lob,
-                                                                                    category,
-                                                                                    request.Interval,
-                                                                                    request.GenesysJobId);
+            category,
+            request.Interval,
+            request.GenesysJobId);
 
         return await _mediator.Send(command, ct)
                               .ConfigureAwait(false);

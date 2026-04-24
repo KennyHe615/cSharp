@@ -20,7 +20,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options,
                                  ILobContext lobContext,
                                  IDateTimeProvider dateTimeProvider,
                                  AuditSaveChangesInterceptor auditInterceptor)
-    : Microsoft.EntityFrameworkCore.DbContext(options)
+                : Microsoft.EntityFrameworkCore.DbContext(options)
 {
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
@@ -43,7 +43,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options,
         if (string.IsNullOrWhiteSpace(connectionString))
         {
             throw new
-                DbContextConfigurationException($"Database ConnectionString for LOB '{lobContext.LobName}' is missing.");
+                            DbContextConfigurationException($"Database ConnectionString for LOB '{lobContext.LobName}' is missing.");
         }
 
         try
@@ -87,17 +87,21 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options,
     private static void ApplyEstDateTimeConvention(ModelBuilder modelBuilder, IDateTimeProvider dateTimeProvider)
     {
         ValueConverter<DateTimeOffset, DateTimeOffset> dtoConverter =
-            new ValueConverter<DateTimeOffset, DateTimeOffset>(v => dateTimeProvider.ConvertToEst(v),
-                                                               v => dateTimeProvider.ConvertToEst(v));
+                        new ValueConverter<DateTimeOffset, DateTimeOffset>(v => dateTimeProvider.ConvertToEst(v),
+                                                                           v => dateTimeProvider.ConvertToEst(v));
 
         ValueConverter<DateTimeOffset?, DateTimeOffset?> dtoNullableConverter =
-            new ValueConverter<DateTimeOffset?, DateTimeOffset?>(v =>
-                                                                     v.HasValue
-                                                                         ? dateTimeProvider.ConvertToEst(v.Value)
-                                                                         : null,
-                                                                 v => v.HasValue
-                                                                     ? dateTimeProvider.ConvertToEst(v.Value)
-                                                                     : null);
+                        new ValueConverter<DateTimeOffset?, DateTimeOffset?>(v =>
+                                                                                             v.HasValue
+                                                                                                             ? dateTimeProvider
+                                                                                                                            .ConvertToEst(v
+                                                                                                                                            .Value)
+                                                                                                             : null,
+                                                                             v => v.HasValue
+                                                                                             ? dateTimeProvider
+                                                                                                            .ConvertToEst(v
+                                                                                                                            .Value)
+                                                                                             : null);
 
         foreach (IMutableEntityType entityType in modelBuilder.Model.GetEntityTypes())
         {
@@ -143,8 +147,8 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options,
                 Type? nullableUnderlying = Nullable.GetUnderlyingType(clrType);
 
                 Type? enumType =
-                    clrType.IsEnum ? clrType :
-                    nullableUnderlying is not null && nullableUnderlying.IsEnum ? nullableUnderlying : null;
+                                clrType.IsEnum ? clrType :
+                                nullableUnderlying is not null && nullableUnderlying.IsEnum ? nullableUnderlying : null;
 
                 if (enumType is null) continue;
 
@@ -206,26 +210,26 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options,
     private static void ApplyAuditConvention(ModelBuilder modelBuilder)
     {
         const string easternNowSql =
-            "SWITCHOFFSET(SYSDATETIMEOFFSET(), DATENAME(TzOffset, SYSDATETIMEOFFSET() AT TIME ZONE 'Eastern Standard Time'))";
+                        "SWITCHOFFSET(SYSDATETIMEOFFSET(), DATENAME(TzOffset, SYSDATETIMEOFFSET() AT TIME ZONE 'Eastern Standard Time'))";
 
         foreach (IMutableEntityType entity in modelBuilder.Model.GetEntityTypes())
         {
             if (!typeof(Audit).IsAssignableFrom(entity.ClrType)) continue;
 
             modelBuilder.Entity(entity.ClrType)
-                        .Property(nameof(Audit.AppCreatedAt))
+                        .Property(nameof(Audit.AppCreatedAtEastern))
                         .IsRequired()
                         .HasColumnType("datetimeoffset(0)")
                         .HasDefaultValueSql(easternNowSql);
 
             modelBuilder.Entity(entity.ClrType)
-                        .Property(nameof(Audit.AppUpdatedAt))
+                        .Property(nameof(Audit.AppUpdatedAtEastern))
                         .IsRequired()
                         .HasColumnType("datetimeoffset(0)")
                         .HasDefaultValueSql(easternNowSql);
 
             modelBuilder.Entity(entity.ClrType)
-                        .HasIndex(nameof(Audit.AppUpdatedAt));
+                        .HasIndex(nameof(Audit.AppUpdatedAtEastern));
         }
     }
 
@@ -234,18 +238,20 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options,
         if (!enumType.IsEnum)
         {
             throw
-                new InvalidOperationException($"CreateEnumConverter called with non-enum type '{enumType.FullName}'.");
+                            new
+                                            InvalidOperationException($"CreateEnumConverter called with non-enum type '{enumType.FullName}'.");
         }
 
         bool isNullableEnumProperty = Nullable.GetUnderlyingType(propertyType) is not null;
 
         Type converterType = isNullableEnumProperty
-            ? typeof(NullableEnumToSnakeUpperStringConverter<>).MakeGenericType(enumType)
-            : typeof(EnumToSnakeUpperStringConverter<>).MakeGenericType(enumType);
+                                             ? typeof(NullableEnumToSnakeUpperStringConverter<>)
+                                                            .MakeGenericType(enumType)
+                                             : typeof(EnumToSnakeUpperStringConverter<>).MakeGenericType(enumType);
 
         return Activator.CreateInstance(converterType) as ValueConverter
                ?? throw new
-                   InvalidOperationException($"Failed to create enum value converter '{converterType.FullName}'.");
+                               InvalidOperationException($"Failed to create enum value converter '{converterType.FullName}'.");
     }
 
     #endregion
