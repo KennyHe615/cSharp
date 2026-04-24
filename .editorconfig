@@ -36,9 +36,10 @@ csharp_new_line_before_finally = true
 resharper_csharp_continuous_indent_multiplier = 4
 resharper_csharp_max_line_length = 120
 resharper_keep_existing_attribute_arrangement = false
-resharper_wrap_chained_method_calls = chop_always
 resharper_align_multiline_expression = true
 resharper_align_multiline_argument = true
+resharper_wrap_after_property_in_chained_method_calls = true
+resharper_wrap_chained_method_calls = chop_if_long
 
 ############################################################
 # DTOs, Mapper Profiles and Entities - Suppress ReSharper warnings

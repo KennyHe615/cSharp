@@ -31,9 +31,9 @@ public sealed class SyncRunConfiguration : IEntityTypeConfiguration<SyncRunEntit
         builder.Property(x => x.AttemptNo)
                .IsRequired();
 
-        builder.Property(x => x.RunStartedAt);
+        builder.Property(x => x.RunStartedAtEastern);
 
-        builder.Property(x => x.RunCompletedAt);
+        builder.Property(x => x.RunCompletedAtEastern);
 
         builder.Property(x => x.FailureReason)
                .HasMaxLength(1000);
@@ -51,11 +51,11 @@ public sealed class SyncRunConfiguration : IEntityTypeConfiguration<SyncRunEntit
 
         #region ========== *** Non-Clustered Indexes *** ==========
 
-        builder.HasIndex(x => new { x.RequestId, x.AppUpdatedAt })
-               .HasDatabaseName("IX_sync_run_request_id_app_updated_at");
+        builder.HasIndex(x => new { x.RequestId, x.AppUpdatedAtEastern })
+               .HasDatabaseName("IX_sync_run_request_id_app_updated_at_eastern");
 
-        builder.HasIndex(x => new { x.Status, x.AppUpdatedAt })
-               .HasDatabaseName("IX_sync_run_status_app_updated_at");
+        builder.HasIndex(x => new { x.Status, x.AppUpdatedAtEastern })
+               .HasDatabaseName("IX_sync_run_status_app_updated_at_eastern");
 
         builder.HasIndex(x => x.SupersededByRunId)
                .HasDatabaseName("IX_sync_run_superseded_by_run_id");

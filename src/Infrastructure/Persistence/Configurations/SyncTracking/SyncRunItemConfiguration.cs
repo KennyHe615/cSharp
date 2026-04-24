@@ -6,11 +6,15 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace Infrastructure.Persistence.Configurations.SyncTracking;
 
-public sealed class SyncCheckpointConfiguration : IEntityTypeConfiguration<SyncCheckpointEntity>
+/// <summary>
+/// Entity Framework configuration for claimable sync run items.
+/// </summary>
+public sealed class SyncRunItemConfiguration : IEntityTypeConfiguration<SyncRunItemEntity>
 {
-    public void Configure(EntityTypeBuilder<SyncCheckpointEntity> builder)
+    /// <inheritdoc />
+    public void Configure(EntityTypeBuilder<SyncRunItemEntity> builder)
     {
-        builder.ToTable("sync_checkpoint", "dbo");
+        builder.ToTable("sync_run_item", "dbo");
 
         builder.HasKey(x => x.Id);
 
@@ -42,7 +46,7 @@ public sealed class SyncCheckpointConfiguration : IEntityTypeConfiguration<SyncC
         #region ========== *** Relationships *** ==========
 
         builder.HasOne(x => x.Run)
-               .WithMany(x => x.Checkpoints)
+               .WithMany(x => x.RunItems)
                .HasForeignKey(x => x.RunId)
                .OnDelete(DeleteBehavior.Cascade);
 
@@ -52,13 +56,13 @@ public sealed class SyncCheckpointConfiguration : IEntityTypeConfiguration<SyncC
 
         builder.HasIndex(x => new { x.RunId, x.Step, x.Cursor })
                .IsUnique()
-               .HasDatabaseName("UX_sync_checkpoint_run_step_cursor");
+               .HasDatabaseName("UX_sync_run_item_run_step_cursor");
 
-        builder.HasIndex(x => new { x.RunId, x.Status, x.AppUpdatedAt })
-               .HasDatabaseName("IX_sync_checkpoint_run_status_app_updated_at");
+        builder.HasIndex(x => new { x.RunId, x.Status, x.AppUpdatedAtEastern })
+               .HasDatabaseName("IX_sync_run_item_run_status_app_updated_at_eastern");
 
-        builder.HasIndex(x => x.AppUpdatedAt)
-               .HasDatabaseName("IX_sync_checkpoint_app_updated_at");
+        builder.HasIndex(x => x.AppUpdatedAtEastern)
+               .HasDatabaseName("IX_sync_run_item_app_updated_at_eastern");
 
         #endregion
     }

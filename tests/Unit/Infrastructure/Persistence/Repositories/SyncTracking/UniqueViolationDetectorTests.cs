@@ -65,7 +65,7 @@ public sealed class UniqueViolationDetectorTests
 
     #endregion
 
-    #region ========== *** IsCheckpointUniqueViolation *** ==========
+    #region ========== *** IsRunItemUniqueViolation *** ==========
 
     [Theory]
     [InlineData(2601)]
@@ -106,22 +106,18 @@ public sealed class UniqueViolationDetectorTests
 
     private static SqlException CreateSqlException(int number, string message)
     {
-        object errorCollection =
-                        Activator.CreateInstance(typeof(SqlErrorCollection), true)
-                        ?? throw new InvalidOperationException("Failed to create SqlErrorCollection.");
+        object errorCollection = Activator.CreateInstance(typeof(SqlErrorCollection), true)
+                                 ?? throw new InvalidOperationException("Failed to create SqlErrorCollection.");
 
         ConstructorInfo sqlErrorConstructor =
                         typeof(SqlError).GetConstructors(BindingFlags.NonPublic | BindingFlags.Instance)
-                                        .OrderByDescending(c =>
-                                                                           c.GetParameters()
-                                                                            .Length)
+                                        .OrderByDescending(c => c.GetParameters().Length)
                                         .First();
 
-        object?[] sqlErrorArgs =
-                        BuildArguments(sqlErrorConstructor.GetParameters(),
-                                       number,
-                                       message,
-                                       null);
+        object?[] sqlErrorArgs = BuildArguments(sqlErrorConstructor.GetParameters(),
+                                                number,
+                                                message,
+                                                null);
         object sqlError = sqlErrorConstructor.Invoke(sqlErrorArgs);
 
         MethodInfo addMethod =
@@ -130,22 +126,21 @@ public sealed class UniqueViolationDetectorTests
 
         addMethod.Invoke(errorCollection, [sqlError]);
 
-        ConstructorInfo sqlExceptionConstructor =
-                        typeof(SqlException).GetConstructors(BindingFlags.NonPublic | BindingFlags.Instance)
-                                            .First(c =>
-                                                   {
-                                                       ParameterInfo[] parameters = c.GetParameters();
+        ConstructorInfo sqlExceptionConstructor = typeof(SqlException)
+                                                 .GetConstructors(BindingFlags.NonPublic | BindingFlags.Instance)
+                                                 .First(c =>
+                                                        {
+                                                            ParameterInfo[] parameters = c.GetParameters();
 
-                                                       return parameters.Length >= 2
-                                                              && parameters[1].ParameterType
-                                                              == typeof(SqlErrorCollection);
-                                                   });
+                                                            return parameters.Length >= 2
+                                                                   && parameters[1].ParameterType
+                                                                   == typeof(SqlErrorCollection);
+                                                        });
 
-        object?[] sqlExceptionArgs =
-                        BuildArguments(sqlExceptionConstructor.GetParameters(),
-                                       number,
-                                       message,
-                                       errorCollection);
+        object?[] sqlExceptionArgs = BuildArguments(sqlExceptionConstructor.GetParameters(),
+                                                    number,
+                                                    message,
+                                                    errorCollection);
 
         object sqlException = sqlExceptionConstructor.Invoke(sqlExceptionArgs);
 

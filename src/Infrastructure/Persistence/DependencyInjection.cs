@@ -42,6 +42,6 @@ public static class DependencyInjection
 
         services.AddScoped<ISyncRequestRepository, SyncRequestRepository>();
         services.AddScoped<ISyncRunRepository, SyncRunRepository>();
-        services.AddScoped<ISyncCheckpointRepository, SyncCheckpointRepository>();
+        services.AddScoped<ISyncRunItemRepository, SyncRunItemRepository>();
     }
 }

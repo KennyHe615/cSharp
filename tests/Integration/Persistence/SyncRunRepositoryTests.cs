@@ -33,7 +33,7 @@ public sealed class SyncRunRepositoryTests
         SyncRequestEntity request =
                         await SyncTrackingSeedFactory.SeedRequestAsync(dbContext,
                                                                        nameof(SyncReferenceCategory.Group),
-                                                                       SyncMode.Incremental);
+                                                                       SyncMode.Full);
 
         SyncRunRepository sut = new SyncRunRepository(dbContext, uow.Object, dateTimeProvider.Object);
 
@@ -62,7 +62,7 @@ public sealed class SyncRunRepositoryTests
         SyncRequestEntity request =
                         await SyncTrackingSeedFactory.SeedRequestAsync(dbContext,
                                                                        nameof(SyncReferenceCategory.Skill),
-                                                                       SyncMode.Incremental);
+                                                                       SyncMode.Full);
 
         SyncRunRepository sut = new SyncRunRepository(dbContext, uow.Object, dateTimeProvider.Object);
 
@@ -128,7 +128,7 @@ public sealed class SyncRunRepositoryTests
         SyncRequestEntity request =
                         await SyncTrackingSeedFactory.SeedRequestAsync(dbContext,
                                                                        nameof(SyncReferenceCategory.WrapUpCode),
-                                                                       SyncMode.Incremental);
+                                                                       SyncMode.Full);
 
         SyncRunRepository sut = new SyncRunRepository(dbContext, uow.Object, dateTimeProvider.Object);
 
@@ -156,7 +156,7 @@ public sealed class SyncRunRepositoryTests
         SyncRequestEntity request =
                         await SyncTrackingSeedFactory.SeedRequestAsync(dbContext,
                                                                        nameof(SyncReferenceCategory.User),
-                                                                       SyncMode.Incremental);
+                                                                       SyncMode.Full);
 
         SyncRunRepository sut = new SyncRunRepository(dbContext, uow.Object, dateTimeProvider.Object);
 
@@ -184,7 +184,7 @@ public sealed class SyncRunRepositoryTests
 
         SyncRequestEntity request =
                         await SyncTrackingSeedFactory.SeedRequestAsync(dbContext,
-                                                                       nameof(SyncReferenceCategory.Group),
+                                                                       nameof(SyncAnalyticsCategory.UsersDetails),
                                                                        SyncMode.Recovery);
 
         SyncRunRepository sut = new SyncRunRepository(dbContext, uow.Object, dateTimeProvider.Object);
