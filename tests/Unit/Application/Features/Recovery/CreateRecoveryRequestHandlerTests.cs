@@ -26,41 +26,43 @@ public sealed class CreateRecoveryRequestHandlerTests
                                                             SyncAnalyticsCategory expectedCategory)
     {
         Guid publicId = Guid.Parse("aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee");
-        SyncRequestResolveResult resolveResult = new SyncRequestResolveResult
-                                                 {
-                                                     Id = 101L,
-                                                     PublicId = publicId,
-                                                     RequestAction =
-                                                                     SyncRequestResolveAction
-                                                                                    .Created
-                                                 };
+        SyncRequestResolveResult resolveResult =
+                        new SyncRequestResolveResult
+                        {
+                            Id = 101L,
+                            PublicId = publicId,
+                            RequestAction = SyncRequestResolveAction.Created
+                        };
 
         Mock<ISyncRequestRepository> repository = new Mock<ISyncRequestRepository>(MockBehavior.Strict);
-        repository.Setup(x => x.CreateOrGetByScopeAsync(expectedCategory.ToString(),
-                                                        SyncMode.Recovery,
-                                                        It.IsAny<string?>(),
-                                                        null,
-                                                        null,
-                                                        It.IsAny<CancellationToken>()))
+        repository.Setup(x =>
+                                         x.CreateOrGetByScopeAsync(expectedCategory.ToString(),
+                                                                   SyncMode.Recovery,
+                                                                   It.IsAny<string?>(),
+                                                                   null,
+                                                                   null,
+                                                                   It.IsAny<CancellationToken>()))
                   .ReturnsAsync(resolveResult);
 
         CreateRecoveryRequestHandler sut = new CreateRecoveryRequestHandler(repository.Object);
 
         UtcInterval interval = UtcIntervalTestFactory.Create();
 
-        CreateRecoveryRequestCommand command = new CreateRecoveryRequestCommand(new LobName("CRC"),
-                                                                                    category,
-                                                                                    interval,
-                                                                                    null);
+        CreateRecoveryRequestCommand command =
+                        new CreateRecoveryRequestCommand(new LobName("CRC"),
+                                                         category,
+                                                         interval,
+                                                         null);
 
         CreateRecoveryRequestResponse response = await sut.Handle(command, CancellationToken.None);
 
-        repository.Verify(x => x.CreateOrGetByScopeAsync(expectedCategory.ToString(),
-                                                         SyncMode.Recovery,
-                                                         interval.ToString(),
-                                                         null,
-                                                         null,
-                                                         It.IsAny<CancellationToken>()),
+        repository.Verify(x =>
+                                          x.CreateOrGetByScopeAsync(expectedCategory.ToString(),
+                                                                    SyncMode.Recovery,
+                                                                    interval.ToString(),
+                                                                    null,
+                                                                    null,
+                                                                    It.IsAny<CancellationToken>()),
                           Times.Once);
 
         repository.VerifyNoOtherCalls();
@@ -79,22 +81,22 @@ public sealed class CreateRecoveryRequestHandlerTests
     public async Task Handle_WithGenesysJobId_PassesGenesysJobIdToRepository()
     {
         Guid publicId = Guid.Parse("11111111-2222-3333-4444-555555555555");
-        SyncRequestResolveResult resolveResult = new SyncRequestResolveResult
-                                                 {
-                                                     Id = 202L,
-                                                     PublicId = publicId,
-                                                     RequestAction =
-                                                                     SyncRequestResolveAction
-                                                                                    .ReusedActive
-                                                 };
+        SyncRequestResolveResult resolveResult =
+                        new SyncRequestResolveResult
+                        {
+                            Id = 202L,
+                            PublicId = publicId,
+                            RequestAction = SyncRequestResolveAction.ReusedActive
+                        };
 
         Mock<ISyncRequestRepository> repository = new Mock<ISyncRequestRepository>(MockBehavior.Strict);
-        repository.Setup(x => x.CreateOrGetByScopeAsync(nameof(SyncAnalyticsCategory.ConversationsDetails),
-                                                        SyncMode.Recovery,
-                                                        null,
-                                                        null,
-                                                        "JOB-123",
-                                                        It.IsAny<CancellationToken>()))
+        repository.Setup(x =>
+                                         x.CreateOrGetByScopeAsync(nameof(SyncAnalyticsCategory.ConversationsDetails),
+                                                                   SyncMode.Recovery,
+                                                                   null,
+                                                                   null,
+                                                                   "JOB-123",
+                                                                   It.IsAny<CancellationToken>()))
                   .ReturnsAsync(resolveResult);
 
         CreateRecoveryRequestHandler sut = new CreateRecoveryRequestHandler(repository.Object);
@@ -107,12 +109,13 @@ public sealed class CreateRecoveryRequestHandlerTests
 
         CreateRecoveryRequestResponse response = await sut.Handle(command, CancellationToken.None);
 
-        repository.Verify(x => x.CreateOrGetByScopeAsync(nameof(SyncAnalyticsCategory.ConversationsDetails),
-                                                         SyncMode.Recovery,
-                                                         null,
-                                                         null,
-                                                         "JOB-123",
-                                                         It.IsAny<CancellationToken>()),
+        repository.Verify(x =>
+                                          x.CreateOrGetByScopeAsync(nameof(SyncAnalyticsCategory.ConversationsDetails),
+                                                                    SyncMode.Recovery,
+                                                                    null,
+                                                                    null,
+                                                                    "JOB-123",
+                                                                    It.IsAny<CancellationToken>()),
                           Times.Once);
 
         repository.VerifyNoOtherCalls();
@@ -137,10 +140,34 @@ public sealed class CreateRecoveryRequestHandlerTests
                                                          null);
 
         InvalidOperationException ex =
-                        await Assert.ThrowsAsync<InvalidOperationException>(() => sut.Handle(command,
-                                                                                CancellationToken.None));
+                        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+                                                                                            sut.Handle(command,
+                                                                                                CancellationToken
+                                                                                                               .None));
 
         Assert.Contains("Unsupported recovery category", ex.Message);
+        repository.VerifyNoOtherCalls();
+    }
+
+    [Fact]
+    public async Task Handle_WithGenesysJobIdForNonConversationsDetails_ThrowsInvalidOperationException()
+    {
+        Mock<ISyncRequestRepository> repository = new Mock<ISyncRequestRepository>(MockBehavior.Strict);
+        CreateRecoveryRequestHandler sut = new CreateRecoveryRequestHandler(repository.Object);
+
+        CreateRecoveryRequestCommand command =
+                        new CreateRecoveryRequestCommand(new LobName("CRC"),
+                                                         RecoveryCategory.UsersDetails,
+                                                         null,
+                                                         "JOB-123");
+
+        InvalidOperationException ex =
+                        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+                                                                                            sut.Handle(command,
+                                                                                                CancellationToken
+                                                                                                               .None));
+
+        Assert.Equal("GenesysJobId is only supported for ConversationsDetails recovery.", ex.Message);
         repository.VerifyNoOtherCalls();
     }
 }

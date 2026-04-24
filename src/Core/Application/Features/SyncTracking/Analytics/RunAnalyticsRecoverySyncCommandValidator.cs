@@ -1,3 +1,6 @@
+using Application.Enums;
+using Application.Features.Shared;
+
 using FluentValidation;
 
 using SharedKernel.Time;
@@ -19,23 +22,9 @@ public sealed class RunAnalyticsRecoverySyncCommandValidator : AbstractValidator
                        .IsInEnum()
                        .WithMessage("Category is invalid.");
 
-        RuleFor(x => x)
-                       .Must(HaveIntervalOrGenesysJobId)
-                       .WithMessage("Either Interval or GenesysJobId must be provided.");
-
-        RuleFor(x => x)
-                       .Must(NotHaveBothIntervalAndGenesysJobId)
-                       .WithMessage("Provide either Interval or GenesysJobId, not both.");
-
-        RuleFor(x => x.GenesysJobId)
-                       .MaximumLength(100)
-                       .WithMessage("GenesysJobId cannot exceed 100 characters.")
-                       .When(x => !string.IsNullOrWhiteSpace(x.GenesysJobId));
-
-        RuleFor(x => x.GenesysJobId)
-                       .Must(NotHaveLeadingOrTrailingSpaces)
-                       .WithMessage("GenesysJobId must not contain leading or trailing spaces.")
-                       .When(x => !string.IsNullOrWhiteSpace(x.GenesysJobId));
+        this.AddRecoverySelectorRules(x => !string.IsNullOrWhiteSpace(x.Interval),
+                                      x => x.GenesysJobId,
+                                      x => x.Category == SyncAnalyticsCategory.ConversationsDetails);
 
         RuleFor(x => x.Interval)
                        .Must(BeValidUtcInterval)
@@ -59,28 +48,9 @@ public sealed class RunAnalyticsRecoverySyncCommandValidator : AbstractValidator
 
     #region ========== *** Private Section *** ==========
 
-    private static bool HaveIntervalOrGenesysJobId(RunAnalyticsRecoverySyncCommand request)
-    {
-        bool hasInterval = !string.IsNullOrWhiteSpace(request.Interval);
-        bool hasGenesysJobId = !string.IsNullOrWhiteSpace(request.GenesysJobId);
-
-        return hasInterval || hasGenesysJobId;
-    }
-
-    private static bool NotHaveBothIntervalAndGenesysJobId(RunAnalyticsRecoverySyncCommand request)
-    {
-        bool hasInterval = !string.IsNullOrWhiteSpace(request.Interval);
-        bool hasGenesysJobId = !string.IsNullOrWhiteSpace(request.GenesysJobId);
-
-        return !(hasInterval && hasGenesysJobId);
-    }
-
-    private static bool NotHaveLeadingOrTrailingSpaces(string? genesysJobId)
-    {
-        return string.IsNullOrWhiteSpace(genesysJobId)
-               || string.Equals(genesysJobId, genesysJobId.Trim(), StringComparison.Ordinal);
-    }
-
+    /// <summary>
+    /// Validates the textual UTC interval format.
+    /// </summary>
     private static bool BeValidUtcInterval(string? interval)
     {
         return UtcInterval.TryParse(interval, out _);

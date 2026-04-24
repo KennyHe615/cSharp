@@ -1,6 +1,3 @@
-using Application.DTOs.SyncTracking;
-
-
 namespace Application.Abstractions.Persistence;
 
 /// <summary>
@@ -33,6 +30,14 @@ public interface ISyncRunRepository
     /// <param name="runId">Run id.</param>
     /// <param name="ct">Cancellation token.</param>
     Task MarkCompletedAsync(long runId, CancellationToken ct);
+
+    /// <summary>
+    /// Marks an active run as completed while indicating recovery items were emitted.
+    /// No-op when the run is already finalized.
+    /// </summary>
+    /// <param name="runId">Run id.</param>
+    /// <param name="ct">Cancellation token.</param>
+    Task MarkCompletedWithRecoveryItemsAsync(long runId, CancellationToken ct);
 
     /// <summary>
     /// Marks an active run as failed and stores a run-level failure summary.

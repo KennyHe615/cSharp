@@ -24,11 +24,55 @@ public sealed class SyncRequestRepositoryTests
 {
     #region ========== *** CreateOrGetByScopeAsync *** ==========
 
+    #region ========== ** Full ** ==========
+
+    [Fact]
+    public async Task CreateOrGetByScopeAsync_WhenFullScopeAlreadyExists_ReturnsExistingResult_AndSkipsUnitOfWork()
+    {
+        Mock<IDateTimeProvider> dateTimeProvider = DateTimeProviderTestFactory.Create();
+
+        await using AppDbContext dbContext = PersistenceTestFactory.CreateDbContext(dateTimeProvider.Object);
+
+        SyncRequestEntity existing = BuildRequest(nameof(SyncReferenceCategory.Group),
+                                                  SyncMode.Full,
+                                                  SyncRequestStatus.Completed,
+                                                  null,
+                                                  null,
+                                                  null);
+
+        dbContext.Set<SyncRequestEntity>()
+                 .Add(existing);
+        await dbContext.SaveChangesAsync();
+
+        Mock<IUnitOfWork> uow = new Mock<IUnitOfWork>(MockBehavior.Strict);
+
+        SyncRequestRepository sut = new SyncRequestRepository(dbContext, uow.Object);
+
+        SyncRequestResolveResult result = await sut.CreateOrGetByScopeAsync(nameof(SyncReferenceCategory.Group),
+                                                                            SyncMode.Full,
+                                                                            null,
+                                                                            null,
+                                                                            null,
+                                                                            CancellationToken.None);
+
+        Assert.Equal(existing.Id, result.Id);
+        Assert.Equal(existing.PublicId, result.PublicId);
+        Assert.Equal(SyncRequestResolveAction.ReusedActive, result.RequestAction);
+
+        uow.Verify(x => x.UpsertAsync(It.IsAny<SyncRequestEntity>(),
+                                      It.IsAny<Action<SyncRequestEntity>?>(),
+                                      It.IsAny<CancellationToken>()),
+                   Times.Never);
+        uow.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    #endregion
+
     #region ========== ** Incremental ** ==========
 
     [Fact]
     public async Task
-        CreateOrGetByScopeAsync_WhenIncrementalScopeAlreadyExists_ReturnsExistingResult_AndSkipsUnitOfWork()
+                    CreateOrGetByScopeAsync_WhenIncrementalScopeAlreadyExists_ReturnsExistingResult_AndSkipsUnitOfWork()
     {
         Mock<IDateTimeProvider> dateTimeProvider = DateTimeProviderTestFactory.Create();
 
@@ -176,12 +220,12 @@ public sealed class SyncRequestRepositoryTests
         SyncRequestRepository sut = new SyncRequestRepository(dbContext, uow.Object);
 
         SyncRequestResolveResult result =
-            await sut.CreateOrGetByScopeAsync(nameof(SyncAnalyticsCategory.ConversationsDetails),
-                                              SyncMode.Recovery,
-                                              "2026-04-14T01:00:00Z/2026-04-14T01:30:00Z",
-                                              2,
-                                              null,
-                                              CancellationToken.None);
+                        await sut.CreateOrGetByScopeAsync(nameof(SyncAnalyticsCategory.ConversationsDetails),
+                                                          SyncMode.Recovery,
+                                                          "2026-04-14T01:00:00Z/2026-04-14T01:30:00Z",
+                                                          2,
+                                                          null,
+                                                          CancellationToken.None);
 
         Assert.Equal(reusable.Id, result.Id);
         Assert.Equal(reusable.PublicId, result.PublicId);
@@ -219,12 +263,54 @@ public sealed class SyncRequestRepositoryTests
         SyncRequestRepository sut = new SyncRequestRepository(dbContext, uow.Object);
 
         SyncRequestResolveResult result =
-            await sut.CreateOrGetByScopeAsync(nameof(SyncAnalyticsCategory.ConversationsAggregates),
-                                              SyncMode.Recovery,
-                                              "2026-04-14T02:00:00Z/2026-04-14T02:30:00Z",
-                                              null,
-                                              null,
-                                              CancellationToken.None);
+                        await sut.CreateOrGetByScopeAsync(nameof(SyncAnalyticsCategory.ConversationsAggregates),
+                                                          SyncMode.Recovery,
+                                                          "2026-04-14T02:00:00Z/2026-04-14T02:30:00Z",
+                                                          null,
+                                                          null,
+                                                          CancellationToken.None);
+
+        List<SyncRequestEntity> rows = await dbContext.Set<SyncRequestEntity>()
+                                                      .OrderBy(x => x.Id)
+                                                      .ToListAsync();
+
+        Assert.Equal(2, rows.Count);
+        Assert.Equal(completed.Id, rows[0].Id);
+        Assert.Equal(rows[1].Id, result.Id);
+        Assert.Equal(rows[1].PublicId, result.PublicId);
+        Assert.Equal(SyncRequestResolveAction.Created, result.RequestAction);
+        Assert.Equal(SyncRequestStatus.Pending, rows[1].Status);
+        Assert.Equal(0, rows[1].ReopenCount);
+    }
+
+    [Fact]
+    public async Task CreateOrGetByScopeAsync_WhenRecoveryLatestIsCompletedWithRecoveryItems_CreatesNewRow()
+    {
+        Mock<IDateTimeProvider> dateTimeProvider = DateTimeProviderTestFactory.Create();
+
+        await using AppDbContext dbContext = PersistenceTestFactory.CreateDbContext(dateTimeProvider.Object);
+        Mock<IUnitOfWork> uow = PersistenceTestFactory.CreateUnitOfWork<SyncRequestEntity>(dbContext);
+
+        SyncRequestEntity completed = BuildRequest(nameof(SyncAnalyticsCategory.ConversationsAggregates),
+                                                   SyncMode.Recovery,
+                                                   SyncRequestStatus.CompletedWithRecoveryItems,
+                                                   "2026-04-14T02:00:00Z/2026-04-14T02:30:00Z",
+                                                   null,
+                                                   null);
+
+        dbContext.Set<SyncRequestEntity>()
+                 .Add(completed);
+        await dbContext.SaveChangesAsync();
+
+        SyncRequestRepository sut = new SyncRequestRepository(dbContext, uow.Object);
+
+        SyncRequestResolveResult result =
+                        await sut.CreateOrGetByScopeAsync(nameof(SyncAnalyticsCategory.ConversationsAggregates),
+                                                          SyncMode.Recovery,
+                                                          "2026-04-14T02:00:00Z/2026-04-14T02:30:00Z",
+                                                          null,
+                                                          null,
+                                                          CancellationToken.None);
 
         List<SyncRequestEntity> rows = await dbContext.Set<SyncRequestEntity>()
                                                       .OrderBy(x => x.Id)

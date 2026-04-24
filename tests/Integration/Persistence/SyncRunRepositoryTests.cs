@@ -31,9 +31,9 @@ public sealed class SyncRunRepositoryTests
         Mock<IUnitOfWork> uow = PersistenceTestFactory.CreateUnitOfWork<SyncRunEntity>(dbContext);
 
         SyncRequestEntity request =
-            await SyncTrackingSeedFactory.SeedRequestAsync(dbContext,
-                                                           nameof(SyncReferenceCategory.Group),
-                                                           SyncMode.Incremental);
+                        await SyncTrackingSeedFactory.SeedRequestAsync(dbContext,
+                                                                       nameof(SyncReferenceCategory.Group),
+                                                                       SyncMode.Incremental);
 
         SyncRunRepository sut = new SyncRunRepository(dbContext, uow.Object, dateTimeProvider.Object);
 
@@ -46,8 +46,8 @@ public sealed class SyncRunRepositoryTests
 
         Assert.Equal(SyncRunStatus.Running, run.Status);
         Assert.Equal(1, run.AttemptNo);
-        Assert.Equal(DateTimeProviderTestFactory.FixedNow, run.RunStartedAt);
-        Assert.Null(run.RunCompletedAt);
+        Assert.Equal(DateTimeProviderTestFactory.FixedNow, run.RunStartedAtEastern);
+        Assert.Null(run.RunCompletedAtEastern);
         Assert.Equal(runId, reloaded.CurrentRunId);
         Assert.Equal(SyncRequestStatus.Running, reloaded.Status);
     }
@@ -60,9 +60,9 @@ public sealed class SyncRunRepositoryTests
         Mock<IUnitOfWork> uow = PersistenceTestFactory.CreateUnitOfWork<SyncRunEntity>(dbContext);
 
         SyncRequestEntity request =
-            await SyncTrackingSeedFactory.SeedRequestAsync(dbContext,
-                                                           nameof(SyncReferenceCategory.Skill),
-                                                           SyncMode.Incremental);
+                        await SyncTrackingSeedFactory.SeedRequestAsync(dbContext,
+                                                                       nameof(SyncReferenceCategory.Skill),
+                                                                       SyncMode.Incremental);
 
         SyncRunRepository sut = new SyncRunRepository(dbContext, uow.Object, dateTimeProvider.Object);
 
@@ -77,16 +77,46 @@ public sealed class SyncRunRepositoryTests
                                                     .SingleAsync(x => x.Id == request.Id);
 
         Assert.Equal(SyncRunStatus.Superseded, firstRun.Status);
-        Assert.Equal(DateTimeProviderTestFactory.FixedNow, firstRun.RunCompletedAt);
+        Assert.Equal(DateTimeProviderTestFactory.FixedNow, firstRun.RunCompletedAtEastern);
         Assert.Equal(secondRunId, firstRun.SupersededByRunId);
         Assert.Equal(SyncRunStatus.Running, secondRun.Status);
         Assert.Equal(2, secondRun.AttemptNo);
-        Assert.Equal(DateTimeProviderTestFactory.FixedNow, secondRun.RunStartedAt);
+        Assert.Equal(DateTimeProviderTestFactory.FixedNow, secondRun.RunStartedAtEastern);
         Assert.Equal(secondRunId, reloaded.CurrentRunId);
         Assert.Equal(SyncRequestStatus.Running, reloaded.Status);
     }
 
     #endregion
+
+    [Fact]
+    public async Task MarkCompletedWithRecoveryItemsAsync_MarksRunAndRequestWithRecoveryItems()
+    {
+        Mock<IDateTimeProvider> dateTimeProvider = DateTimeProviderTestFactory.Create();
+        await using AppDbContext dbContext = PersistenceTestFactory.CreateDbContext(dateTimeProvider.Object);
+        Mock<IUnitOfWork> uow = PersistenceTestFactory.CreateUnitOfWork<SyncRunEntity>(dbContext);
+
+        SyncRequestEntity request =
+                        await SyncTrackingSeedFactory.SeedRequestAsync(dbContext,
+                                                                       nameof(SyncAnalyticsCategory.UsersDetails),
+                                                                       SyncMode.Recovery);
+
+        SyncRunRepository sut = new SyncRunRepository(dbContext, uow.Object, dateTimeProvider.Object);
+
+        long runId = await sut.StartNewRunAsync(request.Id, CancellationToken.None);
+
+        await sut.MarkCompletedWithRecoveryItemsAsync(runId, CancellationToken.None);
+
+        SyncRunEntity run = await dbContext.Set<SyncRunEntity>()
+                                           .SingleAsync(x => x.Id == runId);
+        SyncRequestEntity reloaded = await dbContext.Set<SyncRequestEntity>()
+                                                    .SingleAsync(x => x.Id == request.Id);
+
+        Assert.Equal(SyncRunStatus.CompletedWithRecoveryItems, run.Status);
+        Assert.Equal(DateTimeProviderTestFactory.FixedNow, run.RunStartedAtEastern);
+        Assert.Equal(DateTimeProviderTestFactory.FixedNow, run.RunCompletedAtEastern);
+        Assert.Equal(SyncRequestStatus.CompletedWithRecoveryItems, reloaded.Status);
+        Assert.Equal(runId, reloaded.CurrentRunId);
+    }
 
     [Fact]
     public async Task IsCurrentRunAsync_ReturnsFalse_AfterRunCompleted()
@@ -96,9 +126,9 @@ public sealed class SyncRunRepositoryTests
         Mock<IUnitOfWork> uow = PersistenceTestFactory.CreateUnitOfWork<SyncRunEntity>(dbContext);
 
         SyncRequestEntity request =
-            await SyncTrackingSeedFactory.SeedRequestAsync(dbContext,
-                                                           nameof(SyncReferenceCategory.WrapUpCode),
-                                                           SyncMode.Incremental);
+                        await SyncTrackingSeedFactory.SeedRequestAsync(dbContext,
+                                                                       nameof(SyncReferenceCategory.WrapUpCode),
+                                                                       SyncMode.Incremental);
 
         SyncRunRepository sut = new SyncRunRepository(dbContext, uow.Object, dateTimeProvider.Object);
 
@@ -124,9 +154,9 @@ public sealed class SyncRunRepositoryTests
         Mock<IUnitOfWork> uow = PersistenceTestFactory.CreateUnitOfWork<SyncRunEntity>(dbContext);
 
         SyncRequestEntity request =
-            await SyncTrackingSeedFactory.SeedRequestAsync(dbContext,
-                                                           nameof(SyncReferenceCategory.User),
-                                                           SyncMode.Incremental);
+                        await SyncTrackingSeedFactory.SeedRequestAsync(dbContext,
+                                                                       nameof(SyncReferenceCategory.User),
+                                                                       SyncMode.Incremental);
 
         SyncRunRepository sut = new SyncRunRepository(dbContext, uow.Object, dateTimeProvider.Object);
 
@@ -141,7 +171,7 @@ public sealed class SyncRunRepositoryTests
 
         Assert.Equal(SyncRunStatus.Failed, run.Status);
         Assert.Equal("Requested sync category is not supported in the current release.", run.FailureReason);
-        Assert.Equal(DateTimeProviderTestFactory.FixedNow, run.RunCompletedAt);
+        Assert.Equal(DateTimeProviderTestFactory.FixedNow, run.RunCompletedAtEastern);
         Assert.Equal(SyncRequestStatus.Failed, reloaded.Status);
     }
 
@@ -153,9 +183,9 @@ public sealed class SyncRunRepositoryTests
         Mock<IUnitOfWork> uow = PersistenceTestFactory.CreateUnitOfWork<SyncRunEntity>(dbContext);
 
         SyncRequestEntity request =
-            await SyncTrackingSeedFactory.SeedRequestAsync(dbContext,
-                                                           nameof(SyncReferenceCategory.Group),
-                                                           SyncMode.Recovery);
+                        await SyncTrackingSeedFactory.SeedRequestAsync(dbContext,
+                                                                       nameof(SyncReferenceCategory.Group),
+                                                                       SyncMode.Recovery);
 
         SyncRunRepository sut = new SyncRunRepository(dbContext, uow.Object, dateTimeProvider.Object);
 
@@ -170,7 +200,7 @@ public sealed class SyncRunRepositoryTests
 
         Assert.Equal(SyncRunStatus.Canceled, run.Status);
         Assert.Equal("Run was canceled.", run.FailureReason);
-        Assert.Equal(DateTimeProviderTestFactory.FixedNow, run.RunCompletedAt);
+        Assert.Equal(DateTimeProviderTestFactory.FixedNow, run.RunCompletedAtEastern);
         Assert.Equal(SyncRequestStatus.Canceled, reloaded.Status);
     }
 }

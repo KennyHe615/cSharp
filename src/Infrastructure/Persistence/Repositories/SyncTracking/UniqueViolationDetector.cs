@@ -6,12 +6,14 @@ namespace Infrastructure.Persistence.Repositories.SyncTracking;
 
 /// <summary>
 /// Centralized detector for unique-key violations used by sync-tracking repositories.
-/// For sync_request, this covers both incremental scope uniqueness and active recovery scope uniqueness.
+/// For sync_request, this covers full-scope uniqueness, incremental-scope uniqueness, and active recovery scope uniqueness.
+/// For sync_run_item, this covers duplicate natural-key conflicts on (run, step, cursor).
 /// </summary>
 public static class UniqueViolationDetector
 {
     private static readonly string[] ScopeKeyTokens =
     [
+        "UX_sync_request_scope_key_full",
         "UX_sync_request_scope_key_incremental",
         "UX_sync_request_scope_key_recovery_active",
         "UX_sync_request_scope_key",
@@ -19,10 +21,10 @@ public static class UniqueViolationDetector
         "scope_key"
     ];
 
-    private static readonly string[] CheckpointTokens =
+    private static readonly string[] RunItemTokens =
     [
-        "UX_sync_checkpoint_run_step_cursor",
-        "UQ_sync_checkpoint_run_step_cursor",
+        "UX_sync_run_item_run_step_cursor",
+        "UQ_sync_run_item_run_step_cursor",
         "run_step_cursor"
     ];
 
@@ -35,11 +37,11 @@ public static class UniqueViolationDetector
     }
 
     /// <summary>
-    /// Determines whether the exception represents a duplicate-key violation for sync_checkpoint (run, step, cursor).
+    /// Determines whether the exception represents a duplicate-key violation for sync_run_item (run, step, cursor).
     /// </summary>
-    public static bool IsCheckpointUniqueViolation(DbUpdateException ex)
+    public static bool IsRunItemUniqueViolation(DbUpdateException ex)
     {
-        return IsSqlUniqueViolation(ex) || ContainsAnyToken(ex, CheckpointTokens);
+        return IsSqlUniqueViolation(ex) || ContainsAnyToken(ex, RunItemTokens);
     }
 
     #region ========== *** Private Section *** ==========
