@@ -78,7 +78,7 @@ public sealed class SyncRequestRepositoryTests
 
         await using AppDbContext dbContext = PersistenceTestFactory.CreateDbContext(dateTimeProvider.Object);
 
-        SyncRequestEntity existing = BuildRequest(nameof(SyncReferenceCategory.Group),
+        SyncRequestEntity existing = BuildRequest(nameof(SyncAnalyticsCategory.UsersDetails),
                                                   SyncMode.Incremental,
                                                   SyncRequestStatus.Completed,
                                                   null,
@@ -93,7 +93,7 @@ public sealed class SyncRequestRepositoryTests
 
         SyncRequestRepository sut = new SyncRequestRepository(dbContext, uow.Object);
 
-        SyncRequestResolveResult result = await sut.CreateOrGetByScopeAsync(nameof(SyncReferenceCategory.Group),
+        SyncRequestResolveResult result = await sut.CreateOrGetByScopeAsync(nameof(SyncAnalyticsCategory.UsersDetails),
                                                                             SyncMode.Incremental,
                                                                             null,
                                                                             null,
@@ -121,11 +121,11 @@ public sealed class SyncRequestRepositoryTests
 
         SyncRequestRepository sut = new SyncRequestRepository(dbContext, uow.Object);
 
-        SyncRequestResolveResult result = await sut.CreateOrGetByScopeAsync(nameof(SyncReferenceCategory.Skill),
+        SyncRequestResolveResult result = await sut.CreateOrGetByScopeAsync(nameof(SyncAnalyticsCategory.UsersDetails),
                                                                             SyncMode.Incremental,
                                                                             "2026-04-14T00:00:00Z/2026-04-14T00:30:00Z",
                                                                             1,
-                                                                            "JOB-1",
+                                                                            null,
                                                                             CancellationToken.None);
 
         SyncRequestEntity created = await dbContext.Set<SyncRequestEntity>()
@@ -134,13 +134,13 @@ public sealed class SyncRequestRepositoryTests
         Assert.Equal(created.Id, result.Id);
         Assert.Equal(created.PublicId, result.PublicId);
         Assert.Equal(SyncRequestResolveAction.Created, result.RequestAction);
-        Assert.Equal(nameof(SyncReferenceCategory.Skill), created.Category);
+        Assert.Equal(nameof(SyncAnalyticsCategory.UsersDetails), created.Category);
         Assert.Equal(SyncMode.Incremental, created.Mode);
         Assert.Equal(SyncRequestStatus.Pending, created.Status);
         Assert.Equal(0, created.ReopenCount);
         Assert.Equal("2026-04-14T00:00:00Z/2026-04-14T00:30:00Z", created.Interval);
         Assert.Equal(1, created.PageNumber);
-        Assert.Equal("JOB-1", created.GenesysJobId);
+        Assert.Null(created.GenesysJobId);
         Assert.False(string.IsNullOrWhiteSpace(created.ScopeKey));
 
         uow.Verify(x => x.UpsertAsync(It.IsAny<SyncRequestEntity>(), null, It.IsAny<CancellationToken>()), Times.Once);

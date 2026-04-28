@@ -28,6 +28,12 @@ public sealed class SyncRunCoordinator(ISyncRunRepository syncRunRepository) : I
     }
 
     /// <inheritdoc />
+    public Task MarkCompletedWithRecoveryItemsAsync(long runId, CancellationToken ct)
+    {
+        return syncRunRepository.MarkCompletedWithRecoveryItemsAsync(runId, ct);
+    }
+
+    /// <inheritdoc />
     public Task MarkFailedAsync(long runId, string reason, CancellationToken ct)
     {
         return syncRunRepository.MarkFailedAsync(runId, reason, ct);

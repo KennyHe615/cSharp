@@ -21,10 +21,16 @@ public sealed class SyncRequestEntity : Audit
     /// </summary>
     public Guid PublicId { get; set; }
 
-    // Business-facing category within the domain: User / Queue / UsersDetails / etc.
+    /// <summary>
+    /// Business-facing sync category, such as Queues, UsersDetails or ConversationsDetails.
+    /// </summary>
     public string Category { get; set; } = string.Empty;
 
-    // Execution mode: Incremental / Recovery
+    /// <summary>
+    /// Execution mode for this logical request.
+    /// References Domain uses Full.
+    /// Analytics Domain uses Incremental and Recovery.
+    /// </summary>
     public SyncMode Mode { get; set; }
 
     /// <summary>
@@ -37,24 +43,45 @@ public sealed class SyncRequestEntity : Audit
     /// </summary>
     public int ReopenCount { get; set; }
 
+    /// <summary>
+    /// Optional interval selector persisted as part of the request scope.
+    /// </summary>
     public string? Interval { get; set; }
 
+    /// <summary>
+    /// Optional page selector persisted as part of the request scope.
+    /// </summary>
     public int? PageNumber { get; set; }
 
-    // External provider identifier from HTTP POST body (used to query Genesys API).
+    /// <summary>
+    /// Optional provider job identifier persisted as part of the request scope for applicable categories.
+    /// </summary>
     public string? GenesysJobId { get; set; }
 
-    // Persisted scope identity. Private setter prevents accidental drift.
-    // {Category}|{Mode}|{Interval or -}|{PageNumber or -}|{GenesysJobId or -}
+    /// <summary>
+    /// Canonical persisted scope identity.
+    /// Format: {Category}|{Mode}|{Interval or -}|{PageNumber or -}|{GenesysJobId or -}
+    /// </summary>
     public string ScopeKey { get; private set; } = string.Empty;
 
-    // Internal pointer to latest/current execution run.
+    /// <summary>
+    /// Internal pointer to the latest or current execution run for this request.
+    /// </summary>
     public long? CurrentRunId { get; set; }
 
+    /// <summary>
+    /// Navigation reference to the latest or current execution run.
+    /// </summary>
     public SyncRunEntity? CurrentRun { get; set; }
 
+    /// <summary>
+    /// All physical execution runs created for this logical request.
+    /// </summary>
     public ICollection<SyncRunEntity> Runs { get; set; } = [];
 
+    /// <summary>
+    /// Rebuilds the canonical scope key from the current request selectors.
+    /// </summary>
     public void RebuildScopeKey()
     {
         ScopeKey = SyncScopeKeyFormatter.Format(Category,

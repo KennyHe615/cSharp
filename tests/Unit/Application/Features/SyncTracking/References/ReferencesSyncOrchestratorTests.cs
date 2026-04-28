@@ -22,8 +22,7 @@ public sealed class ReferencesSyncOrchestratorTests
         Mock<IReferenceApiClient> referenceApiClient = new Mock<IReferenceApiClient>(MockBehavior.Strict);
         Mock<IReferencesNormalizer> referencesNormalizer = new Mock<IReferencesNormalizer>(MockBehavior.Strict);
         Mock<IReferencesRepository> referencesRepository = new Mock<IReferencesRepository>(MockBehavior.Strict);
-        Mock<ISyncCheckpointRepository> syncCheckpointRepository =
-            new Mock<ISyncCheckpointRepository>(MockBehavior.Strict);
+        Mock<ISyncRunItemRepository> syncCheckpointRepository = new Mock<ISyncRunItemRepository>(MockBehavior.Strict);
 
         const long runId = 1001;
         CancellationToken ct = new CancellationTokenSource().Token;
@@ -39,8 +38,8 @@ public sealed class ReferencesSyncOrchestratorTests
             }
         ];
 
-        string fetchStep = SyncCheckpointSteps.ReferencesPageFetch(nameof(SyncReferenceCategory.Group));
-        string summaryStep = SyncCheckpointSteps.ReferencesSummary(nameof(SyncReferenceCategory.Group));
+        string fetchStep = SyncRunItemSteps.ReferencesPageFetch(nameof(SyncReferenceCategory.Group));
+        string summaryStep = SyncRunItemSteps.ReferencesSummary(nameof(SyncReferenceCategory.Group));
 
         syncCheckpointRepository.Setup(x => x.UpsertAsync(runId,
                                                           fetchStep,
@@ -94,8 +93,7 @@ public sealed class ReferencesSyncOrchestratorTests
         Mock<IReferenceApiClient> referenceApiClient = new Mock<IReferenceApiClient>(MockBehavior.Strict);
         Mock<IReferencesNormalizer> referencesNormalizer = new Mock<IReferencesNormalizer>(MockBehavior.Strict);
         Mock<IReferencesRepository> referencesRepository = new Mock<IReferencesRepository>(MockBehavior.Strict);
-        Mock<ISyncCheckpointRepository> syncCheckpointRepository =
-            new Mock<ISyncCheckpointRepository>(MockBehavior.Strict);
+        Mock<ISyncRunItemRepository> syncCheckpointRepository = new Mock<ISyncRunItemRepository>(MockBehavior.Strict);
 
         ReferencesSyncOrchestrator sut = new ReferencesSyncOrchestrator(referenceApiClient.Object,
                                                                         referencesNormalizer.Object,
@@ -118,13 +116,12 @@ public sealed class ReferencesSyncOrchestratorTests
         Mock<IReferenceApiClient> referenceApiClient = new Mock<IReferenceApiClient>(MockBehavior.Strict);
         Mock<IReferencesNormalizer> referencesNormalizer = new Mock<IReferencesNormalizer>(MockBehavior.Strict);
         Mock<IReferencesRepository> referencesRepository = new Mock<IReferencesRepository>(MockBehavior.Strict);
-        Mock<ISyncCheckpointRepository> syncCheckpointRepository =
-            new Mock<ISyncCheckpointRepository>(MockBehavior.Strict);
+        Mock<ISyncRunItemRepository> syncCheckpointRepository = new Mock<ISyncRunItemRepository>(MockBehavior.Strict);
 
         const long runId = 2002;
         CancellationToken ct = new CancellationTokenSource().Token;
 
-        string fetchStep = SyncCheckpointSteps.ReferencesPageFetch(nameof(SyncReferenceCategory.Group));
+        string fetchStep = SyncRunItemSteps.ReferencesPageFetch(nameof(SyncReferenceCategory.Group));
 
         syncCheckpointRepository.Setup(x => x.UpsertAsync(runId,
                                                           fetchStep,
@@ -152,9 +149,9 @@ public sealed class ReferencesSyncOrchestratorTests
                                                                         syncCheckpointRepository.Object);
 
         OperationCanceledException actual =
-            await Assert.ThrowsAsync<OperationCanceledException>(() => sut.ExecuteAsync(runId,
-                                                                  SyncReferenceCategory.Group,
-                                                                  ct));
+                        await Assert.ThrowsAsync<OperationCanceledException>(() => sut.ExecuteAsync(runId,
+                                                                                 SyncReferenceCategory.Group,
+                                                                                 ct));
 
         Assert.Same(expected, actual);
 
@@ -169,13 +166,12 @@ public sealed class ReferencesSyncOrchestratorTests
         Mock<IReferenceApiClient> referenceApiClient = new Mock<IReferenceApiClient>(MockBehavior.Strict);
         Mock<IReferencesNormalizer> referencesNormalizer = new Mock<IReferencesNormalizer>(MockBehavior.Strict);
         Mock<IReferencesRepository> referencesRepository = new Mock<IReferencesRepository>(MockBehavior.Strict);
-        Mock<ISyncCheckpointRepository> syncCheckpointRepository =
-            new Mock<ISyncCheckpointRepository>(MockBehavior.Strict);
+        Mock<ISyncRunItemRepository> syncCheckpointRepository = new Mock<ISyncRunItemRepository>(MockBehavior.Strict);
 
         const long runId = 3003;
         CancellationToken ct = new CancellationTokenSource().Token;
 
-        string fetchStep = SyncCheckpointSteps.ReferencesPageFetch(nameof(SyncReferenceCategory.Group));
+        string fetchStep = SyncRunItemSteps.ReferencesPageFetch(nameof(SyncReferenceCategory.Group));
 
         syncCheckpointRepository.Setup(x => x.UpsertAsync(runId,
                                                           fetchStep,
@@ -203,9 +199,9 @@ public sealed class ReferencesSyncOrchestratorTests
                                                                         syncCheckpointRepository.Object);
 
         InvalidOperationException actual =
-            await Assert.ThrowsAsync<InvalidOperationException>(() => sut.ExecuteAsync(runId,
-                                                                 SyncReferenceCategory.Group,
-                                                                 ct));
+                        await Assert.ThrowsAsync<InvalidOperationException>(() => sut.ExecuteAsync(runId,
+                                                                                SyncReferenceCategory.Group,
+                                                                                ct));
 
         Assert.Same(expected, actual);
 

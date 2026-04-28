@@ -19,12 +19,14 @@ public sealed class SyncRequestDto
     public Guid PublicId { get; set; }
 
     /// <summary>
-    /// Sync category token (e.g., analytics domain category).
+    /// Business-facing sync category, such as Queues, UsersDetails or ConversationsDetails.
     /// </summary>
     public string Category { get; set; } = string.Empty;
 
     /// <summary>
-    /// Execution mode for this request.
+    /// Execution mode for this logical request.
+    /// References Domain uses Full.
+    /// Analytics Domain uses Incremental and Recovery.
     /// </summary>
     public SyncMode Mode { get; set; }
 
@@ -39,27 +41,27 @@ public sealed class SyncRequestDto
     public int ReopenCount { get; set; }
 
     /// <summary>
-    /// Optional interval selector.
+    /// Optional interval selector persisted as part of the request scope.
     /// </summary>
     public string? Interval { get; set; }
 
     /// <summary>
-    /// Optional page selector.
+    /// Optional page selector persisted as part of the request scope.
     /// </summary>
     public int? PageNumber { get; set; }
 
     /// <summary>
-    /// Optional external provider job identifier.
+    /// Optional provider job identifier persisted as part of the request scope for applicable categories.
     /// </summary>
     public string? GenesysJobId { get; set; }
 
     /// <summary>
-    /// Canonical scope identity key.
+    /// Canonical persisted scope identity key.
     /// </summary>
     public string ScopeKey { get; set; } = string.Empty;
 
     /// <summary>
-    /// Internal pointer to current run, when present.
+    /// Internal pointer to the latest or current execution run, when present.
     /// </summary>
     public long? CurrentRunId { get; set; }
 }

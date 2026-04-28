@@ -19,33 +19,50 @@ public sealed class SyncRequestRunner(ISyncRunCoordinator syncRunCoordinator,
     /// <exception cref="OperationCanceledException">
     /// Thrown when execution is canceled by caller/host or orchestration signal.
     /// </exception>
-    public async Task ExecuteAsync(long requestId, CancellationToken ct)
+    public async Task<SyncExecutionResult> ExecuteAsync(long requestId, CancellationToken ct)
     {
-        SyncRequestDto request = await syncRequestRepository.GetByIdAsync(requestId, ct)
-                                                            .ConfigureAwait(false)
-                                 ?? throw new InvalidOperationException($"Sync request '{requestId}' was not found.");
+        SyncRequestDto request =
+                        await syncRequestRepository.GetByIdAsync(requestId, ct)
+                                                   .ConfigureAwait(false)
+                        ?? throw new InvalidOperationException($"Sync request '{requestId}' was not found.");
 
-        long runId = await syncRunCoordinator.StartNewRunAsync(requestId, ct)
-                                             .ConfigureAwait(false);
+        long runId =
+                        await syncRunCoordinator.StartNewRunAsync(requestId, ct)
+                                                .ConfigureAwait(false);
 
         try
         {
-            bool isCurrentRun = await syncRunCoordinator.IsCurrentRunAsync(runId, ct)
-                                                        .ConfigureAwait(false);
+            bool isCurrentRun =
+                            await syncRunCoordinator.IsCurrentRunAsync(runId, ct)
+                                                    .ConfigureAwait(false);
 
-            if (!isCurrentRun) return;
+            if (!isCurrentRun)
+            {
+                return new SyncExecutionResult(CompletedWithRecoveryItems: false);
+            }
 
-            await syncExecutionDispatcher.ExecuteAsync(runId,
-                                                       request.Category,
-                                                       request.Mode,
-                                                       request.Interval,
-                                                       request.PageNumber,
-                                                       request.GenesysJobId,
-                                                       ct)
-                                         .ConfigureAwait(false);
+            SyncExecutionResult executionResult =
+                            await syncExecutionDispatcher.ExecuteAsync(runId,
+                                                                       request.Category,
+                                                                       request.Mode,
+                                                                       request.Interval,
+                                                                       request.PageNumber,
+                                                                       request.GenesysJobId,
+                                                                       ct)
+                                                         .ConfigureAwait(false);
 
-            await syncRunCoordinator.MarkCompletedAsync(runId, ct)
-                                    .ConfigureAwait(false);
+            if (executionResult.CompletedWithRecoveryItems)
+            {
+                await syncRunCoordinator.MarkCompletedWithRecoveryItemsAsync(runId, ct)
+                                        .ConfigureAwait(false);
+            }
+            else
+            {
+                await syncRunCoordinator.MarkCompletedAsync(runId, ct)
+                                        .ConfigureAwait(false);
+            }
+
+            return executionResult;
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
