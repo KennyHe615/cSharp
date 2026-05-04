@@ -40,6 +40,7 @@ public static class DependencyInjection
         services.AddScoped<IReferencesRepository, ReferencesRepository>();
         services.AddScoped<IUserDetailsRepository, UserDetailsRepository>();
 
+        services.AddScoped<IIncrementalSyncWindowRepository, IncrementalSyncWindowRepository>();
         services.AddScoped<ISyncRequestRepository, SyncRequestRepository>();
         services.AddScoped<ISyncRunRepository, SyncRunRepository>();
         services.AddScoped<ISyncRunItemRepository, SyncRunItemRepository>();

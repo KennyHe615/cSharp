@@ -35,13 +35,13 @@ public sealed class SyncRequestRepository(AppDbContext dbContext,
         return mode switch
                {
                    SyncMode.Full or SyncMode.Incremental => await ResolveSingleScopeAsync(category,
-                                                                                mode,
-                                                                                interval,
-                                                                                pageNumber,
-                                                                                genesysJobId,
-                                                                                scopeKey,
-                                                                                ct)
-                                                                           .ConfigureAwait(false),
+                                                                        mode,
+                                                                        interval,
+                                                                        pageNumber,
+                                                                        genesysJobId,
+                                                                        scopeKey,
+                                                                        ct)
+                                                                   .ConfigureAwait(false),
 
                    SyncMode.Recovery => await ResolveRecoveryAsync(category,
                                                                    mode,
@@ -50,7 +50,7 @@ public sealed class SyncRequestRepository(AppDbContext dbContext,
                                                                    genesysJobId,
                                                                    scopeKey,
                                                                    ct)
-                                                       .ConfigureAwait(false),
+                                               .ConfigureAwait(false),
 
                    _ => throw new InvalidOperationException($"Unsupported sync mode '{mode}'.")
                };
@@ -80,6 +80,47 @@ public sealed class SyncRequestRepository(AppDbContext dbContext,
                               .ConfigureAwait(false);
     }
 
+    /// <inheritdoc />
+    public async Task<IReadOnlyCollection<SyncRequestDto>> GetEligibleRecoveryRequestsAsync(string category,
+        CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(category))
+        {
+            throw new ArgumentException("Category is required.", nameof(category));
+        }
+
+        const int maxReopenCount = 3;
+
+        return await dbContext.Set<SyncRequestEntity>()
+                              .AsNoTracking()
+                              .Where(x => x.Category == category
+                                          && x.Mode  == SyncMode.Recovery
+                                          && (x.Status == SyncRequestStatus.Pending
+                                              || (x.Status    == SyncRequestStatus.Failed
+                                                  || x.Status == SyncRequestStatus.Canceled)
+                                              && x.ReopenCount <= maxReopenCount))
+                              .OrderBy(x => x.Status == SyncRequestStatus.Pending ? 0 : 1)
+                              .ThenBy(x => x.Interval)
+                              .ThenBy(x => x.PageNumber)
+                              .ThenBy(x => x.Id)
+                              .Select(x => new SyncRequestDto
+                                           {
+                                               Id = x.Id,
+                                               PublicId = x.PublicId,
+                                               Category = x.Category,
+                                               Mode = x.Mode,
+                                               Status = x.Status,
+                                               ReopenCount = x.ReopenCount,
+                                               Interval = x.Interval,
+                                               PageNumber = x.PageNumber,
+                                               GenesysJobId = x.GenesysJobId,
+                                               ScopeKey = x.ScopeKey,
+                                               CurrentRunId = x.CurrentRunId
+                                           })
+                              .ToArrayAsync(ct)
+                              .ConfigureAwait(false);
+    }
+
     #region ========== *** Private Section *** ==========
 
     /// <summary>
@@ -98,7 +139,7 @@ public sealed class SyncRequestRepository(AppDbContext dbContext,
                                                                        scopeKey,
                                                                        true,
                                                                        ct)
-                                                     .ConfigureAwait(false);
+                                             .ConfigureAwait(false);
 
         if (existing is not null)
         {
@@ -127,7 +168,7 @@ public sealed class SyncRequestRepository(AppDbContext dbContext,
 
             // Scale-out race: another instance inserted same incremental scope first.
             SyncRequestEntity winner = await GetByModeAndScopeKeyOrThrowAsync(mode, scopeKey, ct)
-                                                      .ConfigureAwait(false);
+                                              .ConfigureAwait(false);
 
             return ToResolveResult(winner, SyncRequestResolveAction.ReusedActive);
         }
@@ -148,7 +189,7 @@ public sealed class SyncRequestRepository(AppDbContext dbContext,
                                                                       CancellationToken ct)
     {
         SyncRequestEntity? latest = await FindLatestRecoveryByScopeKeyAsync(scopeKey, false, ct)
-                                                   .ConfigureAwait(false);
+                                           .ConfigureAwait(false);
 
         if (latest is not null)
         {
@@ -172,7 +213,7 @@ public sealed class SyncRequestRepository(AppDbContext dbContext,
                     catch (Exception ex) when (UniqueViolationDetector.IsScopeKeyUniqueViolation(ex))
                     {
                         return await GetActiveRecoveryRaceWinnerAsync(scopeKey, ct)
-                                              .ConfigureAwait(false);
+                                      .ConfigureAwait(false);
                     }
             }
 
@@ -198,7 +239,7 @@ public sealed class SyncRequestRepository(AppDbContext dbContext,
         catch (Exception ex) when (UniqueViolationDetector.IsScopeKeyUniqueViolation(ex))
         {
             return await GetActiveRecoveryRaceWinnerAsync(scopeKey, ct)
-                                  .ConfigureAwait(false);
+                          .ConfigureAwait(false);
         }
     }
 
@@ -305,7 +346,7 @@ public sealed class SyncRequestRepository(AppDbContext dbContext,
 
         // Scale-out race: another instance created active recovery scope first.
         SyncRequestEntity winner = await GetActiveRecoveryByScopeKeyOrThrowAsync(scopeKey, ct)
-                                                  .ConfigureAwait(false);
+                                          .ConfigureAwait(false);
 
         return ToResolveResult(winner, SyncRequestResolveAction.ReusedActive);
     }

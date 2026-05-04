@@ -54,9 +54,9 @@ public sealed class UniqueViolationDetectorTests
         DbUpdateException dbUpdateException = new DbUpdateException("database update failed");
 
         DbConstraintViolationException wrappedException =
-                        new DbConstraintViolationException("A database constraint violation occurred.",
-                                                           dbUpdateException,
-                                                           "UX_sync_request_scope_key_recovery_active");
+                new DbConstraintViolationException("A database constraint violation occurred.",
+                                                   dbUpdateException,
+                                                   "UX_sync_request_scope_key_recovery_active");
 
         bool actual = UniqueViolationDetector.IsScopeKeyUniqueViolation(wrappedException);
 
@@ -102,6 +102,43 @@ public sealed class UniqueViolationDetectorTests
 
     #endregion
 
+    #region ========== *** IsIncrementalSyncWindowCategoryUniqueViolation *** ==========
+
+    [Theory]
+    [InlineData(2601)]
+    [InlineData(2627)]
+    public void IsIncrementalSyncWindowCategoryUniqueViolation_WhenSqlDuplicateKeyCode_ReturnsTrue(int sqlNumber)
+    {
+        SqlException sqlException = CreateSqlException(sqlNumber, "duplicate key");
+        DbUpdateException dbUpdateException = new DbUpdateException("save failed", sqlException);
+
+        bool actual = UniqueViolationDetector.IsIncrementalSyncWindowCategoryUniqueViolation(dbUpdateException);
+
+        Assert.True(actual);
+    }
+
+    [Fact]
+    public void IsIncrementalSyncWindowCategoryUniqueViolation_WhenCategoryTokenInMessage_ReturnsTrue()
+    {
+        DbUpdateException dbUpdateException = new DbUpdateException("UX_incremental_sync_window_category violated");
+
+        bool actual = UniqueViolationDetector.IsIncrementalSyncWindowCategoryUniqueViolation(dbUpdateException);
+
+        Assert.True(actual);
+    }
+
+    [Fact]
+    public void IsIncrementalSyncWindowCategoryUniqueViolation_WhenNoSignal_ReturnsFalse()
+    {
+        DbUpdateException dbUpdateException = new DbUpdateException("some other failure");
+
+        bool actual = UniqueViolationDetector.IsIncrementalSyncWindowCategoryUniqueViolation(dbUpdateException);
+
+        Assert.False(actual);
+    }
+
+    #endregion
+
     #region ========== *** Private Section *** ==========
 
     private static SqlException CreateSqlException(int number, string message)
@@ -110,9 +147,10 @@ public sealed class UniqueViolationDetectorTests
                                  ?? throw new InvalidOperationException("Failed to create SqlErrorCollection.");
 
         ConstructorInfo sqlErrorConstructor =
-                        typeof(SqlError).GetConstructors(BindingFlags.NonPublic | BindingFlags.Instance)
-                                        .OrderByDescending(c => c.GetParameters().Length)
-                                        .First();
+                typeof(SqlError).GetConstructors(BindingFlags.NonPublic | BindingFlags.Instance)
+                                .OrderByDescending(c => c.GetParameters()
+                                                         .Length)
+                                .First();
 
         object?[] sqlErrorArgs = BuildArguments(sqlErrorConstructor.GetParameters(),
                                                 number,
@@ -121,8 +159,8 @@ public sealed class UniqueViolationDetectorTests
         object sqlError = sqlErrorConstructor.Invoke(sqlErrorArgs);
 
         MethodInfo addMethod =
-                        typeof(SqlErrorCollection).GetMethod("Add", BindingFlags.NonPublic | BindingFlags.Instance)
-                        ?? throw new InvalidOperationException("SqlErrorCollection.Add not found.");
+                typeof(SqlErrorCollection).GetMethod("Add", BindingFlags.NonPublic | BindingFlags.Instance)
+                ?? throw new InvalidOperationException("SqlErrorCollection.Add not found.");
 
         addMethod.Invoke(errorCollection, [sqlError]);
 
@@ -180,15 +218,15 @@ public sealed class UniqueViolationDetectorTests
             }
 
             args[index] =
-                            type == typeof(byte) ? (byte)0 :
-                            type == typeof(short) ? (short)0 :
-                            type == typeof(int) ? 0 :
-                            type == typeof(uint) ? 0u :
-                            type == typeof(long) ? 0L :
-                            type == typeof(bool) ? false :
-                            type == typeof(Guid) ? Guid.NewGuid() :
-                            type == typeof(Exception) ? null :
-                            type.IsValueType ? Activator.CreateInstance(type) : null;
+                    type == typeof(byte) ? (byte)0 :
+                    type == typeof(short) ? (short)0 :
+                    type == typeof(int) ? 0 :
+                    type == typeof(uint) ? 0u :
+                    type == typeof(long) ? 0L :
+                    type == typeof(bool) ? false :
+                    type == typeof(Guid) ? Guid.NewGuid() :
+                    type == typeof(Exception) ? null :
+                    type.IsValueType ? Activator.CreateInstance(type) : null;
         }
 
         return args;

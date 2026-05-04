@@ -28,6 +28,14 @@ public static class UniqueViolationDetector
         "run_step_cursor"
     ];
 
+    private static readonly string[] IncrementalSyncWindowCategoryTokens =
+    [
+        "UX_incremental_sync_window_category",
+        "UQ_incremental_sync_window_category",
+        "incremental_sync_window",
+        "category"
+    ];
+
     /// <summary>
     /// Determines whether the exception represents a duplicate-key violation for sync_request scope-key constraints.
     /// </summary>
@@ -44,6 +52,15 @@ public static class UniqueViolationDetector
         return IsSqlUniqueViolation(ex) || ContainsAnyToken(ex, RunItemTokens);
     }
 
+    /// <summary>
+    /// Determines whether the exception represents a duplicate-key violation for
+    /// <c>incremental_sync_window.category</c>.
+    /// </summary>
+    public static bool IsIncrementalSyncWindowCategoryUniqueViolation(DbUpdateException ex)
+    {
+        return IsSqlUniqueViolation(ex) || ContainsAnyToken(ex, IncrementalSyncWindowCategoryTokens);
+    }
+
     #region ========== *** Private Section *** ==========
 
     private static bool IsSqlUniqueViolation(Exception ex)
@@ -51,7 +68,7 @@ public static class UniqueViolationDetector
         return ex switch
                {
                    DbConstraintViolationException { InnerException: DbUpdateException dbUpdateException } =>
-                                   IsSqlUniqueViolation(dbUpdateException),
+                           IsSqlUniqueViolation(dbUpdateException),
 
                    DbUpdateException { InnerException: SqlException sqlEx } => sqlEx.Number is 2601 or 2627,
 

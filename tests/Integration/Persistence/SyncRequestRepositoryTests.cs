@@ -72,7 +72,7 @@ public sealed class SyncRequestRepositoryTests
 
     [Fact]
     public async Task
-                    CreateOrGetByScopeAsync_WhenIncrementalScopeAlreadyExists_ReturnsExistingResult_AndSkipsUnitOfWork()
+            CreateOrGetByScopeAsync_WhenIncrementalScopeAlreadyExists_ReturnsExistingResult_AndSkipsUnitOfWork()
     {
         Mock<IDateTimeProvider> dateTimeProvider = DateTimeProviderTestFactory.Create();
 
@@ -220,12 +220,12 @@ public sealed class SyncRequestRepositoryTests
         SyncRequestRepository sut = new SyncRequestRepository(dbContext, uow.Object);
 
         SyncRequestResolveResult result =
-                        await sut.CreateOrGetByScopeAsync(nameof(SyncAnalyticsCategory.ConversationsDetails),
-                                                          SyncMode.Recovery,
-                                                          "2026-04-14T01:00:00Z/2026-04-14T01:30:00Z",
-                                                          2,
-                                                          null,
-                                                          CancellationToken.None);
+                await sut.CreateOrGetByScopeAsync(nameof(SyncAnalyticsCategory.ConversationsDetails),
+                                                  SyncMode.Recovery,
+                                                  "2026-04-14T01:00:00Z/2026-04-14T01:30:00Z",
+                                                  2,
+                                                  null,
+                                                  CancellationToken.None);
 
         Assert.Equal(reusable.Id, result.Id);
         Assert.Equal(reusable.PublicId, result.PublicId);
@@ -263,12 +263,12 @@ public sealed class SyncRequestRepositoryTests
         SyncRequestRepository sut = new SyncRequestRepository(dbContext, uow.Object);
 
         SyncRequestResolveResult result =
-                        await sut.CreateOrGetByScopeAsync(nameof(SyncAnalyticsCategory.ConversationsAggregates),
-                                                          SyncMode.Recovery,
-                                                          "2026-04-14T02:00:00Z/2026-04-14T02:30:00Z",
-                                                          null,
-                                                          null,
-                                                          CancellationToken.None);
+                await sut.CreateOrGetByScopeAsync(nameof(SyncAnalyticsCategory.ConversationsAggregates),
+                                                  SyncMode.Recovery,
+                                                  "2026-04-14T02:00:00Z/2026-04-14T02:30:00Z",
+                                                  null,
+                                                  null,
+                                                  CancellationToken.None);
 
         List<SyncRequestEntity> rows = await dbContext.Set<SyncRequestEntity>()
                                                       .OrderBy(x => x.Id)
@@ -305,12 +305,12 @@ public sealed class SyncRequestRepositoryTests
         SyncRequestRepository sut = new SyncRequestRepository(dbContext, uow.Object);
 
         SyncRequestResolveResult result =
-                        await sut.CreateOrGetByScopeAsync(nameof(SyncAnalyticsCategory.ConversationsAggregates),
-                                                          SyncMode.Recovery,
-                                                          "2026-04-14T02:00:00Z/2026-04-14T02:30:00Z",
-                                                          null,
-                                                          null,
-                                                          CancellationToken.None);
+                await sut.CreateOrGetByScopeAsync(nameof(SyncAnalyticsCategory.ConversationsAggregates),
+                                                  SyncMode.Recovery,
+                                                  "2026-04-14T02:00:00Z/2026-04-14T02:30:00Z",
+                                                  null,
+                                                  null,
+                                                  CancellationToken.None);
 
         List<SyncRequestEntity> rows = await dbContext.Set<SyncRequestEntity>()
                                                       .OrderBy(x => x.Id)
@@ -420,6 +420,194 @@ public sealed class SyncRequestRepositoryTests
         Assert.Equal(entity.GenesysJobId, dto.GenesysJobId);
         Assert.Equal(entity.ScopeKey, dto.ScopeKey);
         Assert.Equal(entity.CurrentRunId, dto.CurrentRunId);
+    }
+
+    #endregion
+
+    #region ========== *** GetEligibleRecoveryRequestsAsync *** ==========
+
+    [Fact]
+    public async Task GetEligibleRecoveryRequestsAsync_ReturnsPendingAndRetryableRecoveryRows()
+    {
+        Mock<IDateTimeProvider> dateTimeProvider = DateTimeProviderTestFactory.Create();
+
+        await using AppDbContext dbContext = PersistenceTestFactory.CreateDbContext(dateTimeProvider.Object);
+
+        SyncRequestEntity pending = BuildRequest(nameof(SyncAnalyticsCategory.UsersDetails),
+                                                 SyncMode.Recovery,
+                                                 SyncRequestStatus.Pending,
+                                                 "2026-04-14T00:00:00Z/2026-04-14T00:30:00Z",
+                                                 1,
+                                                 null);
+
+        SyncRequestEntity failedRetryable = BuildRequest(nameof(SyncAnalyticsCategory.UsersDetails),
+                                                         SyncMode.Recovery,
+                                                         SyncRequestStatus.Failed,
+                                                         "2026-04-14T00:30:00Z/2026-04-14T01:00:00Z",
+                                                         2,
+                                                         null);
+        failedRetryable.ReopenCount = 3;
+
+        SyncRequestEntity canceledRetryable = BuildRequest(nameof(SyncAnalyticsCategory.UsersDetails),
+                                                           SyncMode.Recovery,
+                                                           SyncRequestStatus.Canceled,
+                                                           "2026-04-14T01:00:00Z/2026-04-14T01:30:00Z",
+                                                           3,
+                                                           null);
+        canceledRetryable.ReopenCount = 2;
+
+        dbContext.Set<SyncRequestEntity>()
+                 .AddRange(pending, failedRetryable, canceledRetryable);
+        await dbContext.SaveChangesAsync();
+
+        Mock<IUnitOfWork> uow = new Mock<IUnitOfWork>(MockBehavior.Strict);
+        SyncRequestRepository sut = new SyncRequestRepository(dbContext, uow.Object);
+
+        IReadOnlyCollection<SyncRequestDto> rows =
+                await sut.GetEligibleRecoveryRequestsAsync(nameof(SyncAnalyticsCategory.UsersDetails),
+                                                           CancellationToken.None);
+
+        Assert.Equal(3, rows.Count);
+        Assert.Contains(rows, x => x.Id == pending.Id           && x.Status == SyncRequestStatus.Pending);
+        Assert.Contains(rows, x => x.Id == failedRetryable.Id   && x.Status == SyncRequestStatus.Failed);
+        Assert.Contains(rows, x => x.Id == canceledRetryable.Id && x.Status == SyncRequestStatus.Canceled);
+    }
+
+    [Fact]
+    public async Task GetEligibleRecoveryRequestsAsync_ExcludesRunningTerminalAndOverBudgetRows()
+    {
+        Mock<IDateTimeProvider> dateTimeProvider = DateTimeProviderTestFactory.Create();
+
+        await using AppDbContext dbContext = PersistenceTestFactory.CreateDbContext(dateTimeProvider.Object);
+
+        SyncRequestEntity running = BuildRequest(nameof(SyncAnalyticsCategory.UsersDetails),
+                                                 SyncMode.Recovery,
+                                                 SyncRequestStatus.Running,
+                                                 "2026-04-14T00:00:00Z/2026-04-14T00:30:00Z",
+                                                 null,
+                                                 null);
+
+        SyncRequestEntity completed = BuildRequest(nameof(SyncAnalyticsCategory.UsersDetails),
+                                                   SyncMode.Recovery,
+                                                   SyncRequestStatus.Completed,
+                                                   "2026-04-14T00:30:00Z/2026-04-14T01:00:00Z",
+                                                   null,
+                                                   null);
+
+        SyncRequestEntity completedWithRecoveryItems = BuildRequest(nameof(SyncAnalyticsCategory.UsersDetails),
+                                                                    SyncMode.Recovery,
+                                                                    SyncRequestStatus.CompletedWithRecoveryItems,
+                                                                    "2026-04-14T01:00:00Z/2026-04-14T01:30:00Z",
+                                                                    null,
+                                                                    null);
+
+        SyncRequestEntity failedOverBudget = BuildRequest(nameof(SyncAnalyticsCategory.UsersDetails),
+                                                          SyncMode.Recovery,
+                                                          SyncRequestStatus.Failed,
+                                                          "2026-04-14T01:30:00Z/2026-04-14T02:00:00Z",
+                                                          null,
+                                                          null);
+        failedOverBudget.ReopenCount = 4;
+
+        SyncRequestEntity otherCategoryPending = BuildRequest(nameof(SyncAnalyticsCategory.ConversationsDetails),
+                                                              SyncMode.Recovery,
+                                                              SyncRequestStatus.Pending,
+                                                              "2026-04-14T02:00:00Z/2026-04-14T02:30:00Z",
+                                                              null,
+                                                              null);
+
+        SyncRequestEntity otherModePending = BuildRequest(nameof(SyncAnalyticsCategory.UsersDetails),
+                                                          SyncMode.Incremental,
+                                                          SyncRequestStatus.Pending,
+                                                          "2026-04-14T02:30:00Z/2026-04-14T03:00:00Z",
+                                                          null,
+                                                          null);
+
+        dbContext.Set<SyncRequestEntity>()
+                 .AddRange(running,
+                           completed,
+                           completedWithRecoveryItems,
+                           failedOverBudget,
+                           otherCategoryPending,
+                           otherModePending);
+        await dbContext.SaveChangesAsync();
+
+        Mock<IUnitOfWork> uow = new Mock<IUnitOfWork>(MockBehavior.Strict);
+        SyncRequestRepository sut = new SyncRequestRepository(dbContext, uow.Object);
+
+        IReadOnlyCollection<SyncRequestDto> rows =
+                await sut.GetEligibleRecoveryRequestsAsync(nameof(SyncAnalyticsCategory.UsersDetails),
+                                                           CancellationToken.None);
+
+        Assert.Empty(rows);
+    }
+
+    [Fact]
+    public async Task GetEligibleRecoveryRequestsAsync_OrdersPendingFirstThenByIntervalAndPage()
+    {
+        Mock<IDateTimeProvider> dateTimeProvider = DateTimeProviderTestFactory.Create();
+
+        await using AppDbContext dbContext = PersistenceTestFactory.CreateDbContext(dateTimeProvider.Object);
+
+        SyncRequestEntity pendingNewestInterval = BuildRequest(nameof(SyncAnalyticsCategory.UsersDetails),
+                                                               SyncMode.Recovery,
+                                                               SyncRequestStatus.Pending,
+                                                               "2026-04-14T02:00:00Z/2026-04-14T02:30:00Z",
+                                                               2,
+                                                               null);
+
+        SyncRequestEntity pendingOldestInterval = BuildRequest(nameof(SyncAnalyticsCategory.UsersDetails),
+                                                               SyncMode.Recovery,
+                                                               SyncRequestStatus.Pending,
+                                                               "2026-04-14T00:00:00Z/2026-04-14T00:30:00Z",
+                                                               3,
+                                                               null);
+
+        SyncRequestEntity failedOldestInterval = BuildRequest(nameof(SyncAnalyticsCategory.UsersDetails),
+                                                              SyncMode.Recovery,
+                                                              SyncRequestStatus.Failed,
+                                                              "2026-04-14T00:30:00Z/2026-04-14T01:00:00Z",
+                                                              5,
+                                                              null);
+        failedOldestInterval.ReopenCount = 1;
+
+        SyncRequestEntity canceledSameIntervalLowerPage = BuildRequest(nameof(SyncAnalyticsCategory.UsersDetails),
+                                                                       SyncMode.Recovery,
+                                                                       SyncRequestStatus.Canceled,
+                                                                       "2026-04-14T01:30:00Z/2026-04-14T02:00:00Z",
+                                                                       1,
+                                                                       null);
+        canceledSameIntervalLowerPage.ReopenCount = 1;
+
+        SyncRequestEntity failedSameIntervalHigherPage = BuildRequest(nameof(SyncAnalyticsCategory.UsersDetails),
+                                                                      SyncMode.Recovery,
+                                                                      SyncRequestStatus.Failed,
+                                                                      "2026-04-14T01:30:00Z/2026-04-14T02:00:00Z",
+                                                                      4,
+                                                                      null);
+        failedSameIntervalHigherPage.ReopenCount = 1;
+
+        dbContext.Set<SyncRequestEntity>()
+                 .AddRange(pendingNewestInterval,
+                           pendingOldestInterval,
+                           failedOldestInterval,
+                           canceledSameIntervalLowerPage,
+                           failedSameIntervalHigherPage);
+        await dbContext.SaveChangesAsync();
+
+        Mock<IUnitOfWork> uow = new Mock<IUnitOfWork>(MockBehavior.Strict);
+        SyncRequestRepository sut = new SyncRequestRepository(dbContext, uow.Object);
+
+        List<SyncRequestDto> rows =
+                (await sut.GetEligibleRecoveryRequestsAsync(nameof(SyncAnalyticsCategory.UsersDetails),
+                                                            CancellationToken.None)).ToList();
+
+        Assert.Equal(5, rows.Count);
+        Assert.Equal(pendingOldestInterval.Id, rows[0].Id);
+        Assert.Equal(pendingNewestInterval.Id, rows[1].Id);
+        Assert.Equal(failedOldestInterval.Id, rows[2].Id);
+        Assert.Equal(canceledSameIntervalLowerPage.Id, rows[3].Id);
+        Assert.Equal(failedSameIntervalHigherPage.Id, rows[4].Id);
     }
 
     #endregion

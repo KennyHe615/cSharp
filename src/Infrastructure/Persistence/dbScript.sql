@@ -565,4 +565,54 @@ IF NOT EXISTS (SELECT 1
 GO
 /* endregion */
 
+/* region ========== ** Sync Tracking: Incremental Sync Window ** ========== */
+IF OBJECT_ID(N'dbo.incremental_sync_window', N'U') IS NULL
+    BEGIN
+        CREATE TABLE [dbo].[incremental_sync_window]
+        (
+            [id]                      [bigint] IDENTITY (1,1) NOT NULL,
+            [category]                [nvarchar](50)          NOT NULL,
+            [next_interval_start_utc] DATETIMEOFFSET(0)       NOT NULL,
+            [last_reserved_start_utc] DATETIMEOFFSET(0)       NULL,
+            [last_reserved_end_utc]   DATETIMEOFFSET(0)       NULL,
+            [row_version]             [rowversion]            NOT NULL,
+            [app_created_at_eastern]  DATETIMEOFFSET(0)       NOT NULL
+                CONSTRAINT [DF_incremental_sync_window_app_created_at_eastern] DEFAULT (SWITCHOFFSET(
+                    SYSDATETIMEOFFSET(),
+                    DATENAME(TzOffset,
+                             SYSDATETIMEOFFSET() AT TIME ZONE
+                             'Eastern Standard Time'))),
+            [app_updated_at_eastern]  DATETIMEOFFSET(0)       NOT NULL
+                CONSTRAINT [DF_incremental_sync_window_app_updated_at_eastern] DEFAULT (SWITCHOFFSET(
+                    SYSDATETIMEOFFSET(),
+                    DATENAME(TzOffset,
+                             SYSDATETIMEOFFSET() AT TIME ZONE
+                             'Eastern Standard Time'))),
+
+            CONSTRAINT [PK_incremental_sync_window] PRIMARY KEY CLUSTERED ([id])
+        );
+    END
+GO
+
+IF NOT EXISTS (SELECT 1
+               FROM sys.indexes
+               WHERE name = N'UX_incremental_sync_window_category'
+                 AND object_id = OBJECT_ID(N'dbo.incremental_sync_window'))
+    BEGIN
+        CREATE UNIQUE NONCLUSTERED INDEX [UX_incremental_sync_window_category]
+            ON [dbo].[incremental_sync_window] ([category]);
+    END
+GO
+
+IF NOT EXISTS (SELECT 1
+               FROM sys.indexes
+               WHERE name = N'IX_incremental_sync_window_app_updated_at_eastern'
+                 AND object_id = OBJECT_ID(N'dbo.incremental_sync_window'))
+    BEGIN
+        CREATE NONCLUSTERED INDEX [IX_incremental_sync_window_app_updated_at_eastern]
+            ON [dbo].[incremental_sync_window] ([app_updated_at_eastern]);
+    END
+GO
+/* endregion */
+
 /* endregion */
