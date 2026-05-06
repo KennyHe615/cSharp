@@ -29,52 +29,21 @@ public sealed class SyncRunRepository(AppDbContext dbContext,
 
         return await strategy.ExecuteAsync(async () =>
                                            {
-                                               SyncRequestEntity request = await GetRequestOrThrowAsync(requestId, ct)
-                                                                                          .ConfigureAwait(false);
-
-                                               DateTimeOffset now = dateTimeProvider.EstNowOffset;
-
-                                               await using IDbContextTransaction tx =
-                                                               await dbContext.Database.BeginTransactionAsync(ct)
-                                                                              .ConfigureAwait(false);
-
-                                               // 1) Find currently active run (if any) for the same request scope.
-                                               SyncRunEntity? activeRun = await GetActiveRunAsync(requestId, ct)
-                                                                                         .ConfigureAwait(false);
-
-                                               int nextAttempt = 1;
-                                               if (activeRun is not null)
+                                               try
                                                {
-                                                   // 2) Supersede previous active run before creating a replacement.
-                                                   nextAttempt = activeRun.AttemptNo + 1;
-                                                   await MarkRunAsSupersededAsync(activeRun, now, ct)
-                                                                  .ConfigureAwait(false);
+                                                   return await StartNewRunCoreAsync(requestId, ct)
+                                                                 .ConfigureAwait(false);
                                                }
-
-                                               // 3) Create a new pending run and immediately promote it to running.
-                                               SyncRunEntity newRun =
-                                                               await CreatePendingRunAsync(requestId, nextAttempt, ct)
-                                                                              .ConfigureAwait(false);
-
-                                               await PromoteRunToRunningAsync(newRun, now, ct)
-                                                              .ConfigureAwait(false);
-
-                                               if (activeRun is not null)
+                                               catch (Exception ex) when (UniqueViolationDetector
+                                                                                 .IsActiveRunUniqueViolation(ex))
                                                {
-                                                   // 4) Link superseded run to the newly created run for traceability.
-                                                   activeRun.SupersededByRunId = newRun.Id;
-                                                   await uow.SaveChangesAsync(ct)
-                                                            .ConfigureAwait(false);
+                                                   dbContext.ChangeTracker.Clear();
+
+                                                   // Scale-out race: another instance created/promoted the active run first.
+                                                   // Re-run once against the committed winner state.
+                                                   return await StartNewRunCoreAsync(requestId, ct)
+                                                                 .ConfigureAwait(false);
                                                }
-
-                                               // 5) Move request pointer to the new current run and mark request as RUNNING.
-                                               await SetCurrentRunAsync(request, newRun.Id, ct)
-                                                              .ConfigureAwait(false);
-
-                                               await tx.CommitAsync(ct)
-                                                       .ConfigureAwait(false);
-
-                                               return newRun.Id;
                                            })
                              .ConfigureAwait(false);
     }
@@ -111,7 +80,7 @@ public sealed class SyncRunRepository(AppDbContext dbContext,
                                     null,
                                     null,
                                     ct)
-                       .ConfigureAwait(false);
+               .ConfigureAwait(false);
     }
 
     /// <inheritdoc />
@@ -125,7 +94,7 @@ public sealed class SyncRunRepository(AppDbContext dbContext,
                                     null,
                                     null,
                                     ct)
-                       .ConfigureAwait(false);
+               .ConfigureAwait(false);
     }
 
     /// <inheritdoc />
@@ -139,7 +108,7 @@ public sealed class SyncRunRepository(AppDbContext dbContext,
                                     null,
                                     NormalizeRunFailureSummary(SyncRunStatus.Failed, reason),
                                     ct)
-                       .ConfigureAwait(false);
+               .ConfigureAwait(false);
     }
 
     /// <inheritdoc />
@@ -153,7 +122,7 @@ public sealed class SyncRunRepository(AppDbContext dbContext,
                                     supersededByRunId,
                                     null,
                                     ct)
-                       .ConfigureAwait(false);
+               .ConfigureAwait(false);
     }
 
     /// <inheritdoc />
@@ -167,10 +136,69 @@ public sealed class SyncRunRepository(AppDbContext dbContext,
                                     null,
                                     NormalizeRunFailureSummary(SyncRunStatus.Canceled, reason),
                                     ct)
-                       .ConfigureAwait(false);
+               .ConfigureAwait(false);
     }
 
     #region ========== *** Private Section *** ==========
+
+    /// <summary>
+    /// Starts a new sync run inside a transaction and supersedes any currently active run for the same request.
+    /// </summary>
+    /// <param name="requestId">Parent sync request id.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The newly started run id.</returns>
+    /// <exception cref="InvalidOperationException">
+    /// Thrown when the specified <paramref name="requestId"/> does not exist.
+    /// </exception>
+    private async Task<long> StartNewRunCoreAsync(long requestId, CancellationToken ct)
+    {
+        SyncRequestEntity request = await GetRequestOrThrowAsync(requestId, ct)
+                                           .ConfigureAwait(false);
+
+        DateTimeOffset now = dateTimeProvider.EstNowOffset;
+
+        await using IDbContextTransaction tx = await dbContext.Database.BeginTransactionAsync(ct)
+                                                              .ConfigureAwait(false);
+
+        // 1) Find currently active run (if any) for the same request scope.
+        SyncRunEntity? activeRun = await GetActiveRunAsync(requestId, ct)
+                                          .ConfigureAwait(false);
+
+        int nextAttempt = 1;
+        if (activeRun is not null)
+        {
+            // 2) Supersede previous active run before creating a replacement.
+            nextAttempt = activeRun.AttemptNo + 1;
+
+            await MarkRunAsSupersededAsync(activeRun, now, ct)
+                   .ConfigureAwait(false);
+        }
+
+        // 3) Create a new pending run and immediately promote it to running.
+        SyncRunEntity newRun = await CreatePendingRunAsync(requestId, nextAttempt, ct)
+                                      .ConfigureAwait(false);
+
+        await PromoteRunToRunningAsync(newRun, now, ct)
+               .ConfigureAwait(false);
+
+        if (activeRun is not null)
+        {
+            // 4) Link superseded run to the newly created run for traceability.
+            activeRun.SupersededByRunId = newRun.Id;
+
+            await uow.SaveChangesAsync(ct)
+                     .ConfigureAwait(false);
+        }
+
+        // 5) Move request pointer to the new current run and mark request as RUNNING.
+        await SetCurrentRunAsync(request, newRun.Id, ct)
+               .ConfigureAwait(false);
+
+        await tx.CommitAsync(ct)
+                .ConfigureAwait(false);
+
+        return newRun.Id;
+    }
 
     /// <summary>
     /// Gets a sync request entity by id or throws if not found.
@@ -219,7 +247,7 @@ public sealed class SyncRunRepository(AppDbContext dbContext,
                                              CancellationToken ct)
     {
         SyncRunEntity run = await GetRunOrThrowAsync(runId, ct)
-                                           .ConfigureAwait(false);
+                                   .ConfigureAwait(false);
 
         if (!IsActive(run.Status)) return;
 
@@ -231,7 +259,7 @@ public sealed class SyncRunRepository(AppDbContext dbContext,
         run.FailureReason = failureReason;
 
         SyncRequestEntity request = await GetRequestOrThrowAsync(run.RequestId, ct)
-                                                   .ConfigureAwait(false);
+                                           .ConfigureAwait(false);
 
         SyncRequestStatus? requestFinalStatus = MapRequestFinalStatus(finalStatus);
         if (requestFinalStatus.HasValue)
@@ -343,8 +371,8 @@ public sealed class SyncRunRepository(AppDbContext dbContext,
             if (string.IsNullOrWhiteSpace(reason)) return "Run was canceled.";
 
             return reason.Contains("timeout", StringComparison.OrdinalIgnoreCase)
-                                   ? "Run was canceled due to timeout."
-                                   : "Run was canceled by caller or host.";
+                           ? "Run was canceled due to timeout."
+                           : "Run was canceled by caller or host.";
         }
 
         if (reason.Contains("not wired yet", StringComparison.OrdinalIgnoreCase)
@@ -359,8 +387,8 @@ public sealed class SyncRunRepository(AppDbContext dbContext,
         }
 
         return reason.Contains("timeout", StringComparison.OrdinalIgnoreCase)
-                               ? "Run failed due to timeout."
-                               : "Run failed. See run_item failure_reason for step-level details.";
+                       ? "Run failed due to timeout."
+                       : "Run failed. See run_item failure_reason for step-level details.";
     }
 
     #endregion

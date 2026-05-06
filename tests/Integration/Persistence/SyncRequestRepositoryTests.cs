@@ -31,7 +31,7 @@ public sealed class SyncRequestRepositoryTests
     {
         Mock<IDateTimeProvider> dateTimeProvider = DateTimeProviderTestFactory.Create();
 
-        await using AppDbContext dbContext = PersistenceTestFactory.CreateDbContext(dateTimeProvider.Object);
+        await using AppDbContext dbContext = PersistenceTestFactory.CreateInMemoryDbContext(dateTimeProvider.Object);
 
         SyncRequestEntity existing = BuildRequest(nameof(SyncReferenceCategory.Group),
                                                   SyncMode.Full,
@@ -76,7 +76,7 @@ public sealed class SyncRequestRepositoryTests
     {
         Mock<IDateTimeProvider> dateTimeProvider = DateTimeProviderTestFactory.Create();
 
-        await using AppDbContext dbContext = PersistenceTestFactory.CreateDbContext(dateTimeProvider.Object);
+        await using AppDbContext dbContext = PersistenceTestFactory.CreateInMemoryDbContext(dateTimeProvider.Object);
 
         SyncRequestEntity existing = BuildRequest(nameof(SyncAnalyticsCategory.UsersDetails),
                                                   SyncMode.Incremental,
@@ -116,7 +116,7 @@ public sealed class SyncRequestRepositoryTests
     {
         Mock<IDateTimeProvider> dateTimeProvider = DateTimeProviderTestFactory.Create();
 
-        await using AppDbContext dbContext = PersistenceTestFactory.CreateDbContext(dateTimeProvider.Object);
+        await using AppDbContext dbContext = PersistenceTestFactory.CreateInMemoryDbContext(dateTimeProvider.Object);
         Mock<IUnitOfWork> uow = PersistenceTestFactory.CreateUnitOfWork<SyncRequestEntity>(dbContext);
 
         SyncRequestRepository sut = new SyncRequestRepository(dbContext, uow.Object);
@@ -156,7 +156,7 @@ public sealed class SyncRequestRepositoryTests
     {
         Mock<IDateTimeProvider> dateTimeProvider = DateTimeProviderTestFactory.Create();
 
-        await using AppDbContext dbContext = PersistenceTestFactory.CreateDbContext(dateTimeProvider.Object);
+        await using AppDbContext dbContext = PersistenceTestFactory.CreateInMemoryDbContext(dateTimeProvider.Object);
 
         SyncRequestEntity active = BuildRequest(nameof(SyncAnalyticsCategory.UsersDetails),
                                                 SyncMode.Recovery,
@@ -198,7 +198,7 @@ public sealed class SyncRequestRepositoryTests
     {
         Mock<IDateTimeProvider> dateTimeProvider = DateTimeProviderTestFactory.Create();
 
-        await using AppDbContext dbContext = PersistenceTestFactory.CreateDbContext(dateTimeProvider.Object);
+        await using AppDbContext dbContext = PersistenceTestFactory.CreateInMemoryDbContext(dateTimeProvider.Object);
 
         SyncRequestEntity reusable = BuildRequest(nameof(SyncAnalyticsCategory.ConversationsDetails),
                                                   SyncMode.Recovery,
@@ -246,7 +246,7 @@ public sealed class SyncRequestRepositoryTests
     {
         Mock<IDateTimeProvider> dateTimeProvider = DateTimeProviderTestFactory.Create();
 
-        await using AppDbContext dbContext = PersistenceTestFactory.CreateDbContext(dateTimeProvider.Object);
+        await using AppDbContext dbContext = PersistenceTestFactory.CreateInMemoryDbContext(dateTimeProvider.Object);
         Mock<IUnitOfWork> uow = PersistenceTestFactory.CreateUnitOfWork<SyncRequestEntity>(dbContext);
 
         SyncRequestEntity completed = BuildRequest(nameof(SyncAnalyticsCategory.ConversationsAggregates),
@@ -288,7 +288,7 @@ public sealed class SyncRequestRepositoryTests
     {
         Mock<IDateTimeProvider> dateTimeProvider = DateTimeProviderTestFactory.Create();
 
-        await using AppDbContext dbContext = PersistenceTestFactory.CreateDbContext(dateTimeProvider.Object);
+        await using AppDbContext dbContext = PersistenceTestFactory.CreateInMemoryDbContext(dateTimeProvider.Object);
         Mock<IUnitOfWork> uow = PersistenceTestFactory.CreateUnitOfWork<SyncRequestEntity>(dbContext);
 
         SyncRequestEntity completed = BuildRequest(nameof(SyncAnalyticsCategory.ConversationsAggregates),
@@ -330,7 +330,7 @@ public sealed class SyncRequestRepositoryTests
     {
         Mock<IDateTimeProvider> dateTimeProvider = DateTimeProviderTestFactory.Create();
 
-        await using AppDbContext dbContext = PersistenceTestFactory.CreateDbContext(dateTimeProvider.Object);
+        await using AppDbContext dbContext = PersistenceTestFactory.CreateInMemoryDbContext(dateTimeProvider.Object);
         Mock<IUnitOfWork> uow = PersistenceTestFactory.CreateUnitOfWork<SyncRequestEntity>(dbContext);
 
         const string interval = "2026-04-14T03:00:00Z/2026-04-14T03:30:00Z";
@@ -388,7 +388,7 @@ public sealed class SyncRequestRepositoryTests
     {
         Mock<IDateTimeProvider> dateTimeProvider = DateTimeProviderTestFactory.Create();
 
-        await using AppDbContext dbContext = PersistenceTestFactory.CreateDbContext(dateTimeProvider.Object);
+        await using AppDbContext dbContext = PersistenceTestFactory.CreateInMemoryDbContext(dateTimeProvider.Object);
 
         SyncRequestEntity entity = BuildRequest(nameof(SyncAnalyticsCategory.UsersDetails),
                                                 SyncMode.Recovery,
@@ -431,7 +431,7 @@ public sealed class SyncRequestRepositoryTests
     {
         Mock<IDateTimeProvider> dateTimeProvider = DateTimeProviderTestFactory.Create();
 
-        await using AppDbContext dbContext = PersistenceTestFactory.CreateDbContext(dateTimeProvider.Object);
+        await using AppDbContext dbContext = PersistenceTestFactory.CreateInMemoryDbContext(dateTimeProvider.Object);
 
         SyncRequestEntity pending = BuildRequest(nameof(SyncAnalyticsCategory.UsersDetails),
                                                  SyncMode.Recovery,
@@ -478,7 +478,7 @@ public sealed class SyncRequestRepositoryTests
     {
         Mock<IDateTimeProvider> dateTimeProvider = DateTimeProviderTestFactory.Create();
 
-        await using AppDbContext dbContext = PersistenceTestFactory.CreateDbContext(dateTimeProvider.Object);
+        await using AppDbContext dbContext = PersistenceTestFactory.CreateInMemoryDbContext(dateTimeProvider.Object);
 
         SyncRequestEntity running = BuildRequest(nameof(SyncAnalyticsCategory.UsersDetails),
                                                  SyncMode.Recovery,
@@ -547,7 +547,7 @@ public sealed class SyncRequestRepositoryTests
     {
         Mock<IDateTimeProvider> dateTimeProvider = DateTimeProviderTestFactory.Create();
 
-        await using AppDbContext dbContext = PersistenceTestFactory.CreateDbContext(dateTimeProvider.Object);
+        await using AppDbContext dbContext = PersistenceTestFactory.CreateInMemoryDbContext(dateTimeProvider.Object);
 
         SyncRequestEntity pendingNewestInterval = BuildRequest(nameof(SyncAnalyticsCategory.UsersDetails),
                                                                SyncMode.Recovery,

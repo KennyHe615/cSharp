@@ -511,25 +511,36 @@ IF OBJECT_ID(N'dbo.sync_run_item', N'U') IS NULL
     BEGIN
         CREATE TABLE [dbo].[sync_run_item]
         (
-            [id]                     [bigint] IDENTITY (1,1) NOT NULL,
-            [run_id]                 [bigint]                NOT NULL,
-            [step]                   [nvarchar](50)          NOT NULL,
-            [cursor]                 [nvarchar](200)         NOT NULL,
-            [status]                 [nvarchar](20)          NOT NULL,
-            [failure_reason]         [nvarchar](1000)        NULL,
-            [app_created_at_eastern] DATETIMEOFFSET(0)       NOT NULL
+            [id]                        [bigint] IDENTITY (1,1) NOT NULL,
+            [run_id]                    [bigint]                NOT NULL,
+            [step]                      [nvarchar](50)          NOT NULL,
+            [cursor]                    [nvarchar](200)         NULL,
+            [page_number]               [int]                   NULL,
+            [status]                    [nvarchar](20)          NOT NULL,
+            [failure_reason]            [nvarchar](1000)        NULL,
+            [claimed_by]                [nvarchar](200)         NULL,
+            [lease_token]               [uniqueidentifier]      NULL,
+            [claimed_at_eastern]        DATETIMEOFFSET(3)       NULL,
+            [claim_expires_at_eastern]  DATETIMEOFFSET(3)       NULL,
+            [attempt_count]             [int]                   NOT NULL
+                CONSTRAINT [DF_sync_run_item_attempt_count] DEFAULT ((0)),
+            [last_heartbeat_at_eastern] DATETIMEOFFSET(3)       NULL,
+            [app_created_at_eastern]    DATETIMEOFFSET(0)       NOT NULL
                 CONSTRAINT [DF_sync_run_item_app_created_at_eastern] DEFAULT (SWITCHOFFSET(SYSDATETIMEOFFSET(),
                                                                                            DATENAME(TzOffset,
                                                                                                     SYSDATETIMEOFFSET() AT TIME ZONE
                                                                                                     'Eastern Standard Time'))),
-            [app_updated_at_eastern] DATETIMEOFFSET(0)       NOT NULL
+            [app_updated_at_eastern]    DATETIMEOFFSET(0)       NOT NULL
                 CONSTRAINT [DF_sync_run_item_app_updated_at_eastern] DEFAULT (SWITCHOFFSET(SYSDATETIMEOFFSET(),
                                                                                            DATENAME(TzOffset,
                                                                                                     SYSDATETIMEOFFSET() AT TIME ZONE
                                                                                                     'Eastern Standard Time'))),
 
             CONSTRAINT [PK_sync_run_item] PRIMARY KEY CLUSTERED ([id]),
-            CONSTRAINT [FK_sync_run_item_run_id] FOREIGN KEY ([run_id]) REFERENCES [dbo].[sync_run] ([id])
+            CONSTRAINT [FK_sync_run_item_run_id] FOREIGN KEY ([run_id]) REFERENCES [dbo].[sync_run] ([id]),
+            CONSTRAINT [CK_sync_run_item_selector_shape]
+                CHECK ((([page_number] IS NULL AND [cursor] IS NOT NULL)
+                    OR ([page_number] IS NOT NULL AND [cursor] IS NULL)))
         );
     END
 GO
@@ -540,7 +551,19 @@ IF NOT EXISTS (SELECT 1
                  AND object_id = OBJECT_ID(N'dbo.sync_run_item'))
     BEGIN
         CREATE UNIQUE NONCLUSTERED INDEX [UX_sync_run_item_run_step_cursor]
-            ON [dbo].[sync_run_item] ([run_id], [step], [cursor]);
+            ON [dbo].[sync_run_item] ([run_id], [step], [cursor])
+            WHERE [page_number] IS NULL AND [cursor] IS NOT NULL;
+    END
+GO
+
+IF NOT EXISTS (SELECT 1
+               FROM sys.indexes
+               WHERE name = N'UX_sync_run_item_run_step_page_number'
+                 AND object_id = OBJECT_ID(N'dbo.sync_run_item'))
+    BEGIN
+        CREATE UNIQUE NONCLUSTERED INDEX [UX_sync_run_item_run_step_page_number]
+            ON [dbo].[sync_run_item] ([run_id], [step], [page_number])
+            WHERE [page_number] IS NOT NULL;
     END
 GO
 
@@ -551,6 +574,48 @@ IF NOT EXISTS (SELECT 1
     BEGIN
         CREATE NONCLUSTERED INDEX [IX_sync_run_item_run_status_app_updated_at_eastern]
             ON [dbo].[sync_run_item] ([run_id], [status], [app_updated_at_eastern]);
+    END
+GO
+
+IF NOT EXISTS (SELECT 1
+               FROM sys.indexes
+               WHERE name = N'IX_sync_run_item_run_step_status_claim_exp_page'
+                 AND object_id = OBJECT_ID(N'dbo.sync_run_item'))
+    BEGIN
+        CREATE NONCLUSTERED INDEX [IX_sync_run_item_run_step_status_claim_exp_page]
+            ON [dbo].[sync_run_item] ([run_id], [step], [status], [claim_expires_at_eastern], [page_number])
+            WHERE [page_number] IS NOT NULL;
+    END
+GO
+
+IF NOT EXISTS (SELECT 1
+               FROM sys.indexes
+               WHERE name = N'IX_sync_run_item_run_step_status_claim_exp_cursor'
+                 AND object_id = OBJECT_ID(N'dbo.sync_run_item'))
+    BEGIN
+        CREATE NONCLUSTERED INDEX [IX_sync_run_item_run_step_status_claim_exp_cursor]
+            ON [dbo].[sync_run_item] ([run_id], [step], [status], [claim_expires_at_eastern], [cursor])
+            WHERE [page_number] IS NULL AND [cursor] IS NOT NULL;
+    END
+GO
+
+IF NOT EXISTS (SELECT 1
+               FROM sys.indexes
+               WHERE name = N'IX_sync_run_item_run_step_claimed_by_status'
+                 AND object_id = OBJECT_ID(N'dbo.sync_run_item'))
+    BEGIN
+        CREATE NONCLUSTERED INDEX [IX_sync_run_item_run_step_claimed_by_status]
+            ON [dbo].[sync_run_item] ([run_id], [step], [claimed_by], [status]);
+    END
+GO
+
+IF NOT EXISTS (SELECT 1
+               FROM sys.indexes
+               WHERE name = N'IX_sync_run_item_lease_token'
+                 AND object_id = OBJECT_ID(N'dbo.sync_run_item'))
+    BEGIN
+        CREATE NONCLUSTERED INDEX [IX_sync_run_item_lease_token]
+            ON [dbo].[sync_run_item] ([lease_token]);
     END
 GO
 

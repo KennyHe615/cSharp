@@ -42,4 +42,57 @@ public static class SyncRunItemSteps
     {
         return $"Analytics:{category}:Summary";
     }
+
+    /// <summary>
+    /// Builds the canonical analytics page cursor for the supplied one-based page number.
+    /// Zero-padded formatting preserves numeric ordering when cursors are compared lexically.
+    /// </summary>
+    /// <param name="pageNumber">One-based page number.</param>
+    /// <returns>The canonical page cursor string.</returns>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// Thrown when <paramref name="pageNumber"/> is less than 1.
+    /// </exception>
+    public static string AnalyticsPageCursor(int pageNumber)
+    {
+        if (pageNumber < 1)
+        {
+            throw new ArgumentOutOfRangeException(nameof(pageNumber),
+                                                  pageNumber,
+                                                  "Page number must be greater than or equal to 1.");
+        }
+
+        return $"page:{pageNumber:D8}";
+    }
+
+    /// <summary>
+    /// Parses a canonical analytics page cursor back to its one-based page number.
+    /// </summary>
+    /// <param name="cursor">Canonical page cursor string.</param>
+    /// <returns>The parsed one-based page number.</returns>
+    /// <exception cref="ArgumentException">
+    /// Thrown when <paramref name="cursor"/> is empty, malformed, or does not contain a valid page number.
+    /// </exception>
+    public static int ParseAnalyticsPageCursor(string cursor)
+    {
+        if (string.IsNullOrWhiteSpace(cursor))
+        {
+            throw new ArgumentException("Cursor is required.", nameof(cursor));
+        }
+
+        const string prefix = "page:";
+        string trimmed = cursor.Trim();
+
+        if (!trimmed.StartsWith(prefix, StringComparison.Ordinal))
+        {
+            throw new ArgumentException("Cursor must start with 'page:'.", nameof(cursor));
+        }
+
+        string numericPart = trimmed[prefix.Length..];
+        if (!int.TryParse(numericPart, out int pageNumber) || pageNumber < 1)
+        {
+            throw new ArgumentException("Cursor must contain a valid page number.", nameof(cursor));
+        }
+
+        return pageNumber;
+    }
 }

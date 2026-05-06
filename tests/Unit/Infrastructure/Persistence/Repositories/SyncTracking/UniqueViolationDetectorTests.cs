@@ -100,6 +100,16 @@ public sealed class UniqueViolationDetectorTests
         Assert.False(actual);
     }
 
+    [Fact]
+    public void IsRunItemUniqueViolation_WhenRunItemPageNumberTokenInMessage_ReturnsTrue()
+    {
+        DbUpdateException dbUpdateException = new DbUpdateException("UX_sync_run_item_run_step_page_number violated");
+
+        bool actual = UniqueViolationDetector.IsRunItemUniqueViolation(dbUpdateException);
+
+        Assert.True(actual);
+    }
+
     #endregion
 
     #region ========== *** IsIncrementalSyncWindowCategoryUniqueViolation *** ==========
@@ -133,6 +143,43 @@ public sealed class UniqueViolationDetectorTests
         DbUpdateException dbUpdateException = new DbUpdateException("some other failure");
 
         bool actual = UniqueViolationDetector.IsIncrementalSyncWindowCategoryUniqueViolation(dbUpdateException);
+
+        Assert.False(actual);
+    }
+
+    #endregion
+
+    #region ========== *** IsActiveRunUniqueViolation *** ==========
+
+    [Theory]
+    [InlineData(2601)]
+    [InlineData(2627)]
+    public void IsActiveRunUniqueViolation_WhenSqlDuplicateKeyCode_ReturnsTrue(int sqlNumber)
+    {
+        SqlException sqlException = CreateSqlException(sqlNumber, "duplicate key");
+        DbUpdateException dbUpdateException = new DbUpdateException("save failed", sqlException);
+
+        bool actual = UniqueViolationDetector.IsActiveRunUniqueViolation(dbUpdateException);
+
+        Assert.True(actual);
+    }
+
+    [Fact]
+    public void IsActiveRunUniqueViolation_WhenActiveRunTokenInMessage_ReturnsTrue()
+    {
+        DbUpdateException dbUpdateException = new DbUpdateException("UX_sync_run_request_active violated");
+
+        bool actual = UniqueViolationDetector.IsActiveRunUniqueViolation(dbUpdateException);
+
+        Assert.True(actual);
+    }
+
+    [Fact]
+    public void IsActiveRunUniqueViolation_WhenNoSignal_ReturnsFalse()
+    {
+        DbUpdateException dbUpdateException = new DbUpdateException("some other failure");
+
+        bool actual = UniqueViolationDetector.IsActiveRunUniqueViolation(dbUpdateException);
 
         Assert.False(actual);
     }
