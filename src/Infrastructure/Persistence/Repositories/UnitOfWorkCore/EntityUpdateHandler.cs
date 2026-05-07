@@ -18,7 +18,7 @@ internal static class EntityUpdateHandler
                                                                 List<TEntity> incomingList,
                                                                 Dictionary<object, TEntity> dbById,
                                                                 EntityMetadata<TEntity> metadata)
-        where TEntity : class
+                    where TEntity : class
     {
         HashSet<object> incomingKeys = [];
         int addedCount = 0;
@@ -37,7 +37,8 @@ internal static class EntityUpdateHandler
             }
             else
             {
-                dbContext.Set<TEntity>().Add(incoming);
+                dbContext.Set<TEntity>()
+                         .Add(incoming);
 
                 addedCount++;
             }
@@ -50,7 +51,7 @@ internal static class EntityUpdateHandler
                                                        HashSet<object> incomingKeys,
                                                        EntityMetadata<TEntity> metadata,
                                                        Action<TEntity> onMissingFromIncoming)
-        where TEntity : class
+                    where TEntity : class
     {
         foreach (TEntity dbEntity in dbEntities.Where(e => !incomingKeys.Contains(metadata.GetCompositeKey(e))))
         {
@@ -63,7 +64,7 @@ internal static class EntityUpdateHandler
     private static void UpdateEntity<TEntity>(Microsoft.EntityFrameworkCore.DbContext dbContext,
                                               TEntity existing,
                                               TEntity incoming)
-        where TEntity : class
+                    where TEntity : class
     {
         EntityEntry<TEntity> existingEntry = dbContext.Entry(existing);
 
@@ -97,12 +98,17 @@ internal static class EntityUpdateHandler
         }
     }
 
+    /// <summary>
+    /// Determines whether a mapped property should be excluded from manual upsert copying.
+    /// </summary>
+    /// <param name="property">The EF Core property metadata to evaluate.</param>
+    /// <returns><c>true</c> when the property is framework-managed, audit-managed, or otherwise not manually copied.</returns>
     private static bool ShouldSkipProperty(IProperty property)
     {
         if (property.IsPrimaryKey()) return true;
 
         // Keep audit columns out of manual copy. Interceptor owns them.
-        if (property.Name is nameof(Audit.AppCreatedAt) or nameof(Audit.AppUpdatedAt)) return true;
+        if (property.Name is nameof(Audit.AppCreatedAtEastern) or nameof(Audit.AppUpdatedAtEastern)) return true;
 
         return property.ValueGenerated is ValueGenerated.OnAdd or ValueGenerated.OnAddOrUpdate
                || property.IsConcurrencyToken;

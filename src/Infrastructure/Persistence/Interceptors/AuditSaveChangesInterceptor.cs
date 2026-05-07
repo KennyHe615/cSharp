@@ -29,9 +29,9 @@ public sealed class AuditSaveChangesInterceptor(IDateTimeProvider dateTimeProvid
     /// Intercepts asynchronous SaveChanges and applies audit timestamps before commit.
     /// </summary>
     public override ValueTask<InterceptionResult<int>> SavingChangesAsync(
-        DbContextEventData eventData,
-        InterceptionResult<int> result,
-        CancellationToken cancellationToken = default)
+                    DbContextEventData eventData,
+                    InterceptionResult<int> result,
+                    CancellationToken cancellationToken = default)
     {
         ApplyAudit(eventData.Context);
 
@@ -52,17 +52,17 @@ public sealed class AuditSaveChangesInterceptor(IDateTimeProvider dateTimeProvid
         {
             if (entry.State is EntityState.Detached or EntityState.Deleted) continue;
 
-            entry.Entity.AppUpdatedAt = now;
-            entry.Property(e => e.AppUpdatedAt)
+            entry.Entity.AppUpdatedAtEastern = now;
+            entry.Property(e => e.AppUpdatedAtEastern)
                  .IsModified = true;
 
             if (entry.State is EntityState.Added)
             {
-                entry.Entity.AppCreatedAt = now;
+                entry.Entity.AppCreatedAtEastern = now;
             }
             else
             {
-                entry.Property(e => e.AppCreatedAt)
+                entry.Property(e => e.AppCreatedAtEastern)
                      .IsModified = false;
             }
         }

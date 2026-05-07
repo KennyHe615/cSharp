@@ -26,14 +26,14 @@ public sealed class SyncRunRepositoryEdgeCaseTests
     {
         Mock<IDateTimeProvider> dateTimeProvider = DateTimeProviderTestFactory.Create();
 
-        await using AppDbContext dbContext = PersistenceTestFactory.CreateDbContext(dateTimeProvider.Object);
+        await using AppDbContext dbContext = PersistenceTestFactory.CreateInMemoryDbContext(dateTimeProvider.Object);
         Mock<IUnitOfWork> uow = PersistenceTestFactory.CreateUnitOfWork<SyncRunEntity>(dbContext);
 
         SyncRunRepository sut = new SyncRunRepository(dbContext, uow.Object, dateTimeProvider.Object);
 
         InvalidOperationException ex =
-            await Assert.ThrowsAsync<InvalidOperationException>(() => sut.StartNewRunAsync(9999L,
-                                                                 CancellationToken.None));
+                await Assert.ThrowsAsync<InvalidOperationException>(() => sut.StartNewRunAsync(9999L,
+                                                                        CancellationToken.None));
 
         Assert.Contains("Sync request '9999' was not found.", ex.Message, StringComparison.Ordinal);
     }
@@ -43,14 +43,14 @@ public sealed class SyncRunRepositoryEdgeCaseTests
     {
         Mock<IDateTimeProvider> dateTimeProvider = DateTimeProviderTestFactory.Create();
 
-        await using AppDbContext dbContext = PersistenceTestFactory.CreateDbContext(dateTimeProvider.Object);
+        await using AppDbContext dbContext = PersistenceTestFactory.CreateInMemoryDbContext(dateTimeProvider.Object);
         Mock<IUnitOfWork> uow = PersistenceTestFactory.CreateUnitOfWork<SyncRunEntity>(dbContext);
 
         SyncRunRepository sut = new SyncRunRepository(dbContext, uow.Object, dateTimeProvider.Object);
 
         InvalidOperationException ex =
-            await Assert.ThrowsAsync<InvalidOperationException>(() => sut.MarkCompletedAsync(7777L,
-                                                                 CancellationToken.None));
+                await Assert.ThrowsAsync<InvalidOperationException>(() => sut.MarkCompletedAsync(7777L,
+                                                                        CancellationToken.None));
 
         Assert.Contains("Sync run '7777' was not found.", ex.Message, StringComparison.Ordinal);
     }
@@ -60,13 +60,13 @@ public sealed class SyncRunRepositoryEdgeCaseTests
     {
         Mock<IDateTimeProvider> dateTimeProvider = DateTimeProviderTestFactory.Create();
 
-        await using AppDbContext dbContext = PersistenceTestFactory.CreateDbContext(dateTimeProvider.Object);
+        await using AppDbContext dbContext = PersistenceTestFactory.CreateInMemoryDbContext(dateTimeProvider.Object);
         Mock<IUnitOfWork> uow = PersistenceTestFactory.CreateUnitOfWork<SyncRunEntity>(dbContext);
 
         SyncRequestEntity request =
-            await SyncTrackingSeedFactory.SeedRequestAsync(dbContext,
-                                                           nameof(SyncReferenceCategory.Group),
-                                                           SyncMode.Incremental);
+                await SyncTrackingSeedFactory.SeedRequestAsync(dbContext,
+                                                               nameof(SyncReferenceCategory.Group),
+                                                               SyncMode.Full);
 
         SyncRunRepository sut = new SyncRunRepository(dbContext, uow.Object, dateTimeProvider.Object);
 
@@ -84,7 +84,7 @@ public sealed class SyncRunRepositoryEdgeCaseTests
                                              .SingleAsync(x => x.Id == runId);
 
         Assert.Equal(SyncRunStatus.Completed, after.Status);
-        Assert.Equal(before.RunCompletedAt, after.RunCompletedAt);
+        Assert.Equal(before.RunCompletedAtEastern, after.RunCompletedAtEastern);
         Assert.Equal(before.FailureReason, after.FailureReason);
     }
 
@@ -93,13 +93,13 @@ public sealed class SyncRunRepositoryEdgeCaseTests
     {
         Mock<IDateTimeProvider> dateTimeProvider = DateTimeProviderTestFactory.Create();
 
-        await using AppDbContext dbContext = PersistenceTestFactory.CreateDbContext(dateTimeProvider.Object);
+        await using AppDbContext dbContext = PersistenceTestFactory.CreateInMemoryDbContext(dateTimeProvider.Object);
         Mock<IUnitOfWork> uow = PersistenceTestFactory.CreateUnitOfWork<SyncRunEntity>(dbContext);
 
         SyncRequestEntity request =
-            await SyncTrackingSeedFactory.SeedRequestAsync(dbContext,
-                                                           nameof(SyncReferenceCategory.Skill),
-                                                           SyncMode.Recovery);
+                await SyncTrackingSeedFactory.SeedRequestAsync(dbContext,
+                                                               nameof(SyncAnalyticsCategory.UsersDetails),
+                                                               SyncMode.Recovery);
 
         SyncRunRepository sut = new SyncRunRepository(dbContext, uow.Object, dateTimeProvider.Object);
 
@@ -117,6 +117,7 @@ public sealed class SyncRunRepositoryEdgeCaseTests
                                              .SingleAsync(x => x.Id == runId);
 
         Assert.Equal(SyncRunStatus.Canceled, after.Status);
+        Assert.Equal(before.RunCompletedAtEastern, after.RunCompletedAtEastern);
         Assert.Equal(before.SupersededByRunId, after.SupersededByRunId);
         Assert.Equal(before.FailureReason, after.FailureReason);
     }

@@ -16,7 +16,8 @@ namespace Application.Features.SyncTracking.Analytics;
 /// Optional page selector for paged recovery workflows.
 /// </param>
 /// <param name="GenesysJobId">
-/// Optional external Genesys job id selector for job-based recovery.
+/// Optional external Genesys job identifier for job-based recovery.
+/// Supported only for <see cref="SyncAnalyticsCategory.ConversationsDetails"/>.
 /// Must not be provided together with <paramref name="Interval"/>.
 /// </param>
 public sealed record RunAnalyticsRecoverySyncCommand(SyncAnalyticsCategory Category,

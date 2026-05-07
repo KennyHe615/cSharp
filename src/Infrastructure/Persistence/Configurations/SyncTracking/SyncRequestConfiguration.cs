@@ -77,6 +77,12 @@ public sealed class SyncRequestConfiguration : IEntityTypeConfiguration<SyncRequ
                .IsUnique()
                .HasDatabaseName("UX_sync_request_public_id");
 
+        // Full mode keeps one logical request row per scope.
+        builder.HasIndex(x => x.ScopeKey)
+               .IsUnique()
+               .HasFilter("[mode] = 'FULL'")
+               .HasDatabaseName("UX_sync_request_scope_key_full");
+
         // Incremental mode keeps one logical request row per scope.
         builder.HasIndex(x => x.ScopeKey)
                .IsUnique()
@@ -90,11 +96,11 @@ public sealed class SyncRequestConfiguration : IEntityTypeConfiguration<SyncRequ
                .HasDatabaseName("UX_sync_request_scope_key_recovery_active");
 
         // Supports latest-by-scope resolution logic in recovery paths.
-        builder.HasIndex(x => new { x.Mode, x.ScopeKey, x.AppUpdatedAt })
-               .HasDatabaseName("IX_sync_request_mode_scope_key_app_updated_at");
+        builder.HasIndex(x => new { x.Mode, x.ScopeKey, x.AppUpdatedAtEastern })
+               .HasDatabaseName("IX_sync_request_mode_scope_key_app_updated_at_eastern");
 
-        builder.HasIndex(x => new { x.Category, x.Mode, x.AppUpdatedAt })
-               .HasDatabaseName("IX_sync_request_category_mode_app_updated_at");
+        builder.HasIndex(x => new { x.Category, x.Mode, x.AppUpdatedAtEastern })
+               .HasDatabaseName("IX_sync_request_category_mode_app_updated_at_eastern");
 
         builder.HasIndex(x => x.CurrentRunId)
                .HasDatabaseName("IX_sync_request_current_run_id");

@@ -21,7 +21,10 @@ public sealed record CreateRecoveryRequestResponse(bool Success,
 /// <param name="Lob">Line-of-business value associated with the request.</param>
 /// <param name="Category">Recovery category requested by the client.</param>
 /// <param name="Interval">Optional interval selected for interval-based recovery.</param>
-/// <param name="GenesysJobId">Optional Genesys job identifier selected for job-based recovery.</param>
+/// <param name="GenesysJobId">
+/// Optional Genesys job identifier selected for job-based recovery.
+/// Supported only for <see cref="RecoveryCategory.ConversationsDetails"/> recovery.
+/// </param>
 public sealed record CreateRecoveryRequestResponseData(Guid RequestId,
                                                        string RequestAction,
                                                        string Lob,

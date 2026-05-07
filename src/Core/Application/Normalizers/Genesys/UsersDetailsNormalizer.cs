@@ -13,7 +13,7 @@ namespace Application.Normalizers.Genesys;
 public sealed class UsersDetailsNormalizer : IUsersDetailsNormalizer
 {
     public (IReadOnlyCollection<PrimaryPresenceDto> PrimaryPresenceDtos, IReadOnlyCollection<RoutingStatusDto>
-        RoutingStatusDtos) NormalizeUsersDetails(UsersDetailsRawContract response)
+            RoutingStatusDtos) NormalizeUsersDetails(UsersDetailsRawContract response)
     {
         ArgumentNullException.ThrowIfNull(response);
 
@@ -34,12 +34,12 @@ public sealed class UsersDetailsNormalizer : IUsersDetailsNormalizer
                                                                          StartTime = item.StartTime,
                                                                          EndTime = item.EndTime,
                                                                          DurationInSeconds =
-                                                                             DateTimeMath
-                                                                                .CalculateDuration(item.StartTime,
-                                                                                  item.EndTime),
+                                                                                 item.StartTime
+                                                                                        .CalculateDurationTo(item
+                                                                                                .EndTime),
                                                                          SystemPresence = item.SystemPresence,
                                                                          OrganizationPresenceId =
-                                                                             item.OrganizationPresenceId
+                                                                                 item.OrganizationPresenceId
                                                                      }));
             }
 
@@ -51,9 +51,9 @@ public sealed class UsersDetailsNormalizer : IUsersDetailsNormalizer
                                                                        StartTime = item.StartTime,
                                                                        EndTime = item.EndTime,
                                                                        DurationInSeconds =
-                                                                           DateTimeMath
-                                                                              .CalculateDuration(item.StartTime,
-                                                                                item.EndTime),
+                                                                               item.StartTime
+                                                                                      .CalculateDurationTo(item
+                                                                                              .EndTime),
                                                                        RoutingStatus = item.RoutingStatus
                                                                    }));
             }

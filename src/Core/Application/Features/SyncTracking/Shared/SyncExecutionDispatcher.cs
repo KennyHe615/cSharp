@@ -8,21 +8,21 @@ using SharedKernel.Sync;
 namespace Application.Features.SyncTracking.Shared;
 
 /// <summary>
-/// Top-level dispatcher that routes by category/mode and tracks dispatch-stage status.
+/// Top-level dispatcher that routes by category and mode, and tracks dispatch-stage run items.
 /// Execution details are delegated to specialized orchestrators.
 /// </summary>
-public sealed class SyncExecutionDispatcher(ISyncCheckpointRepository syncCheckpointRepository,
+public sealed class SyncExecutionDispatcher(ISyncRunItemRepository syncRunItemRepository,
                                             IReferencesSyncOrchestrator referencesSyncOrchestrator)
-    : ISyncExecutionDispatcher
+                : ISyncExecutionDispatcher
 {
     /// <inheritdoc />
-    public async Task ExecuteAsync(long runId,
-                                   string category,
-                                   SyncMode mode,
-                                   string? interval,
-                                   int? pageNumber,
-                                   string? genesysJobId,
-                                   CancellationToken ct)
+    public async Task<SyncExecutionResult> ExecuteAsync(long runId,
+                                                        string category,
+                                                        SyncMode mode,
+                                                        string? interval,
+                                                        int? pageNumber,
+                                                        string? genesysJobId,
+                                                        CancellationToken ct)
     {
         string scopeKey = SyncScopeKeyFormatter.Format(category,
                                                        mode.ToString(),
@@ -30,13 +30,13 @@ public sealed class SyncExecutionDispatcher(ISyncCheckpointRepository syncCheckp
                                                        pageNumber,
                                                        genesysJobId);
 
-        await syncCheckpointRepository.UpsertAsync(runId,
-                                                   SyncCheckpointSteps.Dispatch,
-                                                   scopeKey,
-                                                   SyncRunStatus.Running,
-                                                   null,
-                                                   ct)
-                                      .ConfigureAwait(false);
+        await syncRunItemRepository.UpsertAsync(runId,
+                                                SyncRunItemSteps.Dispatch,
+                                                scopeKey,
+                                                SyncRunStatus.Running,
+                                                null,
+                                                ct)
+                                   .ConfigureAwait(false);
 
         try
         {
@@ -44,37 +44,39 @@ public sealed class SyncExecutionDispatcher(ISyncCheckpointRepository syncCheckp
                                        category,
                                        mode,
                                        ct)
-               .ConfigureAwait(false);
+                           .ConfigureAwait(false);
 
-            await syncCheckpointRepository.UpsertAsync(runId,
-                                                       SyncCheckpointSteps.Dispatch,
-                                                       scopeKey,
-                                                       SyncRunStatus.Completed,
-                                                       null,
-                                                       ct)
-                                          .ConfigureAwait(false);
+            await syncRunItemRepository.UpsertAsync(runId,
+                                                    SyncRunItemSteps.Dispatch,
+                                                    scopeKey,
+                                                    SyncRunStatus.Completed,
+                                                    null,
+                                                    ct)
+                                       .ConfigureAwait(false);
+
+            return new SyncExecutionResult(CompletedWithRecoveryItems: false);
         }
         catch (OperationCanceledException ex)
         {
-            await syncCheckpointRepository.UpsertAsync(runId,
-                                                       SyncCheckpointSteps.Dispatch,
-                                                       scopeKey,
-                                                       SyncRunStatus.Canceled,
-                                                       ex.Message,
-                                                       CancellationToken.None)
-                                          .ConfigureAwait(false);
+            await syncRunItemRepository.UpsertAsync(runId,
+                                                    SyncRunItemSteps.Dispatch,
+                                                    scopeKey,
+                                                    SyncRunStatus.Canceled,
+                                                    ex.Message,
+                                                    CancellationToken.None)
+                                       .ConfigureAwait(false);
 
             throw;
         }
         catch (Exception ex)
         {
-            await syncCheckpointRepository.UpsertAsync(runId,
-                                                       SyncCheckpointSteps.Dispatch,
-                                                       scopeKey,
-                                                       SyncRunStatus.Failed,
-                                                       ex.Message,
-                                                       CancellationToken.None)
-                                          .ConfigureAwait(false);
+            await syncRunItemRepository.UpsertAsync(runId,
+                                                    SyncRunItemSteps.Dispatch,
+                                                    scopeKey,
+                                                    SyncRunStatus.Failed,
+                                                    ex.Message,
+                                                    CancellationToken.None)
+                                       .ConfigureAwait(false);
 
             throw;
         }
@@ -82,6 +84,9 @@ public sealed class SyncExecutionDispatcher(ISyncCheckpointRepository syncCheckp
 
     #region ========== *** Private Section *** ==========
 
+    /// <summary>
+    /// Dispatches one run to the correct category-specific execution pipeline.
+    /// </summary>
     private Task DispatchByScopeAsync(long runId, string category, SyncMode mode, CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(category))
@@ -91,15 +96,15 @@ public sealed class SyncExecutionDispatcher(ISyncCheckpointRepository syncCheckp
 
         if (Enum.TryParse(category, true, out SyncReferenceCategory referenceCategory))
         {
-            return mode != SyncMode.Incremental
-                ? throw new NotSupportedException("References full-sync accepts Incremental mode only.")
-                : referencesSyncOrchestrator.ExecuteAsync(runId, referenceCategory, ct);
+            return mode != SyncMode.Full
+                                   ? throw new NotSupportedException("References full-sync accepts Full mode only.")
+                                   : referencesSyncOrchestrator.ExecuteAsync(runId, referenceCategory, ct);
         }
 
         if (Enum.TryParse(category, true, out SyncAnalyticsCategory _))
         {
             throw new
-                NotSupportedException("Analytics dispatch is temporarily disabled during References-first implementation.");
+                            NotSupportedException("Analytics dispatch is temporarily disabled during References-first implementation.");
         }
 
         throw new NotSupportedException($"Unsupported sync execution route: Category={category}, Mode={mode}.");

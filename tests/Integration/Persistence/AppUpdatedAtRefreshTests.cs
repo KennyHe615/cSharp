@@ -35,12 +35,11 @@ public sealed class AppUpdatedAtRefreshTests
                                                 .UseInMemoryDatabase($"app-updated-at-{Guid.NewGuid()}")
                                                 .Options;
 
-        await using AppDbContext db =
-            new AppDbContext(options,
-                             Options.Create(new DatabaseOptions()),
-                             new StubLobContext(),
-                             dateTimeProvider,
-                             interceptor);
+        await using AppDbContext db = new AppDbContext(options,
+                                                       Options.Create(new DatabaseOptions()),
+                                                       new StubLobContext(),
+                                                       dateTimeProvider,
+                                                       interceptor);
 
         Skill entity = new Skill
                        {
@@ -50,9 +49,10 @@ public sealed class AppUpdatedAtRefreshTests
 
         db.Set<Skill>()
           .Add(entity);
+
         await db.SaveChangesAsync();
 
-        DateTimeOffset firstUpdatedAt = entity.AppUpdatedAt;
+        DateTimeOffset firstUpdatedAt = entity.AppUpdatedAtEastern;
 
         db.ChangeTracker.Clear();
 
@@ -64,7 +64,7 @@ public sealed class AppUpdatedAtRefreshTests
 
         await db.SaveChangesAsync();
 
-        DateTimeOffset secondUpdatedAt = loaded.AppUpdatedAt;
+        DateTimeOffset secondUpdatedAt = loaded.AppUpdatedAtEastern;
 
         Assert.True(secondUpdatedAt > firstUpdatedAt);
         Assert.Equal(TimeSpan.FromHours(-5), secondUpdatedAt.Offset);

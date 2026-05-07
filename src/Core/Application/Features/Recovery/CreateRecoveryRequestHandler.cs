@@ -2,6 +2,7 @@ using Application.Abstractions.Persistence;
 using Application.Contracts.InternalApis.Recovery;
 using Application.DTOs.SyncTracking;
 using Application.Enums;
+using Application.Features.Shared;
 using Application.Mediator;
 
 
@@ -16,9 +17,26 @@ public sealed class CreateRecoveryRequestHandler(ISyncRequestRepository syncRequ
     private readonly ISyncRequestRepository _syncRequestRepository =
                     syncRequestRepository ?? throw new ArgumentNullException(nameof(syncRequestRepository));
 
+    /// <summary>
+    /// Resolves a recovery request by scope and returns the accepted recovery response payload.
+    /// </summary>
+    /// <param name="request">Recovery request command payload.</param>
+    /// <param name="ct">Cancellation token from caller or host.</param>
+    /// <returns>The accepted recovery request response.</returns>
+    /// <exception cref="InvalidOperationException">
+    /// Thrown when <c>GenesysJobId</c> is supplied for a category other than <see cref="RecoveryCategory.ConversationsDetails"/>.
+    /// </exception>
     public async Task<CreateRecoveryRequestResponse> Handle(CreateRecoveryRequestCommand request,
                                                             CancellationToken ct = default)
     {
+        if (!RecoveryValidationRules.OnlyUseGenesysJobIdForConversationsDetails(request.GenesysJobId,
+                                                                                    request.Category
+                                                                                    == RecoveryCategory
+                                                                                                   .ConversationsDetails))
+        {
+            throw new InvalidOperationException("GenesysJobId is only supported for ConversationsDetails recovery.");
+        }
+
         string category = MapCategory(request.Category)
                        .ToString();
 
@@ -31,12 +49,13 @@ public sealed class CreateRecoveryRequestHandler(ISyncRequestRepository syncRequ
                                                                              ct)
                                                     .ConfigureAwait(false);
 
-        CreateRecoveryRequestResponseData data = new CreateRecoveryRequestResponseData(resolveResult.PublicId,
-            resolveResult.RequestAction.ToString(),
-            request.Lob.ToString(),
-            request.Category.ToString(),
-            request.Interval,
-            request.GenesysJobId);
+        CreateRecoveryRequestResponseData data =
+                        new CreateRecoveryRequestResponseData(resolveResult.PublicId,
+                                                              resolveResult.RequestAction.ToString(),
+                                                              request.Lob.ToString(),
+                                                              request.Category.ToString(),
+                                                              request.Interval,
+                                                              request.GenesysJobId);
 
         return new CreateRecoveryRequestResponse(true, "Recovery request accepted.", data);
     }

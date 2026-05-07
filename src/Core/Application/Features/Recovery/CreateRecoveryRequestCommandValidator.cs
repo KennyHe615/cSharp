@@ -1,4 +1,6 @@
 using Application.Abstractions.Recovery;
+using Application.Contracts.InternalApis.Recovery;
+using Application.Features.Shared;
 
 using FluentValidation;
 
@@ -23,23 +25,9 @@ public sealed class CreateRecoveryRequestCommandValidator : AbstractValidator<Cr
         _recoveryIntervalPolicy =
                         recoveryIntervalPolicy ?? throw new ArgumentNullException(nameof(recoveryIntervalPolicy));
 
-        RuleFor(x => x)
-                       .Must(HaveIntervalOrGenesysJobId)
-                       .WithMessage("Either Interval or GenesysJobId must be provided.");
-
-        RuleFor(x => x)
-                       .Must(NotHaveBothIntervalAndGenesysJobId)
-                       .WithMessage("Provide either Interval or GenesysJobId, not both.");
-
-        RuleFor(x => x.GenesysJobId)
-                       .MaximumLength(100)
-                       .WithMessage("GenesysJobId cannot exceed 100 characters.")
-                       .When(x => !string.IsNullOrWhiteSpace(x.GenesysJobId));
-
-        RuleFor(x => x.GenesysJobId)
-                       .Must(NotHaveLeadingOrTrailingSpaces)
-                       .WithMessage("GenesysJobId must not contain leading or trailing spaces.")
-                       .When(x => !string.IsNullOrWhiteSpace(x.GenesysJobId));
+        this.AddRecoverySelectorRules(x => x.Interval is not null,
+                                      x => x.GenesysJobId,
+                                      x => x.Category == RecoveryCategory.ConversationsDetails);
 
         RuleFor(x => x.Interval)
                        .Must(BeMinutePrecision)
@@ -61,28 +49,9 @@ public sealed class CreateRecoveryRequestCommandValidator : AbstractValidator<Cr
 
     #region ========== *** Private Methods *** ==========
 
-    private static bool HaveIntervalOrGenesysJobId(CreateRecoveryRequestCommand request)
-    {
-        bool hasInterval = request.Interval is not null;
-        bool hasGenesysJobId = !string.IsNullOrWhiteSpace(request.GenesysJobId);
-
-        return hasInterval || hasGenesysJobId;
-    }
-
-    private static bool NotHaveBothIntervalAndGenesysJobId(CreateRecoveryRequestCommand request)
-    {
-        bool hasInterval = request.Interval is not null;
-        bool hasGenesysJobId = !string.IsNullOrWhiteSpace(request.GenesysJobId);
-
-        return !(hasInterval && hasGenesysJobId);
-    }
-
-    private static bool NotHaveLeadingOrTrailingSpaces(string? genesysJobId)
-    {
-        return string.IsNullOrWhiteSpace(genesysJobId)
-               || string.Equals(genesysJobId, genesysJobId.Trim(), StringComparison.Ordinal);
-    }
-
+    /// <summary>
+    /// Ensures the supplied interval uses minute precision only.
+    /// </summary>
     private static bool BeMinutePrecision(UtcInterval? interval)
     {
         return interval is null
@@ -90,11 +59,17 @@ public sealed class CreateRecoveryRequestCommandValidator : AbstractValidator<Cr
                && interval.Value.End is { Second: 0, Millisecond: 0 };
     }
 
+    /// <summary>
+    /// Ensures the interval start stays within the allowed historical retention window.
+    /// </summary>
     private bool BeWithinHistoricalRetention(UtcInterval? interval)
     {
         return interval is null || _recoveryIntervalPolicy.IsStartWithinRetention(interval.Value.Start);
     }
 
+    /// <summary>
+    /// Ensures the interval end stays within the allowed future-skew window.
+    /// </summary>
     private bool BeWithinFutureSkew(UtcInterval? interval)
     {
         return interval is null || _recoveryIntervalPolicy.IsEndWithinFutureSkew(interval.Value.End);

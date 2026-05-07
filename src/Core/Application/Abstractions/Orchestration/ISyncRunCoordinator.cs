@@ -30,6 +30,13 @@ public interface ISyncRunCoordinator
     Task MarkCompletedAsync(long runId, CancellationToken ct);
 
     /// <summary>
+    /// Marks the run as completed while indicating recovery items were emitted.
+    /// </summary>
+    /// <param name="runId">Run id.</param>
+    /// <param name="ct">Cancellation token.</param>
+    Task MarkCompletedWithRecoveryItemsAsync(long runId, CancellationToken ct);
+
+    /// <summary>
     /// Marks the run as failed.
     /// </summary>
     /// <param name="runId">Run id.</param>
