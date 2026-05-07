@@ -2,7 +2,6 @@ using Infrastructure.Persistence.DbContext;
 using Infrastructure.Persistence.Entities.SyncTracking;
 
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
 
 using tests.TestSupport.Persistence;
@@ -22,7 +21,7 @@ public sealed class SyncRunItemConfigurationTests
 
         using AppDbContext dbContext = PersistenceTestFactory.CreateInMemoryDbContext(dateTimeProvider);
 
-        IEntityType entityType = GetSyncRunItemEntityType(dbContext);
+        IEntityType entityType = EntityModelTestHelper.GetEntityType<SyncRunItemEntity>(dbContext);
 
         Assert.Equal("sync_run_item", entityType.GetTableName());
 
@@ -48,7 +47,7 @@ public sealed class SyncRunItemConfigurationTests
 
         using AppDbContext dbContext = PersistenceTestFactory.CreateInMemoryDbContext(dateTimeProvider);
 
-        IEntityType entityType = GetSyncRunItemEntityType(dbContext);
+        IEntityType entityType = EntityModelTestHelper.GetEntityType<SyncRunItemEntity>(dbContext);
 
         ICheckConstraint constraint = entityType.GetCheckConstraints()
                                                 .Single(x => x.Name == "CK_sync_run_item_selector_shape");
@@ -64,20 +63,20 @@ public sealed class SyncRunItemConfigurationTests
 
         using AppDbContext dbContext = PersistenceTestFactory.CreateInMemoryDbContext(dateTimeProvider);
 
-        IEntityType entityType = GetSyncRunItemEntityType(dbContext);
+        IEntityType entityType = EntityModelTestHelper.GetEntityType<SyncRunItemEntity>(dbContext);
 
-        IIndex cursorIndex = FindIndex(entityType,
-                                       nameof(SyncRunItemEntity.RunId),
-                                       nameof(SyncRunItemEntity.Step),
-                                       nameof(SyncRunItemEntity.Cursor));
+        IIndex cursorIndex = EntityModelTestHelper.FindIndex(entityType,
+                                                             nameof(SyncRunItemEntity.RunId),
+                                                             nameof(SyncRunItemEntity.Step),
+                                                             nameof(SyncRunItemEntity.Cursor));
 
         Assert.True(cursorIndex.IsUnique);
         Assert.Equal("[page_number] IS NULL AND [cursor] IS NOT NULL", cursorIndex.GetFilter());
 
-        IIndex pageIndex = FindIndex(entityType,
-                                     nameof(SyncRunItemEntity.RunId),
-                                     nameof(SyncRunItemEntity.Step),
-                                     nameof(SyncRunItemEntity.PageNumber));
+        IIndex pageIndex = EntityModelTestHelper.FindIndex(entityType,
+                                                           nameof(SyncRunItemEntity.RunId),
+                                                           nameof(SyncRunItemEntity.Step),
+                                                           nameof(SyncRunItemEntity.PageNumber));
 
         Assert.True(pageIndex.IsUnique);
         Assert.Equal("[page_number] IS NOT NULL", pageIndex.GetFilter());
@@ -90,53 +89,28 @@ public sealed class SyncRunItemConfigurationTests
 
         using AppDbContext dbContext = PersistenceTestFactory.CreateInMemoryDbContext(dateTimeProvider);
 
-        IEntityType entityType = GetSyncRunItemEntityType(dbContext);
+        IEntityType entityType = EntityModelTestHelper.GetEntityType<SyncRunItemEntity>(dbContext);
 
-        Assert.True(HasIndex(entityType,
-                             nameof(SyncRunItemEntity.RunId),
-                             nameof(SyncRunItemEntity.Step),
-                             nameof(SyncRunItemEntity.Status),
-                             nameof(SyncRunItemEntity.ClaimExpiresAtEastern),
-                             nameof(SyncRunItemEntity.PageNumber)));
+        Assert.True(EntityModelTestHelper.HasIndex(entityType,
+                                                   nameof(SyncRunItemEntity.RunId),
+                                                   nameof(SyncRunItemEntity.Step),
+                                                   nameof(SyncRunItemEntity.Status),
+                                                   nameof(SyncRunItemEntity.ClaimExpiresAtEastern),
+                                                   nameof(SyncRunItemEntity.PageNumber)));
 
-        Assert.True(HasIndex(entityType,
-                             nameof(SyncRunItemEntity.RunId),
-                             nameof(SyncRunItemEntity.Step),
-                             nameof(SyncRunItemEntity.Status),
-                             nameof(SyncRunItemEntity.ClaimExpiresAtEastern),
-                             nameof(SyncRunItemEntity.Cursor)));
+        Assert.True(EntityModelTestHelper.HasIndex(entityType,
+                                                   nameof(SyncRunItemEntity.RunId),
+                                                   nameof(SyncRunItemEntity.Step),
+                                                   nameof(SyncRunItemEntity.Status),
+                                                   nameof(SyncRunItemEntity.ClaimExpiresAtEastern),
+                                                   nameof(SyncRunItemEntity.Cursor)));
 
-        Assert.True(HasIndex(entityType,
-                             nameof(SyncRunItemEntity.RunId),
-                             nameof(SyncRunItemEntity.Step),
-                             nameof(SyncRunItemEntity.ClaimedBy),
-                             nameof(SyncRunItemEntity.Status)));
+        Assert.True(EntityModelTestHelper.HasIndex(entityType,
+                                                   nameof(SyncRunItemEntity.RunId),
+                                                   nameof(SyncRunItemEntity.Step),
+                                                   nameof(SyncRunItemEntity.ClaimedBy),
+                                                   nameof(SyncRunItemEntity.Status)));
 
-        Assert.True(HasIndex(entityType, nameof(SyncRunItemEntity.LeaseToken)));
+        Assert.True(EntityModelTestHelper.HasIndex(entityType, nameof(SyncRunItemEntity.LeaseToken)));
     }
-
-    #region ========== *** Private Section *** ==========
-
-    private static IIndex FindIndex(IEntityType entityType, params string[] propertyNames)
-    {
-        return entityType.GetIndexes()
-                         .Single(index => index.Properties.Select(x => x.Name)
-                                               .SequenceEqual(propertyNames));
-    }
-
-    private static bool HasIndex(IEntityType entityType, params string[] propertyNames)
-    {
-        return entityType.GetIndexes()
-                         .Any(index => index.Properties.Select(x => x.Name)
-                                            .SequenceEqual(propertyNames));
-    }
-
-    private static IEntityType GetSyncRunItemEntityType(AppDbContext dbContext)
-    {
-        return dbContext.GetService<IDesignTimeModel>()
-                        .Model.FindEntityType(typeof(SyncRunItemEntity))
-               ?? throw new InvalidOperationException("SyncRunItemEntity model was not found.");
-    }
-
-    #endregion
 }

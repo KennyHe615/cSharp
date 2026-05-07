@@ -681,3 +681,72 @@ GO
 /* endregion */
 
 /* endregion */
+
+/* region ========== *** Recovery Intake *** ========== */
+IF OBJECT_ID(N'dbo.analytics_recovery_request', N'U') IS NULL
+    BEGIN
+        CREATE TABLE [dbo].[analytics_recovery_request]
+        (
+            [id]                     BIGINT            NOT NULL IDENTITY (1,1),
+            [public_id]              UNIQUEIDENTIFIER  NOT NULL
+                CONSTRAINT [DF_analytics_recovery_request_public_id] DEFAULT (NEWSEQUENTIALID()),
+            [category]               NVARCHAR(50)      NOT NULL,
+            [status]                 NVARCHAR(20)      NOT NULL
+                CONSTRAINT [DF_analytics_recovery_request_status] DEFAULT ('PENDING'),
+            [interval]               NVARCHAR(50)      NULL,
+            [genesys_job_id]         NVARCHAR(100)     NULL,
+            [failure_reason]         NVARCHAR(1000)    NULL,
+            [scope_key]              NVARCHAR(255)     NOT NULL,
+            [app_created_at_eastern] DATETIMEOFFSET(0) NOT NULL
+                CONSTRAINT [DF_analytics_recovery_request_app_created_at_eastern] DEFAULT (SWITCHOFFSET(
+                    SYSDATETIMEOFFSET(), DATENAME(TzOffset, SYSDATETIMEOFFSET() AT TIME ZONE 'Eastern Standard Time'))),
+            [app_updated_at_eastern] DATETIMEOFFSET(0) NOT NULL
+                CONSTRAINT [DF_analytics_recovery_request_app_updated_at_eastern] DEFAULT (SWITCHOFFSET(
+                    SYSDATETIMEOFFSET(), DATENAME(TzOffset, SYSDATETIMEOFFSET() AT TIME ZONE 'Eastern Standard Time'))),
+
+            CONSTRAINT [PK_analytics_recovery_request] PRIMARY KEY CLUSTERED ([id])
+        );
+    END
+GO
+
+IF NOT EXISTS (SELECT 1
+               FROM sys.indexes
+               WHERE name = N'UX_analytics_recovery_request_public_id'
+                 AND object_id = OBJECT_ID(N'dbo.analytics_recovery_request'))
+    BEGIN
+        CREATE UNIQUE NONCLUSTERED INDEX [UX_analytics_recovery_request_public_id]
+            ON [dbo].[analytics_recovery_request] ([public_id]);
+    END
+GO
+
+IF NOT EXISTS (SELECT 1
+               FROM sys.indexes
+               WHERE name = N'UX_analytics_recovery_request_scope_key_active'
+                 AND object_id = OBJECT_ID(N'dbo.analytics_recovery_request'))
+    BEGIN
+        CREATE UNIQUE NONCLUSTERED INDEX [UX_analytics_recovery_request_scope_key_active]
+            ON [dbo].[analytics_recovery_request] ([scope_key])
+            WHERE [status] IN ('PENDING', 'RUNNING');
+    END
+GO
+
+IF NOT EXISTS (SELECT 1
+               FROM sys.indexes
+               WHERE name = N'IX_analytics_recovery_request_category_status_app_updated_at_eastern'
+                 AND object_id = OBJECT_ID(N'dbo.analytics_recovery_request'))
+    BEGIN
+        CREATE NONCLUSTERED INDEX [IX_analytics_recovery_request_category_status_app_updated_at_eastern]
+            ON [dbo].[analytics_recovery_request] ([category], [status], [app_updated_at_eastern]);
+    END
+GO
+
+IF NOT EXISTS (SELECT 1
+               FROM sys.indexes
+               WHERE name = N'IX_analytics_recovery_request_app_updated_at_eastern'
+                 AND object_id = OBJECT_ID(N'dbo.analytics_recovery_request'))
+    BEGIN
+        CREATE NONCLUSTERED INDEX [IX_analytics_recovery_request_app_updated_at_eastern]
+            ON [dbo].[analytics_recovery_request] ([app_updated_at_eastern]);
+    END
+GO
+/* endregion */

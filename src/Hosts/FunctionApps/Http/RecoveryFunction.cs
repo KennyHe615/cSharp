@@ -4,7 +4,7 @@ using System.Text.Json.Serialization;
 using Application.Abstractions.Context;
 using Application.Abstractions.Identity;
 using Application.Contracts.InternalApis.Recovery;
-using Application.DTOs.SyncTracking;
+using Application.DTOs.Recovery;
 using Application.Features.Recovery;
 using Application.Mediator;
 
@@ -53,8 +53,9 @@ public sealed class RecoveryFunction(ISimpleMediator mediator,
                                                                             JsonUnmappedMemberHandling.Disallow,
                                                                     Converters =
                                                                     {
-                                                                        new JsonStringEnumConverter(
-                                                                                allowIntegerValues: false)
+                                                                        new
+                                                                                JsonStringEnumConverter(allowIntegerValues
+                                                                                    : false)
                                                                     }
                                                                 };
 
@@ -100,11 +101,11 @@ public sealed class RecoveryFunction(ISimpleMediator mediator,
                          .ConfigureAwait(false);
 
             using IDisposable scope = _logger.BeginOperationScope(lob, LogCategory, logEntity);
-            _logger.LogInformation(
-                    LobLogTemplates.LobCategoryEntity + "Request accepted for validation and processing.",
-                    lob,
-                    LogCategory,
-                    logEntity);
+            _logger.LogInformation(LobLogTemplates.LobCategoryEntity
+                                   + "Request accepted for validation and processing.",
+                                   lob,
+                                   LogCategory,
+                                   logEntity);
 
             await PopulateCredentialsAsync(lob, ct)
                    .ConfigureAwait(false);
@@ -255,9 +256,9 @@ public sealed class RecoveryFunction(ISimpleMediator mediator,
         CancellationToken ct)
     {
         CreateRecoveryRequestCommand command = new CreateRecoveryRequestCommand(lob,
-            category,
-            request.Interval,
-            request.GenesysJobId);
+                                                                                    category,
+                                                                                    request.Interval,
+                                                                                    request.GenesysJobId);
 
         return await _mediator.Send(command, ct)
                               .ConfigureAwait(false);
@@ -278,7 +279,7 @@ public sealed class RecoveryFunction(ISimpleMediator mediator,
         CancellationToken ct)
     {
         if (string.Equals(result.Data.RequestAction,
-                          nameof(SyncRequestResolveAction.Created),
+                          nameof(AnalyticsRecoveryRequestResolveAction.Created),
                           StringComparison.Ordinal))
         {
             return await HttpResponseFactory.CreatedAsync(req, result, ct)

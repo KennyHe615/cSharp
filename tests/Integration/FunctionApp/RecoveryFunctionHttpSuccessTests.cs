@@ -1,7 +1,7 @@
 using System.Net;
 
 using Application.Contracts.InternalApis.Recovery;
-using Application.DTOs.SyncTracking;
+using Application.DTOs.Recovery;
 
 using FunctionApps.Http;
 
@@ -72,15 +72,16 @@ public sealed class RecoveryFunctionHttpSuccessTests
     }
 
     [Theory]
-    [InlineData(SyncRequestResolveAction.ReusedActive)]
-    [InlineData(SyncRequestResolveAction.ReusedFailed)]
-    public async Task Post_WhenRequestReusedOrReopened_ReturnsAccepted(SyncRequestResolveAction action)
+    [InlineData(AnalyticsRecoveryRequestResolveAction.ReusedActive)]
+    public async Task Post_WhenRequestReused_ReturnsAccepted(AnalyticsRecoveryRequestResolveAction action)
     {
         FakeRecoveryMediator mediator = new FakeRecoveryMediator
                                         {
-                                            OnSend = (_, _) => Task.FromResult(
-                                                             RecoveryFunctionTestFactory
-                                                                    .CreateResponse(action))
+                                            OnSend =
+                                                    (_, _) =>
+                                                            Task
+                                                                   .FromResult(RecoveryFunctionTestFactory
+                                                                                      .CreateResponse(action))
                                         };
 
         RecoveryFunction sut = RecoveryFunctionTestFactory.Create(mediator);

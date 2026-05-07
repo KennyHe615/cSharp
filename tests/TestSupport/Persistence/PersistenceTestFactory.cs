@@ -137,6 +137,19 @@ public static class PersistenceTestFactory
                                                      OR (page_number IS NOT NULL AND cursor IS NULL))),
                                              FOREIGN KEY (run_id) REFERENCES sync_run(id)
                                          );
+                                         CREATE TABLE analytics_recovery_request
+                                         (
+                                             id INTEGER PRIMARY KEY,
+                                             public_id TEXT NOT NULL DEFAULT '00000000-0000-0000-0000-000000000000',
+                                             category TEXT NOT NULL,
+                                             status TEXT NOT NULL DEFAULT 'PENDING',
+                                             interval TEXT NULL,
+                                             genesys_job_id TEXT NULL,
+                                             failure_reason TEXT NULL,
+                                             scope_key TEXT NOT NULL,
+                                             app_created_at_eastern TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                                             app_updated_at_eastern TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+                                         );
 
                                          CREATE UNIQUE INDEX UX_sync_request_scope_key_full
                                              ON sync_request(scope_key)
@@ -165,6 +178,10 @@ public static class PersistenceTestFactory
                                          CREATE INDEX IX_sync_run_item_run_step_status_claim_exp_page
                                              ON sync_run_item(run_id, step, status, claim_expires_at_eastern, page_number)
                                              WHERE page_number IS NOT NULL;
+
+                                         CREATE UNIQUE INDEX UX_analytics_recovery_request_scope_key_active
+                                         ON analytics_recovery_request(scope_key)
+                                         WHERE status IN ('PENDING', 'RUNNING');
                                          """);
     }
 
