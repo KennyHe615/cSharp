@@ -5,6 +5,7 @@ using Infrastructure.Observability;
 
 using Ntt.Analytics;
 using Ntt.Analytics.Scheduling;
+using Ntt.Analytics.Workers.Recovery;
 using Ntt.Analytics.Workers.UsersDetails;
 
 
@@ -24,8 +25,13 @@ builder.Services.AddOptions<CronOrIntervalOptions>()
        .ValidateDataAnnotations()
        .ValidateOnStart();
 
+builder.Services.AddScoped<ScheduledWorkerLoopRunner>();
+builder.Services.AddScoped<IScheduledWorkerLoop, UsersDetailsScheduledWorkerLoop>();
+builder.Services.AddScoped<IScheduledWorkerLoop, RecoveryIntakeMaterializationScheduledWorkerLoop>();
+
 builder.Services.AddScoped<UsersDetailsIncrementalWorker>();
 builder.Services.AddScoped<UsersDetailsRecoveryWorker>();
+builder.Services.AddScoped<RecoveryIntakeMaterializationWorker>();
 builder.Services.AddHostedService<Worker>();
 
 IHost host = builder.Build();

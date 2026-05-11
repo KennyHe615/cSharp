@@ -1,6 +1,6 @@
 using Application.Abstractions.Persistence;
 using Application.Contracts.InternalApis.Recovery;
-using Application.DTOs.SyncTracking;
+using Application.DTOs.Recovery;
 using Application.Enums;
 using Application.Features.Shared;
 using Application.Mediator;
@@ -9,16 +9,16 @@ using Application.Mediator;
 namespace Application.Features.Recovery;
 
 /// <summary>
-/// Handles recovery request resolution in SyncTracking (create/reuse/reopen by scope rules).
+/// Handles recovery intake request resolution before the request is planned into executable sync work.
 /// </summary>
-public sealed class CreateRecoveryRequestHandler(ISyncRequestRepository syncRequestRepository)
-                : IRequestHandler<CreateRecoveryRequestCommand, CreateRecoveryRequestResponse>
+public sealed class CreateRecoveryRequestHandler(IAnalyticsRecoveryRequestRepository recoveryRequestRepository)
+        : IRequestHandler<CreateRecoveryRequestCommand, CreateRecoveryRequestResponse>
 {
-    private readonly ISyncRequestRepository _syncRequestRepository =
-                    syncRequestRepository ?? throw new ArgumentNullException(nameof(syncRequestRepository));
+    private readonly IAnalyticsRecoveryRequestRepository _recoveryRequestRepository =
+            recoveryRequestRepository ?? throw new ArgumentNullException(nameof(recoveryRequestRepository));
 
     /// <summary>
-    /// Resolves a recovery request by scope and returns the accepted recovery response payload.
+    /// Resolves a recovery intake request by scope and returns the accepted recovery response payload.
     /// </summary>
     /// <param name="request">Recovery request command payload.</param>
     /// <param name="ct">Cancellation token from caller or host.</param>
@@ -32,30 +32,28 @@ public sealed class CreateRecoveryRequestHandler(ISyncRequestRepository syncRequ
         if (!RecoveryValidationRules.OnlyUseGenesysJobIdForConversationsDetails(request.GenesysJobId,
                                                                                     request.Category
                                                                                     == RecoveryCategory
-                                                                                                   .ConversationsDetails))
+                                                                                           .ConversationsDetails))
         {
             throw new InvalidOperationException("GenesysJobId is only supported for ConversationsDetails recovery.");
         }
 
         string category = MapCategory(request.Category)
-                       .ToString();
+               .ToString();
 
-        SyncRequestResolveResult resolveResult =
-                        await _syncRequestRepository.CreateOrGetByScopeAsync(category,
-                                                                             SyncMode.Recovery,
-                                                                             request.Interval?.ToString(),
-                                                                             null,
-                                                                             request.GenesysJobId,
-                                                                             ct)
-                                                    .ConfigureAwait(false);
+        AnalyticsRecoveryRequestResolveResult resolveResult =
+                await _recoveryRequestRepository.CreateOrGetActiveAsync(category,
+                                                                        request.Interval?.ToString(),
+                                                                        request.GenesysJobId,
+                                                                        ct)
+                                                .ConfigureAwait(false);
 
         CreateRecoveryRequestResponseData data =
-                        new CreateRecoveryRequestResponseData(resolveResult.PublicId,
-                                                              resolveResult.RequestAction.ToString(),
-                                                              request.Lob.ToString(),
-                                                              request.Category.ToString(),
-                                                              request.Interval,
-                                                              request.GenesysJobId);
+                new CreateRecoveryRequestResponseData(resolveResult.PublicId,
+                                                      resolveResult.RequestAction.ToString(),
+                                                      request.Lob.ToString(),
+                                                      request.Category.ToString(),
+                                                      request.Interval,
+                                                      request.GenesysJobId);
 
         return new CreateRecoveryRequestResponse(true, "Recovery request accepted.", data);
     }

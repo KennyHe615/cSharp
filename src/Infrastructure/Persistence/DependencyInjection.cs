@@ -3,6 +3,7 @@ using Application.Abstractions.Persistence;
 using Infrastructure.Persistence.DbContext;
 using Infrastructure.Persistence.Interceptors;
 using Infrastructure.Persistence.Mappers;
+using Infrastructure.Persistence.Repositories.Recovery;
 using Infrastructure.Persistence.Repositories.References;
 using Infrastructure.Persistence.Repositories.SyncTracking;
 using Infrastructure.Persistence.Repositories.UserDetails;
@@ -44,5 +45,7 @@ public static class DependencyInjection
         services.AddScoped<ISyncRequestRepository, SyncRequestRepository>();
         services.AddScoped<ISyncRunRepository, SyncRunRepository>();
         services.AddScoped<ISyncRunItemRepository, SyncRunItemRepository>();
+        services.AddScoped<IAnalyticsRecoveryRequestRepository, AnalyticsRecoveryRequestRepository>();
+        services.AddScoped<IRecoveryIntakeWorkRepository, RecoveryIntakeWorkRepository>();
     }
 }

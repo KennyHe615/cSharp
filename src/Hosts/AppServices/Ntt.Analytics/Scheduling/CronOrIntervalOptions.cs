@@ -25,4 +25,17 @@ public sealed class CronOrIntervalOptions
     /// </summary>
     [Range(1, 168)]
     public int UsersDetailsRecoveryIntervalHours { get; init; } = 3;
+
+    /// <summary>
+    /// Gets whether recovery intake materialization is enabled for this host deployment.
+    /// Enable this only in the singleton planner deployment.
+    /// </summary>
+    public bool RecoveryIntakeMaterializationEnabled { get; init; }
+
+    /// <summary>
+    /// Gets the execution interval, in minutes, for recovery intake materialization.
+    /// This worker should run in a singleton planner deployment.
+    /// </summary>
+    [Range(1, 1440)]
+    public int RecoveryIntakeMaterializationIntervalMinutes { get; init; } = 10;
 }
