@@ -22,8 +22,8 @@ public sealed class CreateRecoveryRequestHandlerTests
     [InlineData(RecoveryCategory.UsersDetails, SyncAnalyticsCategory.UsersDetails)]
     [InlineData(RecoveryCategory.ConversationsDetails, SyncAnalyticsCategory.ConversationsDetails)]
     [InlineData(RecoveryCategory.ConversationsAggregates, SyncAnalyticsCategory.ConversationsAggregates)]
-    public async Task Handle_MapsCategoryAndResolvesRequest(RecoveryCategory category,
-                                                            SyncAnalyticsCategory expectedCategory)
+    public async Task Handle_MapsCategoryAndResolvesIntakeRequest(RecoveryCategory category,
+                                                                  SyncAnalyticsCategory expectedCategory)
     {
         Guid publicId = Guid.Parse("aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee");
         AnalyticsRecoveryRequestResolveResult resolveResult = new AnalyticsRecoveryRequestResolveResult
@@ -74,7 +74,7 @@ public sealed class CreateRecoveryRequestHandlerTests
     }
 
     [Fact]
-    public async Task Handle_WithGenesysJobId_PassesGenesysJobIdToRepository()
+    public async Task Handle_WithGenesysJobId_PassesGenesysJobIdToIntakeRepository()
     {
         Guid publicId = Guid.Parse("11111111-2222-3333-4444-555555555555");
         AnalyticsRecoveryRequestResolveResult resolveResult = new AnalyticsRecoveryRequestResolveResult
