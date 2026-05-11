@@ -1,6 +1,4 @@
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 
 using Moq;
 
@@ -23,37 +21,62 @@ public sealed class WorkerTests
     [Fact]
     public void Constructor_WithNullDependencies_ThrowsArgumentNullException()
     {
-        Mock<IServiceScopeFactory> scopeFactory = new Mock<IServiceScopeFactory>(MockBehavior.Strict);
         Mock<ILogger<Worker>> logger = new Mock<ILogger<Worker>>(MockBehavior.Strict);
+        IScheduledWorkerLoop[] loops = [];
 
-        IOptions<CronOrIntervalOptions> options = Options.Create(new CronOrIntervalOptions
-                                                                 {
-                                                                     UsersDetailsIncrementalIntervalMinutes = 30,
-                                                                     UsersDetailsRecoveryIntervalHours = 3
-                                                                 });
-
-        Assert.Throws<ArgumentNullException>(() => new Worker(null!, options, logger.Object));
-        Assert.Throws<ArgumentNullException>(() => new Worker(scopeFactory.Object, null!, logger.Object));
-        Assert.Throws<ArgumentNullException>(() => new Worker(scopeFactory.Object, options, null!));
+        Assert.Throws<ArgumentNullException>(() => new Worker(null!, logger.Object));
+        Assert.Throws<ArgumentNullException>(() => new Worker(loops, null!));
     }
 
     /// <summary>
-    /// Verifies that the worker accepts valid scheduling options.
+    /// Verifies that the worker accepts valid scheduled loop registrations.
     /// </summary>
     [Fact]
     public void Constructor_WithValidDependencies_CreatesInstance()
     {
-        Mock<IServiceScopeFactory> scopeFactory = new Mock<IServiceScopeFactory>(MockBehavior.Strict);
         Mock<ILogger<Worker>> logger = new Mock<ILogger<Worker>>(MockBehavior.Loose);
+        IScheduledWorkerLoop[] loops = [];
 
-        IOptions<CronOrIntervalOptions> options = Options.Create(new CronOrIntervalOptions
-                                                                 {
-                                                                     UsersDetailsIncrementalIntervalMinutes = 30,
-                                                                     UsersDetailsRecoveryIntervalHours = 3
-                                                                 });
-
-        Worker sut = new Worker(scopeFactory.Object, options, logger.Object);
+        Worker sut = new Worker(loops, logger.Object);
 
         Assert.NotNull(sut);
     }
+
+    /// <summary>
+    /// Verifies that the host worker starts every registered scheduled loop.
+    /// </summary>
+    [Fact]
+    public async Task ExecuteAsync_WithRegisteredLoops_StartsAllLoops()
+    {
+        TestScheduledWorkerLoop first = new TestScheduledWorkerLoop();
+        TestScheduledWorkerLoop second = new TestScheduledWorkerLoop();
+
+        Worker sut = new Worker([first, second], new Mock<ILogger<Worker>>(MockBehavior.Loose).Object);
+
+        await sut.StartAsync(CancellationToken.None);
+        await Task.WhenAll(first.Started.Task, second.Started.Task);
+
+        Assert.Equal(1, first.RunCount);
+        Assert.Equal(1, second.RunCount);
+    }
+
+    #region ========== *** Private Section *** ==========
+
+    private sealed class TestScheduledWorkerLoop : IScheduledWorkerLoop
+    {
+        public TaskCompletionSource Started { get; } =
+            new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public int RunCount { get; private set; }
+
+        public Task RunAsync(CancellationToken ct)
+        {
+            RunCount++;
+            Started.TrySetResult();
+
+            return Task.CompletedTask;
+        }
+    }
+
+    #endregion
 }

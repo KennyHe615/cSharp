@@ -46,5 +46,6 @@ public static class DependencyInjection
         services.AddScoped<ISyncRunRepository, SyncRunRepository>();
         services.AddScoped<ISyncRunItemRepository, SyncRunItemRepository>();
         services.AddScoped<IAnalyticsRecoveryRequestRepository, AnalyticsRecoveryRequestRepository>();
+        services.AddScoped<IRecoveryIntakeWorkRepository, RecoveryIntakeWorkRepository>();
     }
 }
