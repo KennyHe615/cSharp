@@ -4,7 +4,7 @@ using System.Text.Json.Serialization;
 using Application.Abstractions.Context;
 using Application.Abstractions.Identity;
 using Application.Contracts.InternalApis.Recovery;
-using Application.DTOs.SyncTracking;
+using Application.DTOs.Recovery;
 using Application.Features.Recovery;
 using Application.Mediator;
 
@@ -53,8 +53,9 @@ public sealed class RecoveryFunction(ISimpleMediator mediator,
                                                                             JsonUnmappedMemberHandling.Disallow,
                                                                     Converters =
                                                                     {
-                                                                        new JsonStringEnumConverter(
-                                                                                allowIntegerValues: false)
+                                                                        new
+                                                                                JsonStringEnumConverter(allowIntegerValues
+                                                                                    : false)
                                                                     }
                                                                 };
 
@@ -63,14 +64,14 @@ public sealed class RecoveryFunction(ISimpleMediator mediator,
     #endregion
 
     /// <summary>
-    /// Creates a recovery request for the specified LOB and category, then dispatches it through the application mediator.
+    /// Creates or reuses a recovery intake request for the specified LOB and category, then dispatches it through the application mediator.
     /// </summary>
     /// <param name="req">Incoming HTTP request.</param>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>
     /// A <see cref="HttpResponseData"/> containing:
-    /// 201 with the created recovery payload on newly created recovery requests,
-    /// 202 with the accepted recovery payload on reused or reopened recovery requests,
+    /// 201 with the created recovery intake payload on newly created recovery intake requests,
+    /// 202 with the accepted recovery intake payload on reused active recovery intake requests,
     /// 400 for invalid client input,
     /// or 500 for unexpected server errors.
     /// <para>
@@ -100,11 +101,11 @@ public sealed class RecoveryFunction(ISimpleMediator mediator,
                          .ConfigureAwait(false);
 
             using IDisposable scope = _logger.BeginOperationScope(lob, LogCategory, logEntity);
-            _logger.LogInformation(
-                    LobLogTemplates.LobCategoryEntity + "Request accepted for validation and processing.",
-                    lob,
-                    LogCategory,
-                    logEntity);
+            _logger.LogInformation(LobLogTemplates.LobCategoryEntity
+                                   + "Request accepted for validation and processing.",
+                                   lob,
+                                   LogCategory,
+                                   logEntity);
 
             await PopulateCredentialsAsync(lob, ct)
                    .ConfigureAwait(false);
@@ -255,30 +256,30 @@ public sealed class RecoveryFunction(ISimpleMediator mediator,
         CancellationToken ct)
     {
         CreateRecoveryRequestCommand command = new CreateRecoveryRequestCommand(lob,
-            category,
-            request.Interval,
-            request.GenesysJobId);
+                                                                                    category,
+                                                                                    request.Interval,
+                                                                                    request.GenesysJobId);
 
         return await _mediator.Send(command, ct)
                               .ConfigureAwait(false);
     }
 
     /// <summary>
-    /// Writes a success response for a resolved recovery request.
+    /// Writes a success response for a resolved recovery intake request.
     /// </summary>
     /// <param name="req">Incoming HTTP request used to create the response.</param>
-    /// <param name="result">Resolved recovery request response from the application layer.</param>
+    /// <param name="result">Resolved recovery intake response from the application layer.</param>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>
-    /// A 201 Created response when a new recovery request was created,
-    /// or a 202 Accepted response when an existing recovery request was reused or reopened.
+    /// A 201 Created response when a new recovery intake request was created,
+    /// or a 202 Accepted response when an existing active recovery intake request was reused.
     /// </returns>
     private static async Task<HttpResponseData> WriteSuccessfulRecoveryResponseAsync(HttpRequestData req,
         CreateRecoveryRequestResponse result,
         CancellationToken ct)
     {
         if (string.Equals(result.Data.RequestAction,
-                          nameof(SyncRequestResolveAction.Created),
+                          nameof(AnalyticsRecoveryRequestResolveAction.Created),
                           StringComparison.Ordinal))
         {
             return await HttpResponseFactory.CreatedAsync(req, result, ct)

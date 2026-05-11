@@ -1,4 +1,5 @@
-using Microsoft.Data.SqlClient;
+using Infrastructure.Persistence.Repositories.Shared;
+
 using Microsoft.EntityFrameworkCore;
 
 
@@ -56,7 +57,7 @@ public static class UniqueViolationDetector
     /// </summary>
     public static bool IsScopeKeyUniqueViolation(Exception ex)
     {
-        return IsSqlUniqueViolation(ex) || ContainsAnyToken(ex, ScopeKeyTokens);
+        return UniqueViolationDetectorCore.IsUniqueViolation(ex, ScopeKeyTokens);
     }
 
     /// <summary>
@@ -65,7 +66,7 @@ public static class UniqueViolationDetector
     /// </summary>
     public static bool IsRunItemUniqueViolation(Exception ex)
     {
-        return IsSqlUniqueViolation(ex) || ContainsAnyToken(ex, RunItemTokens);
+        return UniqueViolationDetectorCore.IsUniqueViolation(ex, RunItemTokens);
     }
 
     /// <summary>
@@ -74,7 +75,7 @@ public static class UniqueViolationDetector
     /// </summary>
     public static bool IsIncrementalSyncWindowCategoryUniqueViolation(DbUpdateException ex)
     {
-        return IsSqlUniqueViolation(ex) || ContainsAnyToken(ex, IncrementalSyncWindowCategoryTokens);
+        return UniqueViolationDetectorCore.IsUniqueViolation(ex, IncrementalSyncWindowCategoryTokens);
     }
 
     /// <summary>
@@ -82,37 +83,6 @@ public static class UniqueViolationDetector
     /// </summary>
     public static bool IsActiveRunUniqueViolation(Exception ex)
     {
-        return IsSqlUniqueViolation(ex) || ContainsAnyToken(ex, ActiveRunTokens);
+        return UniqueViolationDetectorCore.IsUniqueViolation(ex, ActiveRunTokens);
     }
-
-    #region ========== *** Private Section *** ==========
-
-    private static bool IsSqlUniqueViolation(Exception ex)
-    {
-        return ex switch
-               {
-                   DbConstraintViolationException { InnerException: DbUpdateException dbUpdateException } =>
-                           IsSqlUniqueViolation(dbUpdateException),
-
-                   DbUpdateException { InnerException: SqlException sqlEx } => sqlEx.Number is 2601 or 2627,
-
-                   _ => false
-               };
-    }
-
-    private static bool ContainsAnyToken(Exception ex, IReadOnlyCollection<string> tokens)
-    {
-        string message = ex.InnerException?.Message ?? ex.Message;
-
-        if (ex is DbConstraintViolationException constraintException
-            && !string.IsNullOrWhiteSpace(constraintException.ConstraintName))
-        {
-            message = $"{constraintException.ConstraintName} {message}";
-        }
-
-        return !string.IsNullOrWhiteSpace(message)
-               && tokens.Any(token => message.Contains(token, StringComparison.OrdinalIgnoreCase));
-    }
-
-    #endregion
 }

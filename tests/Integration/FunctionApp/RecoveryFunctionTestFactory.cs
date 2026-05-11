@@ -4,7 +4,7 @@ using System.Text.Json;
 using Application.Abstractions.Context;
 using Application.Abstractions.Identity;
 using Application.Contracts.InternalApis.Recovery;
-using Application.DTOs.SyncTracking;
+using Application.DTOs.Recovery;
 using Application.Features.Recovery;
 using Application.Mediator;
 
@@ -52,8 +52,8 @@ internal static class RecoveryFunctionTestFactory
                ?? string.Empty;
     }
 
-    internal static CreateRecoveryRequestResponse CreateResponse(SyncRequestResolveAction action =
-                                                                                 SyncRequestResolveAction.Created)
+    internal static CreateRecoveryRequestResponse CreateResponse(AnalyticsRecoveryRequestResolveAction action =
+                                                                         AnalyticsRecoveryRequestResolveAction.Created)
     {
         return new CreateRecoveryRequestResponse(true,
                                                  "Recovery request accepted.",
@@ -103,7 +103,7 @@ internal sealed class FakeRecoveryMediator : ISimpleMediator
         LastCommand = command;
 
         CreateRecoveryRequestResponse response = await OnSend(command, ct)
-                                                                .ConfigureAwait(false);
+                                                        .ConfigureAwait(false);
 
         return (TResponse)(object)response;
     }
@@ -117,7 +117,7 @@ internal sealed class CapturingLogger<T> : ILogger<T>
     internal IReadOnlyList<LogEntry> Entries => _entries;
 
     public IDisposable BeginScope<TState>(TState state)
-                    where TState : notnull
+            where TState : notnull
     {
         return NoopDisposable.Instance;
     }
