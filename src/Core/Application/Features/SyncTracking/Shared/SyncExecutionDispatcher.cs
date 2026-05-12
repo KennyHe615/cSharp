@@ -9,12 +9,17 @@ namespace Application.Features.SyncTracking.Shared;
 
 /// <summary>
 /// Top-level dispatcher that routes by category and mode, and tracks dispatch-stage run items.
-/// Execution details are delegated to specialized orchestrators.
+/// Execution details are delegated to specialized orchestrators and analytics executors.
 /// </summary>
 public sealed class SyncExecutionDispatcher(ISyncRunItemRepository syncRunItemRepository,
-                                            IReferencesSyncOrchestrator referencesSyncOrchestrator)
-                : ISyncExecutionDispatcher
+                                            IReferencesSyncOrchestrator referencesSyncOrchestrator,
+                                            IEnumerable<IAnalyticsSyncExecutor> analyticsExecutors)
+        : ISyncExecutionDispatcher
 {
+    private readonly Dictionary<SyncAnalyticsCategory, IAnalyticsSyncExecutor> _analyticsExecutors =
+            (analyticsExecutors ?? throw new ArgumentNullException(nameof(analyticsExecutors)))
+           .ToDictionary(x => x.Category);
+
     /// <inheritdoc />
     public async Task<SyncExecutionResult> ExecuteAsync(long runId,
                                                         string category,
@@ -40,21 +45,26 @@ public sealed class SyncExecutionDispatcher(ISyncRunItemRepository syncRunItemRe
 
         try
         {
-            await DispatchByScopeAsync(runId,
-                                       category,
-                                       mode,
-                                       ct)
-                           .ConfigureAwait(false);
+            SyncExecutionResult executionResult = await DispatchByScopeAsync(runId,
+                                                                             category,
+                                                                             mode,
+                                                                             interval,
+                                                                             pageNumber,
+                                                                             genesysJobId,
+                                                                             ct)
+                                                         .ConfigureAwait(false);
+
+            SyncRunStatus dispatchStatus = executionResult.Failed ? SyncRunStatus.Failed : SyncRunStatus.Completed;
 
             await syncRunItemRepository.UpsertAsync(runId,
                                                     SyncRunItemSteps.Dispatch,
                                                     scopeKey,
-                                                    SyncRunStatus.Completed,
-                                                    null,
+                                                    dispatchStatus,
+                                                    executionResult.FailureReason,
                                                     ct)
                                        .ConfigureAwait(false);
 
-            return new SyncExecutionResult(CompletedWithRecoveryItems: false);
+            return executionResult;
         }
         catch (OperationCanceledException ex)
         {
@@ -87,7 +97,13 @@ public sealed class SyncExecutionDispatcher(ISyncRunItemRepository syncRunItemRe
     /// <summary>
     /// Dispatches one run to the correct category-specific execution pipeline.
     /// </summary>
-    private Task DispatchByScopeAsync(long runId, string category, SyncMode mode, CancellationToken ct)
+    private async Task<SyncExecutionResult> DispatchByScopeAsync(long runId,
+                                                                 string category,
+                                                                 SyncMode mode,
+                                                                 string? interval,
+                                                                 int? pageNumber,
+                                                                 string? genesysJobId,
+                                                                 CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(category))
         {
@@ -96,15 +112,37 @@ public sealed class SyncExecutionDispatcher(ISyncRunItemRepository syncRunItemRe
 
         if (Enum.TryParse(category, true, out SyncReferenceCategory referenceCategory))
         {
-            return mode != SyncMode.Full
-                                   ? throw new NotSupportedException("References full-sync accepts Full mode only.")
-                                   : referencesSyncOrchestrator.ExecuteAsync(runId, referenceCategory, ct);
+            if (mode != SyncMode.Full)
+            {
+                throw new NotSupportedException("References full-sync accepts Full mode only.");
+            }
+
+            await referencesSyncOrchestrator.ExecuteAsync(runId, referenceCategory, ct)
+                                            .ConfigureAwait(false);
+
+            return new SyncExecutionResult(CompletedWithRecoveryItems: false);
         }
 
-        if (Enum.TryParse(category, true, out SyncAnalyticsCategory _))
+        if (Enum.TryParse(category, true, out SyncAnalyticsCategory analyticsCategory))
         {
-            throw new
-                            NotSupportedException("Analytics dispatch is temporarily disabled during References-first implementation.");
+            if (mode != SyncMode.Incremental && mode != SyncMode.Recovery)
+            {
+                throw new NotSupportedException("Analytics sync accepts Incremental or Recovery mode only.");
+            }
+
+            if (!_analyticsExecutors.TryGetValue(analyticsCategory, out IAnalyticsSyncExecutor? executor))
+            {
+                throw new
+                        NotSupportedException($"No analytics executor is registered for category '{analyticsCategory}'.");
+            }
+
+            return await executor.ExecuteAsync(runId,
+                                               mode,
+                                               interval,
+                                               pageNumber,
+                                               genesysJobId,
+                                               ct)
+                                 .ConfigureAwait(false);
         }
 
         throw new NotSupportedException($"Unsupported sync execution route: Category={category}, Mode={mode}.");
