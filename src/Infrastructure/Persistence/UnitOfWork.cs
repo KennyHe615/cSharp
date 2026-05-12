@@ -26,17 +26,91 @@ public sealed class UnitOfWork(AppDbContext dbContext,
     public Task UpsertAsync<TEntity>(TEntity entity,
                                      Action<TEntity>? onMissingFromIncoming = null,
                                      CancellationToken ct = default)
-        where TEntity : class
+            where TEntity : class
     {
         ArgumentNullException.ThrowIfNull(entity);
 
-        return UpsertRangeAsync([entity], onMissingFromIncoming, ct);
+        return UpsertRangeCoreAsync([entity],
+                                    null,
+                                    onMissingFromIncoming,
+                                    ct);
     }
 
-    public async Task UpsertRangeAsync<TEntity>(IEnumerable<TEntity> incomingMappedEntities,
-                                                Action<TEntity>? onMissingFromIncoming = null,
-                                                CancellationToken ct = default)
-        where TEntity : class
+    public Task UpsertRangeAsync<TEntity>(IEnumerable<TEntity> incomingMappedEntities,
+                                          Action<TEntity>? onMissingFromIncoming = null,
+                                          CancellationToken ct = default)
+            where TEntity : class
+    {
+        return UpsertRangeCoreAsync(incomingMappedEntities,
+                                    null,
+                                    onMissingFromIncoming,
+                                    ct);
+    }
+
+    public Task UpsertWithMergeAsync<TEntity>(TEntity entity,
+                                              Action<TEntity, TEntity> onMatched,
+                                              CancellationToken ct = default)
+            where TEntity : class
+    {
+        ArgumentNullException.ThrowIfNull(entity);
+        ArgumentNullException.ThrowIfNull(onMatched);
+
+        return UpsertRangeCoreAsync([entity],
+                                    onMatched,
+                                    null,
+                                    ct);
+    }
+
+    public Task UpsertRangeWithMergeAsync<TEntity>(IEnumerable<TEntity> incomingMappedEntities,
+                                                   Action<TEntity, TEntity> onMatched,
+                                                   CancellationToken ct = default)
+            where TEntity : class
+    {
+        ArgumentNullException.ThrowIfNull(onMatched);
+
+        return UpsertRangeCoreAsync(incomingMappedEntities,
+                                    onMatched,
+                                    null,
+                                    ct);
+    }
+
+    public async Task<int> SaveChangesAsync(CancellationToken ct = default)
+    {
+        using IDisposable _ = logger.BeginOperationScope(_lobName, CategoryName);
+
+        try
+        {
+            return await dbContext.SaveChangesAsync(ct)
+                                  .ConfigureAwait(false);
+        }
+        catch (DbUpdateConcurrencyException ex)
+        {
+            throw new
+                    DbConcurrencyException("A concurrency conflict occurred while saving changes. Data may have been modified by another process.",
+                                           ex);
+        }
+        catch (DbUpdateException ex) when (ex.InnerException is not null)
+        {
+            string? constraintName = ExtractConstraintName(ex);
+
+            throw new DbConstraintViolationException("A database constraint violation occurred while saving changes.",
+                                                     ex,
+                                                     constraintName);
+        }
+        catch (Exception ex) when (ex is not PersistenceException)
+        {
+            throw new EntityOperationException("An unexpected error occurred while saving changes to the database.",
+                                               ex);
+        }
+    }
+
+    #region ========== *** Private Methods *** ==========
+
+    private async Task UpsertRangeCoreAsync<TEntity>(IEnumerable<TEntity> incomingMappedEntities,
+                                                     Action<TEntity, TEntity>? onMatched,
+                                                     Action<TEntity>? onMissingFromIncoming,
+                                                     CancellationToken ct)
+            where TEntity : class
     {
         ArgumentNullException.ThrowIfNull(incomingMappedEntities);
 
@@ -70,7 +144,8 @@ public sealed class UnitOfWork(AppDbContext dbContext,
             UpsertResult result = EntityUpdateHandler.ProcessUpsertOperations(dbContext,
                                                                               incomingList,
                                                                               dbById,
-                                                                              metadata);
+                                                                              metadata,
+                                                                              onMatched);
 
             logger.LogDebug(LobLogTemplates.LobCategoryEntity
                             + "Upsert processed | Added={AddedCount} Updated={UpdatedCount} MatchedFetched={FetchedCount}",
@@ -83,8 +158,10 @@ public sealed class UnitOfWork(AppDbContext dbContext,
 
             if (onMissingFromIncoming is not null)
             {
-                List<TEntity> dbAllEntities =
-                    await dbContext.Set<TEntity>().AsTracking().ToListAsync(ct).ConfigureAwait(false);
+                List<TEntity> dbAllEntities = await dbContext.Set<TEntity>()
+                                                             .AsTracking()
+                                                             .ToListAsync(ct)
+                                                             .ConfigureAwait(false);
 
                 EntityUpdateHandler.ProcessMissingEntities(dbAllEntities,
                                                            result.IncomingKeys,
@@ -104,48 +181,17 @@ public sealed class UnitOfWork(AppDbContext dbContext,
         }
     }
 
-    public async Task<int> SaveChangesAsync(CancellationToken ct = default)
-    {
-        using IDisposable _ = logger.BeginOperationScope(_lobName, CategoryName);
-
-        try
-        {
-            return await dbContext.SaveChangesAsync(ct).ConfigureAwait(false);
-        }
-        catch (DbUpdateConcurrencyException ex)
-        {
-            throw new
-                DbConcurrencyException("A concurrency conflict occurred while saving changes. Data may have been modified by another process.",
-                                       ex);
-        }
-        catch (DbUpdateException ex) when (ex.InnerException is not null)
-        {
-            string? constraintName = ExtractConstraintName(ex);
-
-            throw new DbConstraintViolationException("A database constraint violation occurred while saving changes.",
-                                                     ex,
-                                                     constraintName);
-        }
-        catch (Exception ex) when (ex is not PersistenceException)
-        {
-            throw new EntityOperationException("An unexpected error occurred while saving changes to the database.",
-                                               ex);
-        }
-    }
-
-    #region ========== *** Private Methods *** ==========
-
     private EntityMetadata<TEntity> GetEntityMetadata<TEntity>(string entityName)
-        where TEntity : class
+            where TEntity : class
     {
         IEntityType entityType =
-            dbContext.Model.FindEntityType(typeof(TEntity))
-            ?? throw new
-                EntityOperationException($"[{_lobName}] [{entityName}] Entity is not configured in DbContext model.");
+                dbContext.Model.FindEntityType(typeof(TEntity))
+                ?? throw new
+                        EntityOperationException($"[{_lobName}] [{entityName}] Entity is not configured in DbContext model.");
 
         IKey primaryKey =
-            entityType.FindPrimaryKey()
-            ?? throw new EntityOperationException($"[{_lobName}] [{entityName}] Primary key is not defined.");
+                entityType.FindPrimaryKey()
+                ?? throw new EntityOperationException($"[{_lobName}] [{entityName}] Primary key is not defined.");
 
         return new EntityMetadata<TEntity>(entityType, primaryKey, dateTimeProvider);
     }
