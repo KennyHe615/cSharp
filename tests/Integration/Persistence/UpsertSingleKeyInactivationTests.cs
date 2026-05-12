@@ -1,18 +1,11 @@
-using Application.Abstractions.Context;
-using Application.Abstractions.Persistence;
-
 using Infrastructure.ExternalApis.Providers.Genesys.Enums;
 using Infrastructure.Persistence;
 using Infrastructure.Persistence.DbContext;
 using Infrastructure.Persistence.Entities.References;
-using Infrastructure.Persistence.Interceptors;
 
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
 
-using SharedKernel.Time;
-
-using tests.TestSupport.Context;
+using tests.TestSupport.Persistence;
 using tests.TestSupport.Time;
 
 using Xunit;
@@ -22,30 +15,16 @@ namespace tests.Integration.Persistence;
 
 public sealed class UpsertSingleKeyInactivationTests
 {
+    /// <summary>
+    /// Verifies range upsert behavior for single-key reference entities when missing rows are inactivated.
+    /// </summary>
     [Fact]
     public async Task UpsertRange_SingleKey_WithInactivationCallback_UpdatesAndInactivatesMissingRows()
     {
-        ServiceCollection services = [];
-        services.AddLogging();
-        services.AddSingleton<IDateTimeProvider, FixedEstDateTimeProvider>();
-        services.AddScoped<ILobContext, StubLobContext>();
-        services.AddScoped<AuditSaveChangesInterceptor>();
-        services.AddOptions<DatabaseOptions>()
-                .Configure(o =>
-                           {
-                               o.MaxRetryCount = 3;
-                               o.CommandTimeout = 30;
-                               o.EnableDetailedErrors = false;
-                               o.EnableSensitiveDataLogging = false;
-                           });
-        services.AddDbContext<AppDbContext>(o => o.UseInMemoryDatabase($"upsert-single-{Guid.NewGuid()}"));
-        services.AddScoped<IUnitOfWork, UnitOfWork>();
+        FixedEstDateTimeProvider dateTimeProvider = new FixedEstDateTimeProvider();
 
-        await using ServiceProvider sp = services.BuildServiceProvider();
-        using IServiceScope scope = sp.CreateAsyncScope();
-
-        IUnitOfWork uow = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
-        AppDbContext db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        await using AppDbContext db = PersistenceTestFactory.CreateInMemoryDbContext(dateTimeProvider);
+        UnitOfWork uow = PersistenceTestFactory.CreatePersistenceUnitOfWork(db, dateTimeProvider);
 
         Skill keepId = new Skill { Id = Guid.NewGuid(), Name = "keep", State = State.Active };
         Skill missingId = new Skill { Id = Guid.NewGuid(), Name = "missing", State = State.Active };

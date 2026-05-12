@@ -7,6 +7,7 @@ using Infrastructure.Persistence.Interceptors;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 
 using Moq;
@@ -62,7 +63,7 @@ public static class PersistenceTestFactory
         return dbContext;
     }
 
-    public static Mock<IUnitOfWork> CreateUnitOfWork<TEntity>(AppDbContext dbContext)
+    public static Mock<IUnitOfWork> CreateMockUnitOfWork<TEntity>(AppDbContext dbContext)
             where TEntity : class
     {
         Mock<IUnitOfWork> uow = new Mock<IUnitOfWork>(MockBehavior.Strict);
@@ -76,6 +77,23 @@ public static class PersistenceTestFactory
            .Returns<CancellationToken>(dbContext.SaveChangesAsync);
 
         return uow;
+    }
+
+    /// <summary>
+    /// Creates a real unit of work for integration tests that need to exercise UnitOfWork internals.
+    /// </summary>
+    /// <param name="dbContext">The test database context used by the unit of work.</param>
+    /// <param name="dateTimeProvider">The test clock used by entity metadata and audit behavior.</param>
+    /// <returns>A real <see cref="UnitOfWork"/> instance backed by the supplied context.</returns>
+    public static UnitOfWork CreatePersistenceUnitOfWork(AppDbContext dbContext, IDateTimeProvider dateTimeProvider)
+    {
+        ArgumentNullException.ThrowIfNull(dbContext);
+        ArgumentNullException.ThrowIfNull(dateTimeProvider);
+
+        return new UnitOfWork(dbContext,
+                              new StubLobContext(),
+                              dateTimeProvider,
+                              NullLogger<UnitOfWork>.Instance);
     }
 
     #region ========== *** Private Section *** ==========

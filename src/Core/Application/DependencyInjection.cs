@@ -1,6 +1,7 @@
 using Application.Abstractions.Normalization;
 using Application.Abstractions.Orchestration;
 using Application.Behaviors;
+using Application.Features.SyncTracking.Analytics;
 using Application.Features.SyncTracking.References;
 using Application.Features.SyncTracking.Shared;
 using Application.Mediator;
@@ -37,5 +38,8 @@ public static class DependencyInjection
         services.AddScoped<ISyncRequestRunner, SyncRequestRunner>();
         services.AddScoped<IReferencesSyncOrchestrator, ReferencesSyncOrchestrator>();
         services.AddScoped<ISyncExecutionDispatcher, SyncExecutionDispatcher>();
+
+        services.AddScoped<IAnalyticsPageSyncCoordinator, AnalyticsPageSyncCoordinator>();
+        services.AddScoped<IAnalyticsSyncExecutor, UsersDetailsSyncExecutor>();
     }
 }
