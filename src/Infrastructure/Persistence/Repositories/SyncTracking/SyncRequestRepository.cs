@@ -1,3 +1,5 @@
+using System.Data;
+
 using Application.Abstractions.Persistence;
 using Application.DTOs.SyncTracking;
 using Application.Enums;
@@ -6,6 +8,7 @@ using Infrastructure.Persistence.DbContext;
 using Infrastructure.Persistence.Entities.SyncTracking;
 
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 
 using SharedKernel.Sync;
 
@@ -81,6 +84,20 @@ public sealed class SyncRequestRepository(AppDbContext dbContext,
     }
 
     /// <inheritdoc />
+    public async Task<SyncRequestDto?> TryStartNextRecoveryRequestAsync(string category, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(category))
+        {
+            throw new ArgumentException("Category is required.", nameof(category));
+        }
+
+        IExecutionStrategy strategy = dbContext.Database.CreateExecutionStrategy();
+
+        return await strategy.ExecuteAsync(() => TryStartNextRecoveryRequestCoreAsync(category, ct))
+                             .ConfigureAwait(false);
+    }
+
+    /// <inheritdoc />
     public async Task<IReadOnlyCollection<SyncRequestDto>> GetEligibleRecoveryRequestsAsync(string category,
         CancellationToken ct)
     {
@@ -89,17 +106,41 @@ public sealed class SyncRequestRepository(AppDbContext dbContext,
             throw new ArgumentException("Category is required.", nameof(category));
         }
 
-        const int maxReopenCount = 3;
+        return await BuildEligibleRecoveryRequestQuery(category)
+                    .AsNoTracking()
+                    .Select(x => new SyncRequestDto
+                                 {
+                                     Id = x.Id,
+                                     PublicId = x.PublicId,
+                                     Category = x.Category,
+                                     Mode = x.Mode,
+                                     Status = x.Status,
+                                     ReopenCount = x.ReopenCount,
+                                     Interval = x.Interval,
+                                     PageNumber = x.PageNumber,
+                                     GenesysJobId = x.GenesysJobId,
+                                     ScopeKey = x.ScopeKey,
+                                     CurrentRunId = x.CurrentRunId
+                                 })
+                    .ToArrayAsync(ct)
+                    .ConfigureAwait(false);
+    }
+
+    /// <inheritdoc />
+    public async Task<SyncRequestDto?> GetNextJoinableIncrementalRequestAsync(string category, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(category))
+        {
+            throw new ArgumentException("Category is required.", nameof(category));
+        }
 
         return await dbContext.Set<SyncRequestEntity>()
                               .AsNoTracking()
                               .Where(x => x.Category == category
-                                          && x.Mode  == SyncMode.Recovery
-                                          && (x.Status == SyncRequestStatus.Pending
-                                              || (x.Status    == SyncRequestStatus.Failed
-                                                  || x.Status == SyncRequestStatus.Canceled)
-                                              && x.ReopenCount <= maxReopenCount))
-                              .OrderBy(x => x.Status == SyncRequestStatus.Pending ? 0 : 1)
+                                          && x.Mode  == SyncMode.Incremental
+                                          && (x.Status    == SyncRequestStatus.Pending
+                                              || x.Status == SyncRequestStatus.Running))
+                              .OrderBy(x => x.CurrentRunId.HasValue ? 0 : 1)
                               .ThenBy(x => x.Interval)
                               .ThenBy(x => x.PageNumber)
                               .ThenBy(x => x.Id)
@@ -117,11 +158,46 @@ public sealed class SyncRequestRepository(AppDbContext dbContext,
                                                ScopeKey = x.ScopeKey,
                                                CurrentRunId = x.CurrentRunId
                                            })
-                              .ToArrayAsync(ct)
+                              .FirstOrDefaultAsync(ct)
                               .ConfigureAwait(false);
     }
 
     #region ========== *** Private Section *** ==========
+
+    /// <summary>
+    /// Atomically starts the next eligible recovery request inside a retriable transaction.
+    /// </summary>
+    /// <param name="category">Sync category name.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The started recovery request when one is available; otherwise <c>null</c>.</returns>
+    private async Task<SyncRequestDto?> TryStartNextRecoveryRequestCoreAsync(string category, CancellationToken ct)
+    {
+        await using IDbContextTransaction tx =
+                await dbContext.Database.BeginTransactionAsync(IsolationLevel.Serializable, ct)
+                               .ConfigureAwait(false);
+
+        SyncRequestEntity? entity = await BuildEligibleRecoveryRequestQuery(category)
+                                         .FirstOrDefaultAsync(ct)
+                                         .ConfigureAwait(false);
+
+        if (entity is null) return null;
+
+        if (entity.Status is SyncRequestStatus.Failed or SyncRequestStatus.Canceled)
+        {
+            entity.ReopenCount += 1;
+            entity.CurrentRunId = null;
+        }
+
+        entity.Status = SyncRequestStatus.Running;
+
+        await uow.SaveChangesAsync(ct)
+                 .ConfigureAwait(false);
+
+        await tx.CommitAsync(ct)
+                .ConfigureAwait(false);
+
+        return ToDto(entity);
+    }
 
     /// <summary>
     /// Full and incremental semantics: one logical request row per scope.
@@ -349,6 +425,45 @@ public sealed class SyncRequestRepository(AppDbContext dbContext,
                                           .ConfigureAwait(false);
 
         return ToResolveResult(winner, SyncRequestResolveAction.ReusedActive);
+    }
+
+    private static IQueryable<SyncRequestEntity> BuildEligibleRecoveryRequestQuery(IQueryable<SyncRequestEntity> source,
+        string category)
+    {
+        const int maxReopenCount = 3;
+
+        return source.Where(x => x.Category == category
+                                 && x.Mode  == SyncMode.Recovery
+                                 && (x.Status == SyncRequestStatus.Pending
+                                     || (x.Status == SyncRequestStatus.Failed || x.Status == SyncRequestStatus.Canceled)
+                                     && x.ReopenCount <= maxReopenCount))
+                     .OrderBy(x => x.Status == SyncRequestStatus.Pending ? 0 : 1)
+                     .ThenBy(x => x.Interval)
+                     .ThenBy(x => x.PageNumber)
+                     .ThenBy(x => x.Id);
+    }
+
+    private IQueryable<SyncRequestEntity> BuildEligibleRecoveryRequestQuery(string category)
+    {
+        return BuildEligibleRecoveryRequestQuery(dbContext.Set<SyncRequestEntity>(), category);
+    }
+
+    private static SyncRequestDto ToDto(SyncRequestEntity entity)
+    {
+        return new SyncRequestDto
+               {
+                   Id = entity.Id,
+                   PublicId = entity.PublicId,
+                   Category = entity.Category,
+                   Mode = entity.Mode,
+                   Status = entity.Status,
+                   ReopenCount = entity.ReopenCount,
+                   Interval = entity.Interval,
+                   PageNumber = entity.PageNumber,
+                   GenesysJobId = entity.GenesysJobId,
+                   ScopeKey = entity.ScopeKey,
+                   CurrentRunId = entity.CurrentRunId
+               };
     }
 
     #endregion

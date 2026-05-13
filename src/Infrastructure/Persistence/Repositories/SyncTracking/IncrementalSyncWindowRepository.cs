@@ -128,7 +128,7 @@ public sealed class IncrementalSyncWindowRepository(AppDbContext dbContext,
             DateTimeOffset intervalEndUtc,
             CancellationToken ct)
     {
-        DateTimeOffset startUtc = existing.NextIntervalStartUtc;
+        DateTimeOffset startUtc = existing.NextIntervalStartUtc.NormalizeToUtc();
 
         if (startUtc >= intervalEndUtc)
         {

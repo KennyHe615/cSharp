@@ -7,11 +7,20 @@ public class PrimaryPresenceEntity : Audit
 {
     public Guid UserId { get; set; }
 
-    public DateTimeOffset StartTime { get; set; }
+    /// <summary>
+    /// Gets or sets the Genesys start timestamp normalized to UTC.
+    /// </summary>
+    public DateTimeOffset StartTimeUtc { get; set; }
 
-    public DateTimeOffset? EndTime { get; set; }
+    /// <summary>
+    /// Gets or sets the Genesys end timestamp normalized to UTC.
+    /// </summary>
+    public DateTimeOffset? EndTimeUtc { get; set; }
 
-    public long? DurationInSeconds { get; set; }
+    /// <summary>
+    /// Gets or sets the start timestamp converted to Eastern time.
+    /// </summary>
+    public DateTimeOffset StartTimeEastern { get; set; }
 
     public SystemPresence SystemPresence { get; set; }
 

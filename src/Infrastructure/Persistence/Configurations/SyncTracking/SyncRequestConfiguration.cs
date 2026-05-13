@@ -35,7 +35,7 @@ public sealed class SyncRequestConfiguration : IEntityTypeConfiguration<SyncRequ
         // Request-level lifecycle used by recovery resolve semantics.
         builder.Property(x => x.Status)
                .IsRequired()
-               .HasMaxLength(20);
+               .HasMaxLength(50);
 
         builder.Property(x => x.ReopenCount)
                .IsRequired()

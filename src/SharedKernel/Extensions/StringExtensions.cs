@@ -64,7 +64,7 @@ public static class StringExtensions
 
                 // boundary from uncased letter scripts (e.g., 加拿大 + Value => 加拿大_value)
                 bool prevIsLetterWithoutCase =
-                    i > 0 && char.IsLetter(prevIn) && !char.IsLower(prevIn) && !char.IsUpper(prevIn);
+                        i > 0 && char.IsLetter(prevIn) && !char.IsLower(prevIn) && !char.IsUpper(prevIn);
 
                 if (!prevOutIsUnderscore
                     && hasPrevOut
@@ -90,7 +90,8 @@ public static class StringExtensions
     /// </returns>
     public static string? ToSnakeUpperCase(this string? input)
     {
-        return input?.ToSnakeCase()?.ToUpperInvariant();
+        return input?.ToSnakeCase()
+                    ?.ToUpperInvariant();
     }
 
     /// <summary>
@@ -117,5 +118,43 @@ public static class StringExtensions
     public static Guid? ToGuid(this string? value)
     {
         return Guid.TryParse(value, out Guid guid) ? guid : null;
+    }
+
+    /// <summary>
+    /// Trims a string, converts blank values to <c>null</c>, and optionally truncates it to the specified maximum length.
+    /// </summary>
+    /// <param name="value">The source value.</param>
+    /// <param name="maxLength">Optional maximum allowed length.</param>
+    /// <returns>
+    /// The normalized string, or <c>null</c> when <paramref name="value"/> is <c>null</c>, empty, or whitespace.
+    /// </returns>
+    public static string? NormalizeToNull(this string? value, int? maxLength = null)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return null;
+
+        if (maxLength.HasValue)
+        {
+            ArgumentOutOfRangeException.ThrowIfNegative(maxLength.Value);
+        }
+
+        string trimmed = value.Trim();
+
+        return maxLength.HasValue ? trimmed.Truncate(maxLength.Value) : trimmed;
+    }
+
+    /// <summary>
+    /// Converts an exception into a normalized failure reason suitable for persistence or logging metadata.
+    /// </summary>
+    /// <param name="ex">The exception to convert.</param>
+    /// <param name="maxLength">Maximum allowed failure reason length.</param>
+    /// <returns>A non-empty normalized failure reason.</returns>
+    public static string ToFailureReason(this Exception ex, int maxLength = 1000)
+    {
+        ArgumentNullException.ThrowIfNull(ex);
+        ArgumentOutOfRangeException.ThrowIfNegative(maxLength);
+
+        return ex.Message.NormalizeToNull(maxLength)
+               ?? ex.GetType()
+                    .Name.Truncate(maxLength)!;
     }
 }

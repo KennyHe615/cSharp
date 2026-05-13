@@ -72,6 +72,26 @@ public static class DateTimeOffsetExtensions
         return RoundByUnit(dateTime, TimeSpan.TicksPerSecond);
     }
 
+    /// <summary>
+    /// Normalizes the supplied timestamp to UTC while preserving the instant in time.
+    /// </summary>
+    /// <param name="dateTime">Timestamp to normalize.</param>
+    /// <returns>The timestamp represented with a UTC offset.</returns>
+    public static DateTimeOffset NormalizeToUtc(this DateTimeOffset dateTime)
+    {
+        return dateTime.ToUniversalTime();
+    }
+
+    /// <summary>
+    /// Normalizes the supplied optional timestamp to UTC while preserving the instant in time.
+    /// </summary>
+    /// <param name="dateTime">Optional timestamp to normalize.</param>
+    /// <returns>The timestamp represented with a UTC offset when supplied; otherwise <c>null</c>.</returns>
+    public static DateTimeOffset? NormalizeToUtc(this DateTimeOffset? dateTime)
+    {
+        return dateTime?.ToUniversalTime();
+    }
+
     #region ========== *** Private Methods *** ==========
 
     /// <summary>

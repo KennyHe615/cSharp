@@ -27,7 +27,7 @@ public sealed class SyncRunRepositoryEdgeCaseTests
         Mock<IDateTimeProvider> dateTimeProvider = DateTimeProviderTestFactory.Create();
 
         await using AppDbContext dbContext = PersistenceTestFactory.CreateInMemoryDbContext(dateTimeProvider.Object);
-        Mock<IUnitOfWork> uow = PersistenceTestFactory.CreateUnitOfWork<SyncRunEntity>(dbContext);
+        Mock<IUnitOfWork> uow = PersistenceTestFactory.CreateMockUnitOfWork<SyncRunEntity>(dbContext);
 
         SyncRunRepository sut = new SyncRunRepository(dbContext, uow.Object, dateTimeProvider.Object);
 
@@ -44,7 +44,7 @@ public sealed class SyncRunRepositoryEdgeCaseTests
         Mock<IDateTimeProvider> dateTimeProvider = DateTimeProviderTestFactory.Create();
 
         await using AppDbContext dbContext = PersistenceTestFactory.CreateInMemoryDbContext(dateTimeProvider.Object);
-        Mock<IUnitOfWork> uow = PersistenceTestFactory.CreateUnitOfWork<SyncRunEntity>(dbContext);
+        Mock<IUnitOfWork> uow = PersistenceTestFactory.CreateMockUnitOfWork<SyncRunEntity>(dbContext);
 
         SyncRunRepository sut = new SyncRunRepository(dbContext, uow.Object, dateTimeProvider.Object);
 
@@ -61,7 +61,7 @@ public sealed class SyncRunRepositoryEdgeCaseTests
         Mock<IDateTimeProvider> dateTimeProvider = DateTimeProviderTestFactory.Create();
 
         await using AppDbContext dbContext = PersistenceTestFactory.CreateInMemoryDbContext(dateTimeProvider.Object);
-        Mock<IUnitOfWork> uow = PersistenceTestFactory.CreateUnitOfWork<SyncRunEntity>(dbContext);
+        Mock<IUnitOfWork> uow = PersistenceTestFactory.CreateMockUnitOfWork<SyncRunEntity>(dbContext);
 
         SyncRequestEntity request =
                 await SyncTrackingSeedFactory.SeedRequestAsync(dbContext,
@@ -94,7 +94,7 @@ public sealed class SyncRunRepositoryEdgeCaseTests
         Mock<IDateTimeProvider> dateTimeProvider = DateTimeProviderTestFactory.Create();
 
         await using AppDbContext dbContext = PersistenceTestFactory.CreateInMemoryDbContext(dateTimeProvider.Object);
-        Mock<IUnitOfWork> uow = PersistenceTestFactory.CreateUnitOfWork<SyncRunEntity>(dbContext);
+        Mock<IUnitOfWork> uow = PersistenceTestFactory.CreateMockUnitOfWork<SyncRunEntity>(dbContext);
 
         SyncRequestEntity request =
                 await SyncTrackingSeedFactory.SeedRequestAsync(dbContext,

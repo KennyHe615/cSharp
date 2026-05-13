@@ -7,11 +7,11 @@ public sealed class PrimaryPresenceDto
 {
     public Guid UserId { get; set; }
 
-    public DateTimeOffset StartTime { get; set; }
+    public DateTimeOffset StartTimeUtc { get; set; }
 
-    public DateTimeOffset? EndTime { get; set; }
+    public DateTimeOffset? EndTimeUtc { get; set; }
 
-    public long? DurationInSeconds { get; set; }
+    public DateTimeOffset StartTimeEastern { get; set; }
 
     public SystemPresenceKind SystemPresence { get; set; }
 

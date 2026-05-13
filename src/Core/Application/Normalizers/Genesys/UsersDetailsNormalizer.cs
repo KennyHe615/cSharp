@@ -10,8 +10,13 @@ namespace Application.Normalizers.Genesys;
 /// <summary>
 /// Applies normalization rules for users-details payload into persistence DTOs.
 /// </summary>
-public sealed class UsersDetailsNormalizer : IUsersDetailsNormalizer
+/// <param name="dateTimeProvider">Time provider used to convert UTC timestamps to Eastern time.</param>
+public sealed class UsersDetailsNormalizer(IDateTimeProvider dateTimeProvider) : IUsersDetailsNormalizer
 {
+    private readonly IDateTimeProvider _dateTimeProvider =
+            dateTimeProvider ?? throw new ArgumentNullException(nameof(dateTimeProvider));
+
+    /// <inheritdoc />
     public (IReadOnlyCollection<PrimaryPresenceDto> PrimaryPresenceDtos, IReadOnlyCollection<RoutingStatusDto>
             RoutingStatusDtos) NormalizeUsersDetails(UsersDetailsRawContract response)
     {
@@ -28,34 +33,46 @@ public sealed class UsersDetailsNormalizer : IUsersDetailsNormalizer
 
             if (user.PrimaryPresence is { Count: > 0 })
             {
-                primary.AddRange(user.PrimaryPresence.Select(item => new PrimaryPresenceDto
-                                                                     {
-                                                                         UserId = userId,
-                                                                         StartTime = item.StartTime,
-                                                                         EndTime = item.EndTime,
-                                                                         DurationInSeconds =
-                                                                                 item.StartTime
-                                                                                        .CalculateDurationTo(item
-                                                                                                .EndTime),
-                                                                         SystemPresence = item.SystemPresence,
-                                                                         OrganizationPresenceId =
-                                                                                 item.OrganizationPresenceId
-                                                                     }));
+                primary.AddRange(user.PrimaryPresence.Select(item =>
+                                                             {
+                                                                 DateTimeOffset startTimeUtc =
+                                                                         item.StartTime.NormalizeToUtc();
+
+                                                                 return new PrimaryPresenceDto
+                                                                        {
+                                                                            UserId = userId,
+                                                                            StartTimeUtc = startTimeUtc,
+                                                                            EndTimeUtc =
+                                                                                    item.EndTime.NormalizeToUtc(),
+                                                                            StartTimeEastern =
+                                                                                    _dateTimeProvider
+                                                                                           .ConvertToEst(startTimeUtc),
+                                                                            SystemPresence = item.SystemPresence,
+                                                                            OrganizationPresenceId =
+                                                                                    item.OrganizationPresenceId
+                                                                        };
+                                                             }));
             }
 
             if (user.RoutingStatus is { Count: > 0 })
             {
-                routing.AddRange(user.RoutingStatus.Select(item => new RoutingStatusDto
-                                                                   {
-                                                                       UserId = userId,
-                                                                       StartTime = item.StartTime,
-                                                                       EndTime = item.EndTime,
-                                                                       DurationInSeconds =
-                                                                               item.StartTime
-                                                                                      .CalculateDurationTo(item
-                                                                                              .EndTime),
-                                                                       RoutingStatus = item.RoutingStatus
-                                                                   }));
+                routing.AddRange(user.RoutingStatus.Select(item =>
+                                                           {
+                                                               DateTimeOffset startTimeUtc =
+                                                                       item.StartTime.NormalizeToUtc();
+
+                                                               return new RoutingStatusDto
+                                                                      {
+                                                                          UserId = userId,
+                                                                          StartTimeUtc = startTimeUtc,
+                                                                          EndTimeUtc =
+                                                                                  item.EndTime.NormalizeToUtc(),
+                                                                          StartTimeEastern =
+                                                                                  _dateTimeProvider
+                                                                                         .ConvertToEst(startTimeUtc),
+                                                                          RoutingStatus = item.RoutingStatus
+                                                                      };
+                                                           }));
             }
         }
 

@@ -28,11 +28,14 @@ public sealed class IncrementalSyncWindowConfiguration : IEntityTypeConfiguratio
                .HasMaxLength(50);
 
         builder.Property(x => x.NextIntervalStartUtc)
-               .IsRequired();
+               .IsRequired()
+               .HasColumnType("datetimeoffset(3)");
 
-        builder.Property(x => x.LastReservedStartUtc);
+        builder.Property(x => x.LastReservedStartUtc)
+               .HasColumnType("datetimeoffset(3)");
 
-        builder.Property(x => x.LastReservedEndUtc);
+        builder.Property(x => x.LastReservedEndUtc)
+               .HasColumnType("datetimeoffset(3)");
 
         builder.Property(x => x.RowVersion)
                .IsRowVersion()

@@ -28,7 +28,7 @@ public sealed class SyncRunRepositoryTests
     {
         Mock<IDateTimeProvider> dateTimeProvider = DateTimeProviderTestFactory.Create();
         await using AppDbContext dbContext = PersistenceTestFactory.CreateInMemoryDbContext(dateTimeProvider.Object);
-        Mock<IUnitOfWork> uow = PersistenceTestFactory.CreateUnitOfWork<SyncRunEntity>(dbContext);
+        Mock<IUnitOfWork> uow = PersistenceTestFactory.CreateMockUnitOfWork<SyncRunEntity>(dbContext);
 
         SyncRequestEntity request =
                 await SyncTrackingSeedFactory.SeedRequestAsync(dbContext,
@@ -57,7 +57,7 @@ public sealed class SyncRunRepositoryTests
     {
         Mock<IDateTimeProvider> dateTimeProvider = DateTimeProviderTestFactory.Create();
         await using AppDbContext dbContext = PersistenceTestFactory.CreateInMemoryDbContext(dateTimeProvider.Object);
-        Mock<IUnitOfWork> uow = PersistenceTestFactory.CreateUnitOfWork<SyncRunEntity>(dbContext);
+        Mock<IUnitOfWork> uow = PersistenceTestFactory.CreateMockUnitOfWork<SyncRunEntity>(dbContext);
 
         SyncRequestEntity request =
                 await SyncTrackingSeedFactory.SeedRequestAsync(dbContext,
@@ -88,12 +88,90 @@ public sealed class SyncRunRepositoryTests
 
     #endregion
 
+    #region ========== *** StartNewRunAsync *** ==========
+
+    [Fact]
+    public async Task StartOrJoinActiveRunAsync_WhenCurrentActiveRunExists_ReturnsExistingRun()
+    {
+        Mock<IDateTimeProvider> dateTimeProvider = DateTimeProviderTestFactory.Create();
+        await using AppDbContext dbContext = PersistenceTestFactory.CreateInMemoryDbContext(dateTimeProvider.Object);
+        Mock<IUnitOfWork> uow = PersistenceTestFactory.CreateMockUnitOfWork<SyncRunEntity>(dbContext);
+
+        SyncRequestEntity request =
+                await SyncTrackingSeedFactory.SeedRequestAsync(dbContext,
+                                                               nameof(SyncAnalyticsCategory.UsersDetails),
+                                                               SyncMode.Incremental);
+
+        SyncRunRepository sut = new SyncRunRepository(dbContext, uow.Object, dateTimeProvider.Object);
+
+        long firstRunId = await sut.StartOrJoinActiveRunAsync(request.Id, CancellationToken.None);
+        long secondRunId = await sut.StartOrJoinActiveRunAsync(request.Id, CancellationToken.None);
+
+        List<SyncRunEntity> runs = await dbContext.Set<SyncRunEntity>()
+                                                  .OrderBy(x => x.Id)
+                                                  .ToListAsync();
+
+        SyncRequestEntity reloaded = await dbContext.Set<SyncRequestEntity>()
+                                                    .SingleAsync(x => x.Id == request.Id);
+
+        Assert.Equal(firstRunId, secondRunId);
+        Assert.Single(runs);
+        Assert.Equal(SyncRunStatus.Running, runs[0].Status);
+        Assert.Equal(1, runs[0].AttemptNo);
+        Assert.Equal(firstRunId, reloaded.CurrentRunId);
+        Assert.Equal(SyncRequestStatus.Running, reloaded.Status);
+    }
+
+    [Fact]
+    public async Task
+            StartOrJoinActiveRunAsync_WhenActiveRunExistsButCurrentPointerMissing_AttachesAndReturnsExistingRun()
+    {
+        Mock<IDateTimeProvider> dateTimeProvider = DateTimeProviderTestFactory.Create();
+        await using AppDbContext dbContext = PersistenceTestFactory.CreateInMemoryDbContext(dateTimeProvider.Object);
+        Mock<IUnitOfWork> uow = PersistenceTestFactory.CreateMockUnitOfWork<SyncRunEntity>(dbContext);
+
+        SyncRequestEntity request =
+                await SyncTrackingSeedFactory.SeedRequestAsync(dbContext,
+                                                               nameof(SyncAnalyticsCategory.UsersDetails),
+                                                               SyncMode.Incremental);
+
+        SyncRunEntity existingRun = new SyncRunEntity
+                                    {
+                                        RequestId = request.Id,
+                                        Status = SyncRunStatus.Running,
+                                        AttemptNo = 3,
+                                        RunStartedAtEastern = DateTimeProviderTestFactory.FixedNow
+                                    };
+
+        dbContext.Set<SyncRunEntity>()
+                 .Add(existingRun);
+        await dbContext.SaveChangesAsync();
+
+        SyncRunRepository sut = new SyncRunRepository(dbContext, uow.Object, dateTimeProvider.Object);
+
+        long runId = await sut.StartOrJoinActiveRunAsync(request.Id, CancellationToken.None);
+
+        List<SyncRunEntity> runs = await dbContext.Set<SyncRunEntity>()
+                                                  .OrderBy(x => x.Id)
+                                                  .ToListAsync();
+
+        SyncRequestEntity reloaded = await dbContext.Set<SyncRequestEntity>()
+                                                    .SingleAsync(x => x.Id == request.Id);
+
+        Assert.Equal(existingRun.Id, runId);
+        Assert.Single(runs);
+        Assert.Equal(existingRun.Id, reloaded.CurrentRunId);
+        Assert.Equal(SyncRequestStatus.Running, reloaded.Status);
+    }
+
+    #endregion
+
     [Fact]
     public async Task MarkCompletedWithRecoveryItemsAsync_MarksRunAndRequestWithRecoveryItems()
     {
         Mock<IDateTimeProvider> dateTimeProvider = DateTimeProviderTestFactory.Create();
         await using AppDbContext dbContext = PersistenceTestFactory.CreateInMemoryDbContext(dateTimeProvider.Object);
-        Mock<IUnitOfWork> uow = PersistenceTestFactory.CreateUnitOfWork<SyncRunEntity>(dbContext);
+        Mock<IUnitOfWork> uow = PersistenceTestFactory.CreateMockUnitOfWork<SyncRunEntity>(dbContext);
 
         SyncRequestEntity request =
                 await SyncTrackingSeedFactory.SeedRequestAsync(dbContext,
@@ -123,7 +201,7 @@ public sealed class SyncRunRepositoryTests
     {
         Mock<IDateTimeProvider> dateTimeProvider = DateTimeProviderTestFactory.Create();
         await using AppDbContext dbContext = PersistenceTestFactory.CreateInMemoryDbContext(dateTimeProvider.Object);
-        Mock<IUnitOfWork> uow = PersistenceTestFactory.CreateUnitOfWork<SyncRunEntity>(dbContext);
+        Mock<IUnitOfWork> uow = PersistenceTestFactory.CreateMockUnitOfWork<SyncRunEntity>(dbContext);
 
         SyncRequestEntity request =
                 await SyncTrackingSeedFactory.SeedRequestAsync(dbContext,
@@ -151,7 +229,7 @@ public sealed class SyncRunRepositoryTests
     {
         Mock<IDateTimeProvider> dateTimeProvider = DateTimeProviderTestFactory.Create();
         await using AppDbContext dbContext = PersistenceTestFactory.CreateInMemoryDbContext(dateTimeProvider.Object);
-        Mock<IUnitOfWork> uow = PersistenceTestFactory.CreateUnitOfWork<SyncRunEntity>(dbContext);
+        Mock<IUnitOfWork> uow = PersistenceTestFactory.CreateMockUnitOfWork<SyncRunEntity>(dbContext);
 
         SyncRequestEntity request =
                 await SyncTrackingSeedFactory.SeedRequestAsync(dbContext,
@@ -180,7 +258,7 @@ public sealed class SyncRunRepositoryTests
     {
         Mock<IDateTimeProvider> dateTimeProvider = DateTimeProviderTestFactory.Create();
         await using AppDbContext dbContext = PersistenceTestFactory.CreateInMemoryDbContext(dateTimeProvider.Object);
-        Mock<IUnitOfWork> uow = PersistenceTestFactory.CreateUnitOfWork<SyncRunEntity>(dbContext);
+        Mock<IUnitOfWork> uow = PersistenceTestFactory.CreateMockUnitOfWork<SyncRunEntity>(dbContext);
 
         SyncRequestEntity request =
                 await SyncTrackingSeedFactory.SeedRequestAsync(dbContext,

@@ -15,6 +15,15 @@ public interface ISyncRunCoordinator
     Task<long> StartNewRunAsync(long requestId, CancellationToken ct);
 
     /// <summary>
+    /// Starts a new run for the specified sync request when no active current run exists,
+    /// otherwise returns the existing active current run id.
+    /// </summary>
+    /// <param name="requestId">Parent sync request id.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The active run id, either newly created or already current.</returns>
+    Task<long> StartOrJoinActiveRunAsync(long requestId, CancellationToken ct);
+
+    /// <summary>
     /// Checks whether the run is still current and active for its request.
     /// </summary>
     /// <param name="runId">Run id.</param>

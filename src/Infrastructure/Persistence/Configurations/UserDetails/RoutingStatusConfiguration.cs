@@ -10,12 +10,12 @@ public sealed class RoutingStatusConfiguration : IEntityTypeConfiguration<Routin
 {
     public void Configure(EntityTypeBuilder<RoutingStatusEntity> builder)
     {
-        builder.ToTable("user_details_routing_status_stg", "dbo");
+        builder.ToTable("users_details_routing_status_stg", "dbo");
 
         builder.HasKey(x => new
                             {
                                 x.UserId,
-                                x.StartTime
+                                x.StartTimeUtc
                             });
 
         #region ========== *** Properties *** ==========
@@ -23,15 +23,25 @@ public sealed class RoutingStatusConfiguration : IEntityTypeConfiguration<Routin
         builder.Property(x => x.UserId)
                .IsRequired();
 
-        builder.Property(x => x.StartTime)
+        builder.Property(x => x.StartTimeUtc)
                .IsRequired()
                .HasColumnType("datetimeoffset(3)");
 
-        builder.Property(x => x.EndTime)
+        builder.Property(x => x.EndTimeUtc)
                .HasColumnType("datetimeoffset(3)");
 
-        builder.Property(x => x.DurationInSeconds)
-               .HasColumnType("bigint");
+        builder.Property<long?>("DurationInSeconds")
+               .HasColumnType("bigint")
+               .HasComputedColumnSql("CASE WHEN [end_time_utc] IS NULL THEN NULL ELSE DATEDIFF_BIG(SECOND, [start_time_utc], [end_time_utc]) END",
+                                     true);
+
+        builder.Property(x => x.StartTimeEastern)
+               .IsRequired()
+               .HasColumnType("datetimeoffset(0)");
+
+        builder.Property<DateOnly>("StartDateEastern")
+               .HasColumnType("date")
+               .HasComputedColumnSql("CAST([start_time_eastern] AS DATE)", true);
 
         builder.Property(x => x.RoutingStatus)
                .IsRequired()
@@ -41,7 +51,7 @@ public sealed class RoutingStatusConfiguration : IEntityTypeConfiguration<Routin
 
         #region ========== *** Non-Clustered Indexes *** ==========
 
-        builder.HasIndex(x => x.RoutingStatus);
+        builder.HasIndex("StartDateEastern", nameof(RoutingStatusEntity.RoutingStatus));
 
         #endregion
     }
