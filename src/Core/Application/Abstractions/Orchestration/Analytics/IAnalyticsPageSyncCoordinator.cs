@@ -1,7 +1,8 @@
+using Application.Abstractions.Orchestration.Sync;
 using Application.Features.SyncTracking.Analytics;
 
 
-namespace Application.Abstractions.Orchestration;
+namespace Application.Abstractions.Orchestration.Analytics;
 
 /// <summary>
 /// Coordinates shared page-level execution behavior for analytics categories.

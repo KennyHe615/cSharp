@@ -1,4 +1,5 @@
 using Application.Abstractions.Orchestration;
+using Application.Abstractions.Orchestration.Sync;
 using Application.Abstractions.Persistence;
 using Application.DTOs.SyncTracking;
 using Application.Enums;
@@ -25,8 +26,9 @@ public sealed class RunReferencesFullSyncCommandHandlerTests
         SyncRequestResolveResult resolveResult = new SyncRequestResolveResult
                                                  {
                                                      Id = 12345L,
-                                                     PublicId = Guid.Parse(
-                                                             "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"),
+                                                     PublicId =
+                                                             Guid
+                                                                    .Parse("aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"),
                                                      RequestAction =
                                                              SyncRequestResolveAction
                                                                     .Created
@@ -76,8 +78,9 @@ public sealed class RunReferencesFullSyncCommandHandlerTests
         SyncRequestResolveResult resolveResult = new SyncRequestResolveResult
                                                  {
                                                      Id = 77L,
-                                                     PublicId = Guid.Parse(
-                                                             "11111111-2222-3333-4444-555555555555"),
+                                                     PublicId =
+                                                             Guid
+                                                                    .Parse("11111111-2222-3333-4444-555555555555"),
                                                      RequestAction =
                                                              SyncRequestResolveAction
                                                                     .ReusedActive

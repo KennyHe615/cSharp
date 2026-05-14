@@ -1,4 +1,5 @@
 using Application.Abstractions.Orchestration;
+using Application.Abstractions.Orchestration.Sync;
 using Application.Abstractions.Persistence;
 using Application.DTOs.SyncTracking;
 using Application.Enums;
@@ -12,7 +13,7 @@ namespace Application.Features.SyncTracking.References;
 /// </summary>
 public sealed class RunReferencesFullSyncCommandHandler(ISyncRequestRepository syncRequestRepository,
                                                         ISyncRequestRunner syncRequestRunner)
-                : IRequestHandler<RunReferencesFullSyncCommand, long>
+        : IRequestHandler<RunReferencesFullSyncCommand, long>
 {
     /// <inheritdoc />
     public async Task<long> Handle(RunReferencesFullSyncCommand request, CancellationToken ct = default)
@@ -20,13 +21,13 @@ public sealed class RunReferencesFullSyncCommandHandler(ISyncRequestRepository s
         const SyncMode mode = SyncMode.Full;
 
         SyncRequestResolveResult resolveResult =
-                        await syncRequestRepository.CreateOrGetByScopeAsync(request.Category.ToString(),
-                                                                            mode,
-                                                                            null,
-                                                                            null,
-                                                                            null,
-                                                                            ct)
-                                                   .ConfigureAwait(false);
+                await syncRequestRepository.CreateOrGetByScopeAsync(request.Category.ToString(),
+                                                                    mode,
+                                                                    null,
+                                                                    null,
+                                                                    null,
+                                                                    ct)
+                                           .ConfigureAwait(false);
 
         await syncRequestRunner.ExecuteAsync(resolveResult.Id, ct)
                                .ConfigureAwait(false);

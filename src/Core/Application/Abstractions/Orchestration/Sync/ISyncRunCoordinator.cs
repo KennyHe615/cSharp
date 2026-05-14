@@ -1,4 +1,4 @@
-namespace Application.Abstractions.Orchestration;
+namespace Application.Abstractions.Orchestration.Sync;
 
 /// <summary>
 /// Coordinates sync run lifecycle operations used by orchestration flows.

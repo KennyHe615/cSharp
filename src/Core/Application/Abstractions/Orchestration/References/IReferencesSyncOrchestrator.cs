@@ -1,7 +1,7 @@
 using Application.Enums;
 
 
-namespace Application.Abstractions.Orchestration;
+namespace Application.Abstractions.Orchestration.References;
 
 /// <summary>
 /// Executor for References full-sync categories.

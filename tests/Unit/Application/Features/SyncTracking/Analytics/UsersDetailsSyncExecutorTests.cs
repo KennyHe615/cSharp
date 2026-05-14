@@ -1,6 +1,8 @@
 using Application.Abstractions.External;
 using Application.Abstractions.Normalization;
 using Application.Abstractions.Orchestration;
+using Application.Abstractions.Orchestration.Analytics;
+using Application.Abstractions.Orchestration.Sync;
 using Application.Abstractions.Persistence;
 using Application.Contracts.ExternalApis.Genesys.UsersDetails;
 using Application.DTOs.UsersDetails;

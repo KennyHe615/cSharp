@@ -1,4 +1,4 @@
-namespace Application.Abstractions.Orchestration;
+namespace Application.Abstractions.Orchestration.Sync;
 
 /// <summary>
 /// Orchestrates execution of one logical sync request scope through run lifecycle states.

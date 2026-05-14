@@ -1,6 +1,7 @@
 using Application.Abstractions.External;
 using Application.Abstractions.Normalization;
 using Application.Abstractions.Orchestration;
+using Application.Abstractions.Orchestration.References;
 using Application.Abstractions.Persistence;
 using Application.Enums;
 using Application.Features.SyncTracking.Shared;
@@ -16,7 +17,7 @@ public sealed class ReferencesSyncOrchestrator(IReferenceApiClient referenceApiC
                                                IReferencesNormalizer referencesNormalizer,
                                                IReferencesRepository referencesRepository,
                                                ISyncRunItemRepository syncRunItemRepository)
-                : IReferencesSyncOrchestrator
+        : IReferencesSyncOrchestrator
 {
     /// <inheritdoc />
     public Task ExecuteAsync(long runId, SyncReferenceCategory category, CancellationToken ct = default)
@@ -53,11 +54,11 @@ public sealed class ReferencesSyncOrchestrator(IReferenceApiClient referenceApiC
 
                    // TODO: Provider endpoints for these categories are not wired yet in this flow.
                    SyncReferenceCategory.User =>
-                                   throw new NotSupportedException("References full-sync for User is not wired yet."),
+                           throw new NotSupportedException("References full-sync for User is not wired yet."),
                    SyncReferenceCategory.Queue =>
-                                   throw new NotSupportedException("References full-sync for Queue is not wired yet."),
+                           throw new NotSupportedException("References full-sync for Queue is not wired yet."),
                    SyncReferenceCategory.Flow =>
-                                   throw new NotSupportedException("References full-sync for Flow is not wired yet."),
+                           throw new NotSupportedException("References full-sync for Flow is not wired yet."),
 
                    _ => throw new NotSupportedException($"Unsupported references category '{category}'.")
                };
@@ -72,7 +73,7 @@ public sealed class ReferencesSyncOrchestrator(IReferenceApiClient referenceApiC
                                                         SyncReferenceCategory category,
                                                         Func<CancellationToken, Task<IReadOnlyCollection<TRaw>>> fetch,
                                                         Func<IReadOnlyCollection<TRaw>, IReadOnlyCollection<TDto>>
-                                                                        normalize,
+                                                                normalize,
                                                         Func<IReadOnlyCollection<TDto>, CancellationToken, Task> upsert,
                                                         CancellationToken ct)
     {
@@ -80,28 +81,28 @@ public sealed class ReferencesSyncOrchestrator(IReferenceApiClient referenceApiC
                                                                      category,
                                                                      fetch,
                                                                      ct)
-                                                       .ConfigureAwait(false);
+                                               .ConfigureAwait(false);
 
         IReadOnlyCollection<TDto> normalized = normalize(raw);
 
         await upsert(normalized, ct)
-                       .ConfigureAwait(false);
+               .ConfigureAwait(false);
 
         await MarkSummaryCompletedAsync(runId,
                                         category,
                                         normalized.Count,
                                         ct)
-                       .ConfigureAwait(false);
+               .ConfigureAwait(false);
     }
 
     /// <summary>
     /// Runs the fetch stage for one references category and records fetch run items.
     /// </summary>
     private async Task<IReadOnlyCollection<TContract>> RunPageFetchStageAsync<TContract>(
-                    long runId,
-                    SyncReferenceCategory category,
-                    Func<CancellationToken, Task<IReadOnlyCollection<TContract>>> fetch,
-                    CancellationToken ct)
+            long runId,
+            SyncReferenceCategory category,
+            Func<CancellationToken, Task<IReadOnlyCollection<TContract>>> fetch,
+            CancellationToken ct)
     {
         string step = SyncRunItemSteps.ReferencesPageFetch(category.ToString());
 
@@ -116,7 +117,7 @@ public sealed class ReferencesSyncOrchestrator(IReferenceApiClient referenceApiC
         try
         {
             IReadOnlyCollection<TContract> payload = await fetch(ct)
-                                                                    .ConfigureAwait(false);
+                                                            .ConfigureAwait(false);
 
             await syncRunItemRepository.UpsertAsync(runId,
                                                     step,
