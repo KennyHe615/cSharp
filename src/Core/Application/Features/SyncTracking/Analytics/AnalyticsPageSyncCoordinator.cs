@@ -134,16 +134,15 @@ public sealed class AnalyticsPageSyncCoordinator(ISyncRunItemRepository syncRunI
         Task heartbeatTask = RunHeartbeatLoopAsync(page.Id,
                                                    claimedBy,
                                                    leaseToken,
-                                                   heartbeatCts.Token);
+                                                   heartbeatCts);
 
         try
         {
-            await request.ProcessPageAsync(page.PageNumber.Value, ct)
+            await request.ProcessPageAsync(page.PageNumber.Value, heartbeatCts.Token)
                          .ConfigureAwait(false);
 
-            await heartbeatCts.CancelAsync()
-                              .ConfigureAwait(false);
-            await heartbeatTask.ConfigureAwait(false);
+            await StopHeartbeatAsync(heartbeatCts, heartbeatTask, true)
+                   .ConfigureAwait(false);
 
             bool completed = await syncRunItemRepository.TryMarkCompletedAsync(page.Id,
                                                                                claimedBy,
@@ -159,17 +158,15 @@ public sealed class AnalyticsPageSyncCoordinator(ISyncRunItemRepository syncRunI
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
-            await heartbeatCts.CancelAsync()
-                              .ConfigureAwait(false);
-            await heartbeatTask.ConfigureAwait(false);
+            await StopHeartbeatAsync(heartbeatCts, heartbeatTask, false)
+                   .ConfigureAwait(false);
 
             throw;
         }
         catch (Exception ex)
         {
-            await heartbeatCts.CancelAsync()
-                              .ConfigureAwait(false);
-            await heartbeatTask.ConfigureAwait(false);
+            await StopHeartbeatAsync(heartbeatCts, heartbeatTask, false)
+                   .ConfigureAwait(false);
 
             bool failed = await syncRunItemRepository.TryMarkFailedAsync(page.Id,
                                                                          claimedBy,
@@ -194,8 +191,13 @@ public sealed class AnalyticsPageSyncCoordinator(ISyncRunItemRepository syncRunI
         }
     }
 
-    private async Task RunHeartbeatLoopAsync(long runItemId, string claimedBy, Guid leaseToken, CancellationToken ct)
+    private async Task RunHeartbeatLoopAsync(long runItemId,
+                                             string claimedBy,
+                                             Guid leaseToken,
+                                             CancellationTokenSource heartbeatCts)
     {
+        CancellationToken ct = heartbeatCts.Token;
+
         try
         {
             while (true)
@@ -213,14 +215,35 @@ public sealed class AnalyticsPageSyncCoordinator(ISyncRunItemRepository syncRunI
                                                                           ct)
                                                                      .ConfigureAwait(false);
 
-                if (!heartbeatSucceeded)
-                {
-                    throw new
-                            InvalidOperationException($"Analytics page run item '{runItemId}' heartbeat failed because its lease was lost.");
-                }
+                if (heartbeatSucceeded) continue;
+
+                await heartbeatCts.CancelAsync()
+                                  .ConfigureAwait(false);
+
+                throw new
+                        InvalidOperationException($"Analytics page run item '{runItemId}' heartbeat failed because its lease was lost.");
             }
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+        }
+    }
+
+    private static async Task StopHeartbeatAsync(CancellationTokenSource heartbeatCts,
+                                                 Task heartbeatTask,
+                                                 bool throwOnHeartbeatFailure)
+    {
+        await heartbeatCts.CancelAsync()
+                          .ConfigureAwait(false);
+
+        try
+        {
+            await heartbeatTask.ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (heartbeatCts.IsCancellationRequested)
+        {
+        }
+        catch when (!throwOnHeartbeatFailure)
         {
         }
     }

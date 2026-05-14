@@ -42,7 +42,7 @@ public sealed class UsersDetailsSyncExecutor(IAnalyticsUsersDetailsClient usersD
             throw new NotSupportedException("UsersDetails does not support GenesysJobId execution.");
         }
 
-        string normalizedInterval = NormalizeInterval(interval);
+        string normalizedInterval = UtcInterval.Normalize(interval ?? string.Empty);
 
         AnalyticsPageSyncRequest request = new AnalyticsPageSyncRequest(runId,
                                                                         Category,
@@ -102,17 +102,6 @@ public sealed class UsersDetailsSyncExecutor(IAnalyticsUsersDetailsClient usersD
 
         await userDetailsRepository.UpsertUserDetailsAsync(primaryPresenceDtos, routingStatusDtos, ct)
                                    .ConfigureAwait(false);
-    }
-
-    private static string NormalizeInterval(string? interval)
-    {
-        if (string.IsNullOrWhiteSpace(interval))
-        {
-            throw new ArgumentException("UsersDetails execution requires an interval.", nameof(interval));
-        }
-
-        return UtcInterval.Parse(interval)
-                          .ToString();
     }
 
     #endregion
