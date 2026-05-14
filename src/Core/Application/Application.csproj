@@ -21,7 +21,6 @@
     <ItemGroup>
         <Folder Include="Contracts\InternalApis\"/>
         <Folder Include="Features\Analytics\UsersDetails\"/>
-        <Folder Include="Validation\"/>
     </ItemGroup>
 
 </Project>
