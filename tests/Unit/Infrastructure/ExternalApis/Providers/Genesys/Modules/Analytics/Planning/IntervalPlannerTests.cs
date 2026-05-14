@@ -18,8 +18,14 @@ using Xunit;
 
 namespace tests.Unit.Infrastructure.ExternalApis.Providers.Genesys.Modules.Analytics.Planning;
 
+/// <summary>
+/// Unit tests for <see cref="IntervalPlanner"/>.
+/// </summary>
 public sealed class IntervalPlannerTests
 {
+    /// <summary>
+    /// Verifies that unsupported analytics categories are rejected before planning.
+    /// </summary>
     [Fact]
     public async Task PlanAsync_UnsupportedCategory_ShouldThrowIntervalPlanningException()
     {
@@ -40,9 +46,14 @@ public sealed class IntervalPlannerTests
                                                                   0,
                                                                   TimeSpan.Zero));
 
-        await Assert.ThrowsAsync<IntervalPlanningException>(() => sut.PlanAsync(SyncCategory.Queue, interval));
+        await Assert.ThrowsAsync<IntervalPlanningException>(() => sut.PlanAsync(SyncAnalyticsCategory
+                                                                                           .ConversationsAggregates,
+                                                                                    interval));
     }
 
+    /// <summary>
+    /// Verifies that intervals older than the Genesys historical limit are rejected.
+    /// </summary>
     [Fact]
     public async Task PlanAsync_StartOlderThanHistoricalLimit_ShouldThrowIntervalPlanningException()
     {
@@ -70,9 +81,13 @@ public sealed class IntervalPlannerTests
                                                                 0,
                                                                 TimeSpan.Zero));
 
-        await Assert.ThrowsAsync<IntervalPlanningException>(() => sut.PlanAsync(SyncCategory.UsersDetails, tooOld));
+        await Assert.ThrowsAsync<IntervalPlanningException>(() => sut.PlanAsync(SyncAnalyticsCategory.UsersDetails,
+                                                                                    tooOld));
     }
 
+    /// <summary>
+    /// Verifies that intervals above the hit threshold are split by binary search.
+    /// </summary>
     [Fact]
     public async Task PlanAsync_WhenHitsExceedThreshold_ShouldSplitUsingBinarySearch()
     {
@@ -100,7 +115,7 @@ public sealed class IntervalPlannerTests
                                                                   0,
                                                                   TimeSpan.Zero));
 
-        IReadOnlyList<PlannedIntervalDto> plan = await sut.PlanAsync(SyncCategory.UsersDetails, interval);
+        IReadOnlyList<PlannedIntervalDto> plan = await sut.PlanAsync(SyncAnalyticsCategory.UsersDetails, interval);
 
         Assert.Equal(2, plan.Count);
 
@@ -110,6 +125,8 @@ public sealed class IntervalPlannerTests
         Assert.Equal(81, (int)(plan[1].Interval.End - plan[1].Interval.Start).TotalMinutes);
         Assert.Equal(81, plan[1].TotalHits);
     }
+
+    #region ========== *** Private Section *** ==========
 
     private static IntervalPlanner BuildSutWithConstantHits(int constantHits,
                                                             DateTimeOffset now,
@@ -129,9 +146,6 @@ public sealed class IntervalPlannerTests
         return BuildSut(provider, now, maxHitThreshold);
     }
 
-    #region ========== *** Private Section *** ==========
-
-    [ExcludeFromCodeCoverage]
     private static IntervalPlanner BuildSut(IHitCountProvider provider, DateTimeOffset now, int maxHitThreshold)
     {
         StubHitCountProviderFactory factory = new StubHitCountProviderFactory(provider);
@@ -151,16 +165,14 @@ public sealed class IntervalPlannerTests
                                    NullLogger<IntervalPlanner>.Instance);
     }
 
-    [ExcludeFromCodeCoverage]
     private sealed class StubHitCountProviderFactory(IHitCountProvider provider) : IHitCountProviderFactory
     {
-        public IHitCountProvider Create(SyncCategory category)
+        public IHitCountProvider Create(SyncAnalyticsCategory category)
         {
             return provider;
         }
     }
 
-    [ExcludeFromCodeCoverage]
     private sealed class ConstantHitCountProvider(int constantHits) : IHitCountProvider
     {
         public Task<int> GetHitCountAsync(DateTimeOffset start, DateTimeOffset end, CancellationToken ct = default)
@@ -169,7 +181,6 @@ public sealed class IntervalPlannerTests
         }
     }
 
-    [ExcludeFromCodeCoverage]
     private sealed class DurationHitCountProvider(Func<TimeSpan, int> hitCounter) : IHitCountProvider
     {
         public Task<int> GetHitCountAsync(DateTimeOffset start, DateTimeOffset end, CancellationToken ct = default)
@@ -178,7 +189,6 @@ public sealed class IntervalPlannerTests
         }
     }
 
-    [ExcludeFromCodeCoverage]
     private sealed class StubDateTimeProvider(DateTimeOffset utcNow) : IDateTimeProvider
     {
         public TimeZoneInfo Eastern => TimeZoneInfo.Utc;

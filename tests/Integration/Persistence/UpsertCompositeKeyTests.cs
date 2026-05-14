@@ -27,27 +27,43 @@ public sealed class UpsertCompositeKeyTests
         UnitOfWork uow = PersistenceTestFactory.CreatePersistenceUnitOfWork(db, dateTimeProvider);
 
         Guid userId = Guid.NewGuid();
-        DateTimeOffset k1 = new DateTimeOffset(2026,
-                                               2,
-                                               26,
-                                               10,
-                                               0,
-                                               0,
-                                               TimeSpan.FromHours(-5));
-        DateTimeOffset k2 = new DateTimeOffset(2026,
-                                               2,
-                                               26,
-                                               10,
-                                               30,
-                                               0,
-                                               TimeSpan.FromHours(-5));
+
+        DateTimeOffset k1Utc = new DateTimeOffset(2026,
+                                                  2,
+                                                  26,
+                                                  15,
+                                                  0,
+                                                  0,
+                                                  TimeSpan.Zero);
+        DateTimeOffset k2Utc = new DateTimeOffset(2026,
+                                                  2,
+                                                  26,
+                                                  15,
+                                                  30,
+                                                  0,
+                                                  TimeSpan.Zero);
+
+        DateTimeOffset k1Eastern = new DateTimeOffset(2026,
+                                                      2,
+                                                      26,
+                                                      10,
+                                                      0,
+                                                      0,
+                                                      TimeSpan.FromHours(-5));
+        DateTimeOffset k2Eastern = new DateTimeOffset(2026,
+                                                      2,
+                                                      26,
+                                                      10,
+                                                      30,
+                                                      0,
+                                                      TimeSpan.FromHours(-5));
 
         PrimaryPresenceEntity existing = new PrimaryPresenceEntity
                                          {
                                              UserId = userId,
-                                             StartTime = k1,
-                                             EndTime = k1.AddMinutes(15),
-                                             DurationInSeconds = 900,
+                                             StartTimeUtc = k1Utc,
+                                             EndTimeUtc = k1Utc.AddMinutes(15),
+                                             StartTimeEastern = k1Eastern,
                                              SystemPresence = SystemPresence.Available,
                                              OrganizationPresenceId = "orig"
                                          };
@@ -60,24 +76,22 @@ public sealed class UpsertCompositeKeyTests
 
         List<PrimaryPresenceEntity> incoming =
         [
-            // same composite key -> update
             new PrimaryPresenceEntity
             {
                 UserId = userId,
-                StartTime = k1,
-                EndTime = k1.AddMinutes(20),
-                DurationInSeconds = 1200,
+                StartTimeUtc = k1Utc,
+                EndTimeUtc = k1Utc.AddMinutes(20),
+                StartTimeEastern = k1Eastern,
                 SystemPresence =
                         SystemPresence.OnQueue,
                 OrganizationPresenceId = "updated"
             },
-            // new composite key -> insert
             new PrimaryPresenceEntity
             {
                 UserId = userId,
-                StartTime = k2,
-                EndTime = k2.AddMinutes(10),
-                DurationInSeconds = 600,
+                StartTimeUtc = k2Utc,
+                EndTimeUtc = k2Utc.AddMinutes(10),
+                StartTimeEastern = k2Eastern,
                 SystemPresence = SystemPresence.Busy,
                 OrganizationPresenceId = "new"
             }
@@ -88,18 +102,20 @@ public sealed class UpsertCompositeKeyTests
 
         List<PrimaryPresenceEntity> rows = await db.Set<PrimaryPresenceEntity>()
                                                    .Where(x => x.UserId == userId)
-                                                   .OrderBy(x => x.StartTime)
+                                                   .OrderBy(x => x.StartTimeUtc)
                                                    .ToListAsync();
 
         Assert.Equal(2, rows.Count);
 
-        PrimaryPresenceEntity updated = rows.Single(x => x.StartTime == k1);
-        Assert.Equal(1200, updated.DurationInSeconds);
+        PrimaryPresenceEntity updated = rows.Single(x => x.StartTimeUtc == k1Utc);
+        Assert.Equal(k1Utc.AddMinutes(20), updated.EndTimeUtc);
+        Assert.Equal(k1Eastern, updated.StartTimeEastern);
         Assert.Equal(SystemPresence.OnQueue, updated.SystemPresence);
         Assert.Equal("updated", updated.OrganizationPresenceId);
 
-        PrimaryPresenceEntity inserted = rows.Single(x => x.StartTime == k2);
-        Assert.Equal(600, inserted.DurationInSeconds);
+        PrimaryPresenceEntity inserted = rows.Single(x => x.StartTimeUtc == k2Utc);
+        Assert.Equal(k2Utc.AddMinutes(10), inserted.EndTimeUtc);
+        Assert.Equal(k2Eastern, inserted.StartTimeEastern);
         Assert.Equal(SystemPresence.Busy, inserted.SystemPresence);
         Assert.Equal("new", inserted.OrganizationPresenceId);
     }

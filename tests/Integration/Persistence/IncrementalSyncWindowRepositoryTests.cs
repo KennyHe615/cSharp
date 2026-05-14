@@ -34,7 +34,7 @@ public sealed class IncrementalSyncWindowRepositoryTests
         Mock<IDateTimeProvider> dateTimeProvider = DateTimeProviderTestFactory.Create();
 
         await using AppDbContext dbContext = PersistenceTestFactory.CreateInMemoryDbContext(dateTimeProvider.Object);
-        Mock<IUnitOfWork> uow = PersistenceTestFactory.CreateUnitOfWork<IncrementalSyncWindowEntity>(dbContext);
+        Mock<IUnitOfWork> uow = PersistenceTestFactory.CreateMockUnitOfWork<IncrementalSyncWindowEntity>(dbContext);
 
         IncrementalSyncWindowRepository sut = new IncrementalSyncWindowRepository(dbContext, uow.Object);
 
@@ -110,7 +110,7 @@ public sealed class IncrementalSyncWindowRepositoryTests
         Mock<IDateTimeProvider> dateTimeProvider = DateTimeProviderTestFactory.Create();
 
         await using AppDbContext dbContext = PersistenceTestFactory.CreateInMemoryDbContext(dateTimeProvider.Object);
-        Mock<IUnitOfWork> uow = PersistenceTestFactory.CreateUnitOfWork<IncrementalSyncWindowEntity>(dbContext);
+        Mock<IUnitOfWork> uow = PersistenceTestFactory.CreateMockUnitOfWork<IncrementalSyncWindowEntity>(dbContext);
 
         dbContext.Set<IncrementalSyncWindowEntity>()
                  .Add(new IncrementalSyncWindowEntity
@@ -199,7 +199,7 @@ public sealed class IncrementalSyncWindowRepositoryTests
         Mock<IDateTimeProvider> dateTimeProvider = DateTimeProviderTestFactory.Create();
 
         await using AppDbContext dbContext = PersistenceTestFactory.CreateInMemoryDbContext(dateTimeProvider.Object);
-        Mock<IUnitOfWork> uow = PersistenceTestFactory.CreateUnitOfWork<IncrementalSyncWindowEntity>(dbContext);
+        Mock<IUnitOfWork> uow = PersistenceTestFactory.CreateMockUnitOfWork<IncrementalSyncWindowEntity>(dbContext);
 
         dbContext.Set<IncrementalSyncWindowEntity>()
                  .Add(new IncrementalSyncWindowEntity

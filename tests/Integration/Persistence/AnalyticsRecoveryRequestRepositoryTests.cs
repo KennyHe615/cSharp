@@ -67,7 +67,7 @@ public sealed class AnalyticsRecoveryRequestRepositoryTests
         Mock<IDateTimeProvider> dateTimeProvider = DateTimeProviderTestFactory.Create();
 
         await using AppDbContext dbContext = PersistenceTestFactory.CreateInMemoryDbContext(dateTimeProvider.Object);
-        Mock<IUnitOfWork> uow = PersistenceTestFactory.CreateUnitOfWork<AnalyticsRecoveryRequestEntity>(dbContext);
+        Mock<IUnitOfWork> uow = PersistenceTestFactory.CreateMockUnitOfWork<AnalyticsRecoveryRequestEntity>(dbContext);
 
         AnalyticsRecoveryRequestRepository sut = new AnalyticsRecoveryRequestRepository(dbContext, uow.Object);
 
@@ -104,7 +104,7 @@ public sealed class AnalyticsRecoveryRequestRepositoryTests
         Mock<IDateTimeProvider> dateTimeProvider = DateTimeProviderTestFactory.Create();
 
         await using AppDbContext dbContext = PersistenceTestFactory.CreateInMemoryDbContext(dateTimeProvider.Object);
-        Mock<IUnitOfWork> uow = PersistenceTestFactory.CreateUnitOfWork<AnalyticsRecoveryRequestEntity>(dbContext);
+        Mock<IUnitOfWork> uow = PersistenceTestFactory.CreateMockUnitOfWork<AnalyticsRecoveryRequestEntity>(dbContext);
 
         AnalyticsRecoveryRequestEntity terminal = BuildRequest(nameof(SyncAnalyticsCategory.UsersDetails),
                                                                status,

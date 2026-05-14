@@ -20,6 +20,9 @@ namespace tests.Integration.Persistence;
 /// </summary>
 public sealed class UpsertMergeTests
 {
+    /// <summary>
+    /// Verifies range merge upsert applies the matched-row callback without blind overwrite.
+    /// </summary>
     [Fact]
     public async Task UpsertRangeWithMergeAsync_WhenExistingRowMatches_AppliesMergeCallbackWithoutBlindOverwrite()
     {
@@ -29,20 +32,27 @@ public sealed class UpsertMergeTests
         UnitOfWork uow = PersistenceTestFactory.CreatePersistenceUnitOfWork(db, dateTimeProvider);
 
         Guid userId = Guid.NewGuid();
-        DateTimeOffset startTime = new DateTimeOffset(2026,
-                                                      2,
-                                                      26,
-                                                      10,
-                                                      0,
-                                                      0,
-                                                      TimeSpan.FromHours(-5));
+        DateTimeOffset startTimeUtc = new DateTimeOffset(2026,
+                                                         2,
+                                                         26,
+                                                         15,
+                                                         0,
+                                                         0,
+                                                         TimeSpan.Zero);
+        DateTimeOffset startTimeEastern = new DateTimeOffset(2026,
+                                                             2,
+                                                             26,
+                                                             10,
+                                                             0,
+                                                             0,
+                                                             TimeSpan.FromHours(-5));
 
         PrimaryPresenceEntity existing = new PrimaryPresenceEntity
                                          {
                                              UserId = userId,
-                                             StartTime = startTime,
-                                             EndTime = startTime.AddMinutes(20),
-                                             DurationInSeconds = 1200,
+                                             StartTimeUtc = startTimeUtc,
+                                             EndTimeUtc = startTimeUtc.AddMinutes(20),
+                                             StartTimeEastern = startTimeEastern,
                                              SystemPresence = SystemPresence.OnQueue,
                                              OrganizationPresenceId = "existing"
                                          };
@@ -56,9 +66,10 @@ public sealed class UpsertMergeTests
         PrimaryPresenceEntity incoming = new PrimaryPresenceEntity
                                          {
                                              UserId = userId,
-                                             StartTime = startTime,
-                                             EndTime = null,
-                                             DurationInSeconds = 0,
+                                             StartTimeUtc = startTimeUtc,
+                                             EndTimeUtc = null,
+                                             StartTimeEastern =
+                                                     startTimeEastern.AddMinutes(1),
                                              SystemPresence = SystemPresence.Offline,
                                              OrganizationPresenceId = "incoming"
                                          };
@@ -67,14 +78,17 @@ public sealed class UpsertMergeTests
         await uow.SaveChangesAsync();
 
         PrimaryPresenceEntity row = await db.Set<PrimaryPresenceEntity>()
-                                            .SingleAsync(x => x.UserId == userId && x.StartTime == startTime);
+                                            .SingleAsync(x => x.UserId == userId && x.StartTimeUtc == startTimeUtc);
 
-        Assert.Equal(startTime.AddMinutes(20), row.EndTime);
-        Assert.Equal(1200, row.DurationInSeconds);
+        Assert.Equal(startTimeUtc.AddMinutes(20), row.EndTimeUtc);
+        Assert.Equal(startTimeEastern, row.StartTimeEastern);
         Assert.Equal(SystemPresence.OnQueue, row.SystemPresence);
         Assert.Equal("merged", row.OrganizationPresenceId);
     }
 
+    /// <summary>
+    /// Verifies single-entity merge upsert applies the matched-row callback.
+    /// </summary>
     [Fact]
     public async Task UpsertWithMergeAsync_WhenExistingRowMatches_AppliesMergeCallback()
     {
@@ -84,20 +98,27 @@ public sealed class UpsertMergeTests
         UnitOfWork uow = PersistenceTestFactory.CreatePersistenceUnitOfWork(db, dateTimeProvider);
 
         Guid userId = Guid.NewGuid();
-        DateTimeOffset startTime = new DateTimeOffset(2026,
-                                                      2,
-                                                      26,
-                                                      10,
-                                                      0,
-                                                      0,
-                                                      TimeSpan.FromHours(-5));
+        DateTimeOffset startTimeUtc = new DateTimeOffset(2026,
+                                                         2,
+                                                         26,
+                                                         15,
+                                                         0,
+                                                         0,
+                                                         TimeSpan.Zero);
+        DateTimeOffset startTimeEastern = new DateTimeOffset(2026,
+                                                             2,
+                                                             26,
+                                                             10,
+                                                             0,
+                                                             0,
+                                                             TimeSpan.FromHours(-5));
 
         PrimaryPresenceEntity existing = new PrimaryPresenceEntity
                                          {
                                              UserId = userId,
-                                             StartTime = startTime,
-                                             EndTime = startTime.AddMinutes(10),
-                                             DurationInSeconds = 600,
+                                             StartTimeUtc = startTimeUtc,
+                                             EndTimeUtc = startTimeUtc.AddMinutes(10),
+                                             StartTimeEastern = startTimeEastern,
                                              SystemPresence = SystemPresence.Available,
                                              OrganizationPresenceId = "existing"
                                          };
@@ -111,9 +132,9 @@ public sealed class UpsertMergeTests
         PrimaryPresenceEntity incoming = new PrimaryPresenceEntity
                                          {
                                              UserId = userId,
-                                             StartTime = startTime,
-                                             EndTime = startTime.AddMinutes(30),
-                                             DurationInSeconds = 1800,
+                                             StartTimeUtc = startTimeUtc,
+                                             EndTimeUtc = startTimeUtc.AddMinutes(30),
+                                             StartTimeEastern = startTimeEastern,
                                              SystemPresence = SystemPresence.OnQueue,
                                              OrganizationPresenceId = "incoming"
                                          };
@@ -121,18 +142,18 @@ public sealed class UpsertMergeTests
         await uow.UpsertWithMergeAsync(incoming,
                                        (current, next) =>
                                        {
-                                           current.EndTime = next.EndTime;
-                                           current.DurationInSeconds = next.DurationInSeconds;
+                                           current.EndTimeUtc = next.EndTimeUtc;
+                                           current.StartTimeEastern = next.StartTimeEastern;
                                            current.SystemPresence = next.SystemPresence;
                                            current.OrganizationPresenceId = "single-merge";
                                        });
         await uow.SaveChangesAsync();
 
         PrimaryPresenceEntity row = await db.Set<PrimaryPresenceEntity>()
-                                            .SingleAsync(x => x.UserId == userId && x.StartTime == startTime);
+                                            .SingleAsync(x => x.UserId == userId && x.StartTimeUtc == startTimeUtc);
 
-        Assert.Equal(startTime.AddMinutes(30), row.EndTime);
-        Assert.Equal(1800, row.DurationInSeconds);
+        Assert.Equal(startTimeUtc.AddMinutes(30), row.EndTimeUtc);
+        Assert.Equal(startTimeEastern, row.StartTimeEastern);
         Assert.Equal(SystemPresence.OnQueue, row.SystemPresence);
         Assert.Equal("single-merge", row.OrganizationPresenceId);
     }
@@ -149,20 +170,27 @@ public sealed class UpsertMergeTests
         UnitOfWork uow = PersistenceTestFactory.CreatePersistenceUnitOfWork(db, dateTimeProvider);
 
         Guid userId = Guid.NewGuid();
-        DateTimeOffset startTime = new DateTimeOffset(2026,
-                                                      2,
-                                                      26,
-                                                      10,
-                                                      0,
-                                                      0,
-                                                      TimeSpan.FromHours(-5));
+        DateTimeOffset startTimeUtc = new DateTimeOffset(2026,
+                                                         2,
+                                                         26,
+                                                         15,
+                                                         0,
+                                                         0,
+                                                         TimeSpan.Zero);
+        DateTimeOffset startTimeEastern = new DateTimeOffset(2026,
+                                                             2,
+                                                             26,
+                                                             10,
+                                                             0,
+                                                             0,
+                                                             TimeSpan.FromHours(-5));
 
         PrimaryPresenceEntity incoming = new PrimaryPresenceEntity
                                          {
                                              UserId = userId,
-                                             StartTime = startTime,
-                                             EndTime = startTime.AddMinutes(5),
-                                             DurationInSeconds = 300,
+                                             StartTimeUtc = startTimeUtc,
+                                             EndTimeUtc = startTimeUtc.AddMinutes(5),
+                                             StartTimeEastern = startTimeEastern,
                                              SystemPresence = SystemPresence.Available,
                                              OrganizationPresenceId = "new"
                                          };
@@ -171,10 +199,10 @@ public sealed class UpsertMergeTests
         await uow.SaveChangesAsync();
 
         PrimaryPresenceEntity row = await db.Set<PrimaryPresenceEntity>()
-                                            .SingleAsync(x => x.UserId == userId && x.StartTime == startTime);
+                                            .SingleAsync(x => x.UserId == userId && x.StartTimeUtc == startTimeUtc);
 
-        Assert.Equal(startTime.AddMinutes(5), row.EndTime);
-        Assert.Equal(300, row.DurationInSeconds);
+        Assert.Equal(startTimeUtc.AddMinutes(5), row.EndTimeUtc);
+        Assert.Equal(startTimeEastern, row.StartTimeEastern);
         Assert.Equal(SystemPresence.Available, row.SystemPresence);
         Assert.Equal("new", row.OrganizationPresenceId);
     }

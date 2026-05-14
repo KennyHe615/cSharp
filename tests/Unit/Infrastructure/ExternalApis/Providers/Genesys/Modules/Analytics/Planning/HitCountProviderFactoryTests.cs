@@ -14,37 +14,50 @@ using Xunit;
 
 namespace tests.Unit.Infrastructure.ExternalApis.Providers.Genesys.Modules.Analytics.Planning;
 
+/// <summary>
+/// Unit tests for <see cref="HitCountProviderFactory"/>.
+/// </summary>
 public sealed class HitCountProviderFactoryTests
 {
+    /// <summary>
+    /// Verifies that UsersDetails resolves the UsersDetails hit-count provider.
+    /// </summary>
     [Fact]
     public void Create_UsersDetails_ReturnsUsersDetailsHitCountProvider()
     {
-        IServiceProvider serviceProvider = BuildServiceProvider();
+        using ServiceProvider serviceProvider = BuildServiceProvider();
         HitCountProviderFactory sut = new HitCountProviderFactory(serviceProvider);
 
-        IHitCountProvider provider = sut.Create(SyncCategory.UsersDetails);
+        IHitCountProvider provider = sut.Create(SyncAnalyticsCategory.UsersDetails);
 
         Assert.IsType<UsersDetailsHitCountProvider>(provider);
     }
 
+    /// <summary>
+    /// Verifies that ConversationsDetails resolves the ConversationsDetails hit-count provider.
+    /// </summary>
     [Fact]
     public void Create_ConversationsDetails_ReturnsConversationsDetailsHitCountProvider()
     {
-        IServiceProvider serviceProvider = BuildServiceProvider();
+        using ServiceProvider serviceProvider = BuildServiceProvider();
         HitCountProviderFactory sut = new HitCountProviderFactory(serviceProvider);
 
-        IHitCountProvider provider = sut.Create(SyncCategory.ConversationsDetails);
+        IHitCountProvider provider = sut.Create(SyncAnalyticsCategory.ConversationsDetails);
 
         Assert.IsType<ConversationsDetailsHitCountProvider>(provider);
     }
 
+    /// <summary>
+    /// Verifies that unsupported analytics categories throw a clear not-supported exception.
+    /// </summary>
     [Fact]
     public void Create_UnsupportedCategory_ThrowsNotSupportedException()
     {
-        IServiceProvider serviceProvider = BuildServiceProvider();
+        using ServiceProvider serviceProvider = BuildServiceProvider();
         HitCountProviderFactory sut = new HitCountProviderFactory(serviceProvider);
 
-        NotSupportedException ex = Assert.Throws<NotSupportedException>(() => sut.Create(SyncCategory.Queue));
+        NotSupportedException ex =
+                Assert.Throws<NotSupportedException>(() => sut.Create(SyncAnalyticsCategory.ConversationsAggregates));
 
         Assert.Contains("does not support analytics hit-count planning",
                         ex.Message,
@@ -53,7 +66,6 @@ public sealed class HitCountProviderFactoryTests
 
     #region ========== *** Private Section *** ==========
 
-    [ExcludeFromCodeCoverage]
     private static ServiceProvider BuildServiceProvider()
     {
         ServiceCollection services = [];
