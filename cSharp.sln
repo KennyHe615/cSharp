@@ -2,8 +2,6 @@
 Microsoft Visual Studio Solution File, Format Version 12.00
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "tests", "tests\tests.csproj", "{8591C954-C611-47A5-992A-1A65F899241E}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Domain", "src\Core\Domain\Domain.csproj", "{E4710718-AE3C-4322-AAFD-DA8B0B584A15}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Application", "src\Core\Application\Application.csproj", "{6D3CC935-347C-4B30-BBBE-92822584570E}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Infrastructure", "src\Infrastructure\Infrastructure.csproj", "{25F9509A-9C85-41DF-AD92-7EF3C1A1FA83}"
@@ -52,10 +50,6 @@ Global
 		{8591C954-C611-47A5-992A-1A65F899241E}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{8591C954-C611-47A5-992A-1A65F899241E}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{8591C954-C611-47A5-992A-1A65F899241E}.Release|Any CPU.Build.0 = Release|Any CPU
-		{E4710718-AE3C-4322-AAFD-DA8B0B584A15}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{E4710718-AE3C-4322-AAFD-DA8B0B584A15}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{E4710718-AE3C-4322-AAFD-DA8B0B584A15}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{E4710718-AE3C-4322-AAFD-DA8B0B584A15}.Release|Any CPU.Build.0 = Release|Any CPU
 		{25F9509A-9C85-41DF-AD92-7EF3C1A1FA83}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{25F9509A-9C85-41DF-AD92-7EF3C1A1FA83}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{25F9509A-9C85-41DF-AD92-7EF3C1A1FA83}.Release|Any CPU.ActiveCfg = Release|Any CPU
