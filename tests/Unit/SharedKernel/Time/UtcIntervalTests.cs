@@ -243,4 +243,24 @@ public sealed class UtcIntervalTests
     }
 
     #endregion
+
+    #region ========== *** Normalize *** ==========
+
+    [Fact]
+    public void Normalize_WithValidSecondPrecision_ReturnsCanonicalMinutePrecision()
+    {
+        string normalized = UtcInterval.Normalize("2025-01-01T00:00:30Z/2025-01-01T01:00:45Z");
+
+        Assert.Equal("2025-01-01T00:00Z/2025-01-01T01:00Z", normalized);
+    }
+
+    [Fact]
+    public void Normalize_WithInvalidFormat_ThrowsFormatException()
+    {
+        FormatException ex = Assert.Throws<FormatException>(() => UtcInterval.Normalize("invalid"));
+
+        Assert.Contains("Invalid interval format", ex.Message);
+    }
+
+    #endregion
 }

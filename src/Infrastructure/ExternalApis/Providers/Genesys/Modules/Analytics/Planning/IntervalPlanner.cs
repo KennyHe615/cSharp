@@ -31,20 +31,20 @@ public sealed class IntervalPlanner(IHitCountProviderFactory hitCountProviderFac
     private const int MaxIntervalDays = GenesysOptions.MaxIntervalDays;
 
     private readonly IHitCountProviderFactory _hitCountProviderFactory =
-        hitCountProviderFactory ?? throw new ArgumentNullException(nameof(hitCountProviderFactory));
+            hitCountProviderFactory ?? throw new ArgumentNullException(nameof(hitCountProviderFactory));
 
     private readonly IDateTimeProvider _dateTimeProvider =
-        dateTimeProvider ?? throw new ArgumentNullException(nameof(dateTimeProvider));
+            dateTimeProvider ?? throw new ArgumentNullException(nameof(dateTimeProvider));
 
     private readonly GenesysOptions _genesysOptions =
-        genesysOptions.Value ?? throw new ArgumentNullException(nameof(genesysOptions));
+            genesysOptions.Value ?? throw new ArgumentNullException(nameof(genesysOptions));
 
     private readonly ILogger<IntervalPlanner> _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
     #endregion
 
     /// <inheritdoc />
-    public async Task<IReadOnlyList<PlannedIntervalDto>> PlanAsync(SyncCategory category,
+    public async Task<IReadOnlyList<PlannedIntervalDto>> PlanAsync(SyncAnalyticsCategory category,
                                                                    UtcInterval interval,
                                                                    CancellationToken ct = default)
     {
@@ -53,17 +53,17 @@ public sealed class IntervalPlanner(IHitCountProviderFactory hitCountProviderFac
         IHitCountProvider provider = _hitCountProviderFactory.Create(category);
 
         return await BuildPlanAsync(interval, provider, ct)
-           .ConfigureAwait(false);
+                      .ConfigureAwait(false);
     }
 
     #region ========== *** Private Section *** ==========
 
-    private void ValidateInputs(SyncCategory category, UtcInterval interval)
+    private void ValidateInputs(SyncAnalyticsCategory category, UtcInterval interval)
     {
-        if (category != SyncCategory.UsersDetails && category != SyncCategory.ConversationsDetails)
+        if (category != SyncAnalyticsCategory.UsersDetails && category != SyncAnalyticsCategory.ConversationsDetails)
         {
             throw new
-                IntervalPlanningException($"Category '{category}' is not supported by interval planner. Supported categories: UsersDetails, ConversationsDetails.");
+                    IntervalPlanningException($"Category '{category}' is not supported by interval planner. Supported categories: UsersDetails, ConversationsDetails.");
         }
 
         // Genesys historical constraint: start cannot be older than configured limit.
@@ -73,8 +73,8 @@ public sealed class IntervalPlanner(IHitCountProviderFactory hitCountProviderFac
         if (interval.Start < earliestAllowedStart)
         {
             throw new
-                IntervalPlanningException($"Interval start ({interval.Start:O}) exceeds Genesys historical limit ({HistoricalDataLimitDays} days). "
-                                          + $"Earliest allowed start: {earliestAllowedStart:O}.");
+                    IntervalPlanningException($"Interval start ({interval.Start:O}) exceeds Genesys historical limit ({HistoricalDataLimitDays} days). "
+                                              + $"Earliest allowed start: {earliestAllowedStart:O}.");
         }
     }
 
@@ -94,7 +94,7 @@ public sealed class IntervalPlanner(IHitCountProviderFactory hitCountProviderFac
                                                                               interval.End,
                                                                               provider,
                                                                               ct)
-               .ConfigureAwait(false);
+                                                           .ConfigureAwait(false);
 
             PlannedIntervalDto planned = new PlannedIntervalDto(new UtcInterval(currentStart, optimalEnd), hits);
             plannedIntervals.Add(planned);
@@ -144,7 +144,7 @@ public sealed class IntervalPlanner(IHitCountProviderFactory hitCountProviderFac
                                                     mid,
                                                     provider,
                                                     ct)
-               .ConfigureAwait(false);
+                              .ConfigureAwait(false);
 
             if (hits < _genesysOptions.MaxHitThreshold)
             {
@@ -166,7 +166,7 @@ public sealed class IntervalPlanner(IHitCountProviderFactory hitCountProviderFac
                                                 1,
                                                 provider,
                                                 ct)
-           .ConfigureAwait(false);
+                          .ConfigureAwait(false);
 
         return (start.AddMinutes(1), bestHits);
     }
