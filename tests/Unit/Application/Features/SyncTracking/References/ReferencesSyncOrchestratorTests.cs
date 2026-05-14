@@ -1,6 +1,7 @@
 using Application.Abstractions.External;
 using Application.Abstractions.Normalization;
 using Application.Abstractions.Persistence;
+using Application.Abstractions.Persistence.SyncTracking;
 using Application.Contracts.ExternalApis.Genesys.References;
 using Application.DTOs.References;
 using Application.Enums;
@@ -149,9 +150,9 @@ public sealed class ReferencesSyncOrchestratorTests
                                                                         syncCheckpointRepository.Object);
 
         OperationCanceledException actual =
-                        await Assert.ThrowsAsync<OperationCanceledException>(() => sut.ExecuteAsync(runId,
-                                                                                 SyncReferenceCategory.Group,
-                                                                                 ct));
+                await Assert.ThrowsAsync<OperationCanceledException>(() => sut.ExecuteAsync(runId,
+                                                                         SyncReferenceCategory.Group,
+                                                                         ct));
 
         Assert.Same(expected, actual);
 
@@ -199,9 +200,9 @@ public sealed class ReferencesSyncOrchestratorTests
                                                                         syncCheckpointRepository.Object);
 
         InvalidOperationException actual =
-                        await Assert.ThrowsAsync<InvalidOperationException>(() => sut.ExecuteAsync(runId,
-                                                                                SyncReferenceCategory.Group,
-                                                                                ct));
+                await Assert.ThrowsAsync<InvalidOperationException>(() => sut.ExecuteAsync(runId,
+                                                                        SyncReferenceCategory.Group,
+                                                                        ct));
 
         Assert.Same(expected, actual);
 

@@ -1,4 +1,4 @@
-namespace Application.Abstractions.Persistence;
+namespace Application.Abstractions.Persistence.SyncTracking;
 
 /// <summary>
 /// Persistence contract for physical sync run lifecycle management.

@@ -3,6 +3,7 @@ using Application.Abstractions.Normalization;
 using Application.Abstractions.Orchestration;
 using Application.Abstractions.Orchestration.References;
 using Application.Abstractions.Persistence;
+using Application.Abstractions.Persistence.SyncTracking;
 using Application.Enums;
 using Application.Features.SyncTracking.Shared;
 

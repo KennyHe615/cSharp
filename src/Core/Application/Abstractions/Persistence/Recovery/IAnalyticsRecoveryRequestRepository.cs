@@ -1,7 +1,7 @@
 using Application.DTOs.Recovery;
 
 
-namespace Application.Abstractions.Persistence;
+namespace Application.Abstractions.Persistence.Recovery;
 
 /// <summary>
 /// Persistence contract for user-submitted analytics recovery intake requests.

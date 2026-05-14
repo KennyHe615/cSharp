@@ -2,7 +2,7 @@ using Application.DTOs.SyncTracking;
 using Application.Enums;
 
 
-namespace Application.Abstractions.Persistence;
+namespace Application.Abstractions.Persistence.SyncTracking;
 
 /// <summary>
 /// Persistence contract for claimable sync run items used by execution stages.

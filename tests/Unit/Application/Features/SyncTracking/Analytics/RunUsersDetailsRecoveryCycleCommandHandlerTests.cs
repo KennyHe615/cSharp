@@ -1,4 +1,5 @@
 using Application.Abstractions.Persistence;
+using Application.Abstractions.Persistence.SyncTracking;
 using Application.DTOs.SyncTracking;
 using Application.Enums;
 using Application.Features.SyncTracking.Analytics;

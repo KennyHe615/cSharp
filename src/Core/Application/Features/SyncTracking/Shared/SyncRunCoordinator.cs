@@ -1,6 +1,7 @@
 using Application.Abstractions.Orchestration;
 using Application.Abstractions.Orchestration.Sync;
 using Application.Abstractions.Persistence;
+using Application.Abstractions.Persistence.SyncTracking;
 
 
 namespace Application.Features.SyncTracking.Shared;

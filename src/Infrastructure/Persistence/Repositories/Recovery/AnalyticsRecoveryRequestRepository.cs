@@ -1,4 +1,5 @@
 using Application.Abstractions.Persistence;
+using Application.Abstractions.Persistence.Recovery;
 using Application.DTOs.Recovery;
 using Application.Enums;
 

@@ -1,4 +1,6 @@
 using Application.Abstractions.Persistence;
+using Application.Abstractions.Persistence.Recovery;
+using Application.Abstractions.Persistence.SyncTracking;
 
 using Infrastructure.Persistence.DbContext;
 using Infrastructure.Persistence.Interceptors;

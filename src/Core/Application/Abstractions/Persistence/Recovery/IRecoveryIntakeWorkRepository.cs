@@ -1,7 +1,7 @@
 using Application.DTOs.Recovery;
 
 
-namespace Application.Abstractions.Persistence;
+namespace Application.Abstractions.Persistence.Recovery;
 
 /// <summary>
 /// Persistence contract for the scheduled worker that materializes recovery intake requests into executable sync work.
