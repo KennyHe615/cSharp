@@ -3,7 +3,7 @@ using System.Diagnostics.CodeAnalysis;
 using Application.Abstractions.Context;
 using Application.Abstractions.Identity;
 using Application.Enums;
-using Application.Features.SyncTracking.References;
+using Application.Features.References;
 using Application.Mediator;
 
 using FunctionApps.Timer;
@@ -70,7 +70,7 @@ public sealed class ReferencesTimerRunnerTests
                                                        {
                                                            totalDispatchCalls++;
                                                            RunReferencesFullSyncCommand cmd =
-                                                               (RunReferencesFullSyncCommand)request;
+                                                                   (RunReferencesFullSyncCommand)request;
 
                                                            if (cmd.Category != unsupported) return Task.FromResult(1L);
 

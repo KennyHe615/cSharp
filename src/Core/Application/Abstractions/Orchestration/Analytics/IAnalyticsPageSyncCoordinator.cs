@@ -1,5 +1,5 @@
 using Application.Abstractions.Orchestration.Sync;
-using Application.Features.SyncTracking.Analytics;
+using Application.Features.Analytics.Shared;
 
 
 namespace Application.Abstractions.Orchestration.Analytics;

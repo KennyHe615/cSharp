@@ -20,7 +20,6 @@
 
     <ItemGroup>
         <Folder Include="Contracts\InternalApis\"/>
-        <Folder Include="Features\Analytics\UsersDetails\"/>
     </ItemGroup>
 
 </Project>

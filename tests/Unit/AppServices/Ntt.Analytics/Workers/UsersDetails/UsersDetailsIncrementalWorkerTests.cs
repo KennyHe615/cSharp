@@ -1,6 +1,6 @@
 using Application.Abstractions.Context;
 using Application.Abstractions.Identity;
-using Application.Features.SyncTracking.Analytics;
+using Application.Features.Analytics.UsersDetails;
 using Application.Mediator;
 
 using Microsoft.Extensions.Logging.Abstractions;
