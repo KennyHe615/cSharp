@@ -1,6 +1,7 @@
 using Infrastructure.Persistence;
 using Infrastructure.Persistence.DbContext;
 using Infrastructure.Persistence.Entities.References;
+using Infrastructure.Persistence.Entities.UserDetails;
 using Infrastructure.Persistence.Interceptors;
 
 using Microsoft.EntityFrameworkCore;
@@ -76,5 +77,30 @@ public sealed class DateTimeEstConventionTests
         object? configuredType = property.FindAnnotation(RelationalAnnotationNames.ColumnType)
                                         ?.Value;
         Assert.Equal("datetimeoffset(0)", configuredType);
+    }
+
+    [Fact]
+    public void PrimaryPresenceStartTimeUtc_KeyColumnUsesMillisecondPrecision()
+    {
+        DbContextOptions<AppDbContext> options = new DbContextOptionsBuilder<AppDbContext>()
+                                                .UseInMemoryDatabase($"est-key-column-type-{Guid.NewGuid()}")
+                                                .Options;
+
+        FixedEstDateTimeProvider dateTimeProvider = new FixedEstDateTimeProvider();
+        AuditSaveChangesInterceptor interceptor = new AuditSaveChangesInterceptor(dateTimeProvider);
+
+        using AppDbContext db = new AppDbContext(options,
+                                                 Options.Create(new DatabaseOptions()),
+                                                 new StubLobContext(),
+                                                 dateTimeProvider,
+                                                 interceptor);
+
+        IEntityType entityType = db.Model.FindEntityType(typeof(PrimaryPresenceEntity))!;
+        IProperty property = entityType.FindProperty(nameof(PrimaryPresenceEntity.StartTimeUtc))!;
+
+        object? configuredType = property.FindAnnotation(RelationalAnnotationNames.ColumnType)
+                                        ?.Value;
+
+        Assert.Equal("datetimeoffset(3)", configuredType);
     }
 }

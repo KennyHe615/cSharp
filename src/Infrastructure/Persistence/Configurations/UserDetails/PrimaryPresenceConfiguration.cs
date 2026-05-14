@@ -10,28 +10,35 @@ public sealed class PrimaryPresenceConfiguration : IEntityTypeConfiguration<Prim
 {
     public void Configure(EntityTypeBuilder<PrimaryPresenceEntity> builder)
     {
-        builder.ToTable("user_details_primary_presence_stg", "dbo");
+        builder.ToTable("users_details_primary_presence_stg", "dbo");
 
         builder.HasKey(x => new
                             {
                                 x.UserId,
-                                x.StartTime
+                                x.StartTimeUtc
                             });
 
         #region ========== *** Properties *** ==========
 
-        builder.Property(x => x.UserId)
-               .IsRequired();
-
-        builder.Property(x => x.StartTime)
+        builder.Property(x => x.StartTimeUtc)
                .IsRequired()
                .HasColumnType("datetimeoffset(3)");
 
-        builder.Property(x => x.EndTime)
+        builder.Property(x => x.EndTimeUtc)
                .HasColumnType("datetimeoffset(3)");
 
-        builder.Property(x => x.DurationInSeconds)
-               .HasColumnType("bigint");
+        builder.Property<long?>("DurationInSeconds")
+               .HasColumnType("bigint")
+               .HasComputedColumnSql("CASE WHEN [end_time_utc] IS NULL THEN NULL ELSE DATEDIFF_BIG(SECOND, [start_time_utc], [end_time_utc]) END",
+                                     true);
+
+        builder.Property(x => x.StartTimeEastern)
+               .IsRequired()
+               .HasColumnType("datetimeoffset(0)");
+
+        builder.Property<DateOnly>("StartDateEastern")
+               .HasColumnType("date")
+               .HasComputedColumnSql("CAST([start_time_eastern] AS DATE)", true);
 
         builder.Property(x => x.SystemPresence)
                .IsRequired()
@@ -44,7 +51,7 @@ public sealed class PrimaryPresenceConfiguration : IEntityTypeConfiguration<Prim
 
         #region ========== *** Non-Clustered Indexes *** ==========
 
-        builder.HasIndex(x => x.SystemPresence);
+        builder.HasIndex("StartDateEastern", nameof(PrimaryPresenceEntity.SystemPresence));
 
         #endregion
     }

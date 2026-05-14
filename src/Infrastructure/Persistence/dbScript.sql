@@ -1,9 +1,10 @@
+/* region ========== *** Database & Schema *** ========== */
 -- Create database if it doesn't exist
 IF NOT EXISTS (SELECT 1
                FROM sys.databases
-               WHERE name = N'genesys_landing_crc')
+               WHERE name = N'genesys_landing_crc_dev')
     BEGIN
-        EXEC ('CREATE DATABASE genesys_landing_crc');
+        EXEC ('CREATE DATABASE genesys_landing_crc_dev');
     END;
 GO
 
@@ -11,6 +12,7 @@ GO
 IF SCHEMA_ID(N'ref') IS NULL
     EXEC (N'CREATE SCHEMA ref');
 GO
+/* endregion */
 
 /* region ========== *** References *** ========== */
 
@@ -207,87 +209,101 @@ GO
 
 /* endregion */
 
-/* region ========== *** User Details *** ========== */
-IF OBJECT_ID(N'dbo.user_details_primary_presence_stg', N'U') IS NULL
+/* region ========== *** Users Details *** ========== */
+IF OBJECT_ID(N'dbo.users_details_primary_presence_stg', N'U') IS NULL
     BEGIN
-        CREATE TABLE [dbo].[user_details_primary_presence_stg]
+        CREATE TABLE [dbo].[users_details_primary_presence_stg]
         (
             [user_id]                  UNIQUEIDENTIFIER  NOT NULL,
-            [start_time]               DATETIMEOFFSET(3) NOT NULL,
-            [end_time]                 DATETIMEOFFSET(3) NULL,
-            [duration_in_seconds]      BIGINT            NULL,
+            [start_time_utc]           DATETIMEOFFSET(3) NOT NULL,
+            [end_time_utc]             DATETIMEOFFSET(3) NULL,
+            [duration_in_seconds]      AS (CASE
+                                               WHEN [end_time_utc] IS NULL THEN NULL
+                                               ELSE DATEDIFF_BIG(SECOND, [start_time_utc], [end_time_utc])
+                END) PERSISTED,
+            [start_time_eastern]       DATETIMEOFFSET(0) NOT NULL,
+            [start_date_eastern]       AS CAST([start_time_eastern] AS DATE) PERSISTED,
             [system_presence]          NVARCHAR(9)       NOT NULL,
             [organization_presence_id] NVARCHAR(255)     NULL,
             [app_created_at_eastern]   DATETIMEOFFSET(0) NOT NULL
-                CONSTRAINT [DF_user_details_primary_presence_stg_app_created_at_eastern] DEFAULT (SWITCHOFFSET(
+                CONSTRAINT [DF_users_details_primary_presence_stg_app_created_at_eastern] DEFAULT (SWITCHOFFSET(
                     SYSDATETIMEOFFSET(), DATENAME(TzOffset, SYSDATETIMEOFFSET() AT TIME ZONE 'Eastern Standard Time'))),
             [app_updated_at_eastern]   DATETIMEOFFSET(0) NOT NULL
-                CONSTRAINT [DF_user_details_primary_presence_stg_app_updated_at_eastern] DEFAULT (SWITCHOFFSET(
+                CONSTRAINT [DF_users_details_primary_presence_stg_app_updated_at_eastern] DEFAULT (SWITCHOFFSET(
                     SYSDATETIMEOFFSET(), DATENAME(TzOffset, SYSDATETIMEOFFSET() AT TIME ZONE 'Eastern Standard Time'))),
 
-            CONSTRAINT [PK_user_details_primary_presence_stg] PRIMARY KEY CLUSTERED ([user_id], [start_time])
+            CONSTRAINT [PK_users_details_primary_presence_stg] PRIMARY KEY CLUSTERED ([user_id], [start_time_utc]),
+            CONSTRAINT [CK_users_details_primary_presence_stg_start_time_utc_offset] CHECK (DATEPART(TZOFFSET, [start_time_utc]) = 0),
+            CONSTRAINT [CK_users_details_primary_presence_stg_end_time_utc_offset] CHECK ([end_time_utc] IS NULL OR DATEPART(TZOFFSET, [end_time_utc]) = 0)
         );
     END
 GO
 
 IF NOT EXISTS (SELECT 1
                FROM sys.indexes
-               WHERE name = N'IX_user_details_primary_presence_stg_system_presence'
-                 AND object_id = OBJECT_ID(N'dbo.user_details_primary_presence_stg'))
+               WHERE name = N'IX_users_details_primary_presence_stg_start_date_eastern_system_presence'
+                 AND object_id = OBJECT_ID(N'dbo.users_details_primary_presence_stg'))
     BEGIN
-        CREATE NONCLUSTERED INDEX [IX_user_details_primary_presence_stg_system_presence]
-            ON [dbo].[user_details_primary_presence_stg] ([system_presence]);
+        CREATE NONCLUSTERED INDEX [IX_users_details_primary_presence_stg_start_date_eastern_system_presence]
+            ON [dbo].[users_details_primary_presence_stg] ([start_date_eastern], [system_presence]);
     END
 GO
 
 IF NOT EXISTS (SELECT 1
                FROM sys.indexes
-               WHERE name = N'IX_user_details_primary_presence_stg_app_updated_at_eastern'
-                 AND object_id = OBJECT_ID(N'dbo.user_details_primary_presence_stg'))
+               WHERE name = N'IX_users_details_primary_presence_stg_app_updated_at_eastern'
+                 AND object_id = OBJECT_ID(N'dbo.users_details_primary_presence_stg'))
     BEGIN
-        CREATE NONCLUSTERED INDEX [IX_user_details_primary_presence_stg_app_updated_at_eastern]
-            ON [dbo].[user_details_primary_presence_stg] ([app_updated_at_eastern]);
+        CREATE NONCLUSTERED INDEX [IX_users_details_primary_presence_stg_app_updated_at_eastern]
+            ON [dbo].[users_details_primary_presence_stg] ([app_updated_at_eastern]);
     END
 GO
 
-IF OBJECT_ID(N'dbo.user_details_routing_status_stg', N'U') IS NULL
+IF OBJECT_ID(N'dbo.users_details_routing_status_stg', N'U') IS NULL
     BEGIN
-        CREATE TABLE [dbo].[user_details_routing_status_stg]
+        CREATE TABLE [dbo].[users_details_routing_status_stg]
         (
             [user_id]                UNIQUEIDENTIFIER  NOT NULL,
-            [start_time]             DATETIMEOFFSET(3) NOT NULL,
-            [end_time]               DATETIMEOFFSET(3) NULL,
-            [duration_in_seconds]    BIGINT            NULL,
+            [start_time_utc]         DATETIMEOFFSET(3) NOT NULL,
+            [end_time_utc]           DATETIMEOFFSET(3) NULL,
+            [duration_in_seconds]    AS (CASE
+                                             WHEN [end_time_utc] IS NULL THEN NULL
+                                             ELSE DATEDIFF_BIG(SECOND, [start_time_utc], [end_time_utc])
+                END) PERSISTED,
+            [start_time_eastern]     DATETIMEOFFSET(0) NOT NULL,
+            [start_date_eastern]     AS CAST([start_time_eastern] AS DATE) PERSISTED,
             [routing_status]         NVARCHAR(15)      NOT NULL,
             [app_created_at_eastern] DATETIMEOFFSET(0) NOT NULL
-                CONSTRAINT [DF_user_details_routing_status_stg_app_created_at_eastern] DEFAULT (SWITCHOFFSET(
+                CONSTRAINT [DF_users_details_routing_status_stg_app_created_at_eastern] DEFAULT (SWITCHOFFSET(
                     SYSDATETIMEOFFSET(), DATENAME(TzOffset, SYSDATETIMEOFFSET() AT TIME ZONE 'Eastern Standard Time'))),
             [app_updated_at_eastern] DATETIMEOFFSET(0) NOT NULL
-                CONSTRAINT [DF_user_details_routing_status_stg_app_updated_at_eastern] DEFAULT (SWITCHOFFSET(
+                CONSTRAINT [DF_users_details_routing_status_stg_app_updated_at_eastern] DEFAULT (SWITCHOFFSET(
                     SYSDATETIMEOFFSET(), DATENAME(TzOffset, SYSDATETIMEOFFSET() AT TIME ZONE 'Eastern Standard Time'))),
 
-            CONSTRAINT [PK_user_details_routing_status_stg] PRIMARY KEY CLUSTERED ([user_id], [start_time])
+            CONSTRAINT [PK_users_details_routing_status_stg] PRIMARY KEY CLUSTERED ([user_id], [start_time_utc]),
+            CONSTRAINT [CK_users_details_routing_status_stg_start_time_utc_offset] CHECK (DATEPART(TZOFFSET, [start_time_utc]) = 0),
+            CONSTRAINT [CK_users_details_routing_status_stg_end_time_utc_offset] CHECK ([end_time_utc] IS NULL OR DATEPART(TZOFFSET, [end_time_utc]) = 0)
         );
     END
 GO
 
 IF NOT EXISTS (SELECT 1
                FROM sys.indexes
-               WHERE name = N'IX_user_details_routing_status_stg_routing_status'
-                 AND object_id = OBJECT_ID(N'dbo.user_details_routing_status_stg'))
+               WHERE name = N'IX_users_details_routing_status_stg_start_date_eastern_routing_status'
+                 AND object_id = OBJECT_ID(N'dbo.users_details_routing_status_stg'))
     BEGIN
-        CREATE NONCLUSTERED INDEX [IX_user_details_routing_status_stg_routing_status]
-            ON [dbo].[user_details_routing_status_stg] ([routing_status]);
+        CREATE NONCLUSTERED INDEX [IX_users_details_routing_status_stg_start_date_eastern_routing_status]
+            ON [dbo].[users_details_routing_status_stg] ([start_date_eastern], [routing_status]);
     END
 GO
 
 IF NOT EXISTS (SELECT 1
                FROM sys.indexes
-               WHERE name = N'IX_user_details_routing_status_stg_app_updated_at_eastern'
-                 AND object_id = OBJECT_ID(N'dbo.user_details_routing_status_stg'))
+               WHERE name = N'IX_users_details_routing_status_stg_app_updated_at_eastern'
+                 AND object_id = OBJECT_ID(N'dbo.users_details_routing_status_stg'))
     BEGIN
-        CREATE NONCLUSTERED INDEX [IX_user_details_routing_status_stg_app_updated_at_eastern]
-            ON [dbo].[user_details_routing_status_stg] ([app_updated_at_eastern]);
+        CREATE NONCLUSTERED INDEX [IX_users_details_routing_status_stg_app_updated_at_eastern]
+            ON [dbo].[users_details_routing_status_stg] ([app_updated_at_eastern]);
     END
 GO
 /* endregion */
@@ -306,7 +322,7 @@ IF OBJECT_ID(N'dbo.sync_request', N'U') IS NULL
             [category]               [nvarchar](50)          NOT NULL,
             [mode]                   [nvarchar](20)          NOT NULL,
             -- Request-level lifecycle state used by recovery reuse/create decision logic.
-            [status]                 [nvarchar](20)          NOT NULL
+            [status]                 [nvarchar](50)          NOT NULL
                 CONSTRAINT [DF_sync_request_status] DEFAULT ('PENDING'),
             -- Number of reopen operations applied to this request.
             [reopen_count]           [int]                   NOT NULL
@@ -416,7 +432,7 @@ IF OBJECT_ID(N'dbo.sync_run', N'U') IS NULL
         (
             [id]                       [bigint] IDENTITY (1,1) NOT NULL,
             [request_id]               [bigint]                NOT NULL,
-            [status]                   [nvarchar](20)          NOT NULL,
+            [status]                   [nvarchar](50)          NOT NULL,
             [superseded_by_run_id]     [bigint]                NULL,
             [attempt_no]               [int]                   NOT NULL
                 CONSTRAINT [DF_sync_run_attempt_no] DEFAULT ((1)),
@@ -516,15 +532,15 @@ IF OBJECT_ID(N'dbo.sync_run_item', N'U') IS NULL
             [step]                      [nvarchar](50)          NOT NULL,
             [cursor]                    [nvarchar](200)         NULL,
             [page_number]               [int]                   NULL,
-            [status]                    [nvarchar](20)          NOT NULL,
+            [status]                    [nvarchar](50)          NOT NULL,
             [failure_reason]            [nvarchar](1000)        NULL,
             [claimed_by]                [nvarchar](200)         NULL,
             [lease_token]               [uniqueidentifier]      NULL,
-            [claimed_at_eastern]        DATETIMEOFFSET(3)       NULL,
-            [claim_expires_at_eastern]  DATETIMEOFFSET(3)       NULL,
+            [claimed_at_eastern]        DATETIMEOFFSET(0)       NULL,
+            [claim_expires_at_eastern]  DATETIMEOFFSET(0)       NULL,
             [attempt_count]             [int]                   NOT NULL
                 CONSTRAINT [DF_sync_run_item_attempt_count] DEFAULT ((0)),
-            [last_heartbeat_at_eastern] DATETIMEOFFSET(3)       NULL,
+            [last_heartbeat_at_eastern] DATETIMEOFFSET(0)       NULL,
             [app_created_at_eastern]    DATETIMEOFFSET(0)       NOT NULL
                 CONSTRAINT [DF_sync_run_item_app_created_at_eastern] DEFAULT (SWITCHOFFSET(SYSDATETIMEOFFSET(),
                                                                                            DATENAME(TzOffset,
@@ -637,9 +653,9 @@ IF OBJECT_ID(N'dbo.incremental_sync_window', N'U') IS NULL
         (
             [id]                      [bigint] IDENTITY (1,1) NOT NULL,
             [category]                [nvarchar](50)          NOT NULL,
-            [next_interval_start_utc] DATETIMEOFFSET(0)       NOT NULL,
-            [last_reserved_start_utc] DATETIMEOFFSET(0)       NULL,
-            [last_reserved_end_utc]   DATETIMEOFFSET(0)       NULL,
+            [next_interval_start_utc] DATETIMEOFFSET(3)       NOT NULL,
+            [last_reserved_start_utc] DATETIMEOFFSET(3)       NULL,
+            [last_reserved_end_utc]   DATETIMEOFFSET(3)       NULL,
             [row_version]             [rowversion]            NOT NULL,
             [app_created_at_eastern]  DATETIMEOFFSET(0)       NOT NULL
                 CONSTRAINT [DF_incremental_sync_window_app_created_at_eastern] DEFAULT (SWITCHOFFSET(

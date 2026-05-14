@@ -117,7 +117,7 @@ public sealed class SyncRequestRepositoryTests
         Mock<IDateTimeProvider> dateTimeProvider = DateTimeProviderTestFactory.Create();
 
         await using AppDbContext dbContext = PersistenceTestFactory.CreateInMemoryDbContext(dateTimeProvider.Object);
-        Mock<IUnitOfWork> uow = PersistenceTestFactory.CreateUnitOfWork<SyncRequestEntity>(dbContext);
+        Mock<IUnitOfWork> uow = PersistenceTestFactory.CreateMockUnitOfWork<SyncRequestEntity>(dbContext);
 
         SyncRequestRepository sut = new SyncRequestRepository(dbContext, uow.Object);
 
@@ -247,7 +247,7 @@ public sealed class SyncRequestRepositoryTests
         Mock<IDateTimeProvider> dateTimeProvider = DateTimeProviderTestFactory.Create();
 
         await using AppDbContext dbContext = PersistenceTestFactory.CreateInMemoryDbContext(dateTimeProvider.Object);
-        Mock<IUnitOfWork> uow = PersistenceTestFactory.CreateUnitOfWork<SyncRequestEntity>(dbContext);
+        Mock<IUnitOfWork> uow = PersistenceTestFactory.CreateMockUnitOfWork<SyncRequestEntity>(dbContext);
 
         SyncRequestEntity completed = BuildRequest(nameof(SyncAnalyticsCategory.ConversationsAggregates),
                                                    SyncMode.Recovery,
@@ -289,7 +289,7 @@ public sealed class SyncRequestRepositoryTests
         Mock<IDateTimeProvider> dateTimeProvider = DateTimeProviderTestFactory.Create();
 
         await using AppDbContext dbContext = PersistenceTestFactory.CreateInMemoryDbContext(dateTimeProvider.Object);
-        Mock<IUnitOfWork> uow = PersistenceTestFactory.CreateUnitOfWork<SyncRequestEntity>(dbContext);
+        Mock<IUnitOfWork> uow = PersistenceTestFactory.CreateMockUnitOfWork<SyncRequestEntity>(dbContext);
 
         SyncRequestEntity completed = BuildRequest(nameof(SyncAnalyticsCategory.ConversationsAggregates),
                                                    SyncMode.Recovery,
@@ -331,7 +331,7 @@ public sealed class SyncRequestRepositoryTests
         Mock<IDateTimeProvider> dateTimeProvider = DateTimeProviderTestFactory.Create();
 
         await using AppDbContext dbContext = PersistenceTestFactory.CreateInMemoryDbContext(dateTimeProvider.Object);
-        Mock<IUnitOfWork> uow = PersistenceTestFactory.CreateUnitOfWork<SyncRequestEntity>(dbContext);
+        Mock<IUnitOfWork> uow = PersistenceTestFactory.CreateMockUnitOfWork<SyncRequestEntity>(dbContext);
 
         const string interval = "2026-04-14T03:00:00Z/2026-04-14T03:30:00Z";
 
@@ -635,6 +635,92 @@ public sealed class SyncRequestRepositoryTests
         entity.RebuildScopeKey();
 
         return entity;
+    }
+
+    #endregion
+
+    #region ========== *** TryStartNextRecoveryRequestAsync *** ==========
+
+    [Fact]
+    public async Task TryStartNextRecoveryRequestAsync_WhenPendingRecoveryExists_StartsAndReturnsRequest()
+    {
+        Mock<IDateTimeProvider> dateTimeProvider = DateTimeProviderTestFactory.Create();
+
+        await using AppDbContext dbContext = PersistenceTestFactory.CreateInMemoryDbContext(dateTimeProvider.Object);
+
+        SyncRequestEntity pending = BuildRequest(nameof(SyncAnalyticsCategory.UsersDetails),
+                                                 SyncMode.Recovery,
+                                                 SyncRequestStatus.Pending,
+                                                 "2026-04-14T00:00:00Z/2026-04-14T00:30:00Z",
+                                                 1,
+                                                 null);
+
+        dbContext.Set<SyncRequestEntity>()
+                 .Add(pending);
+        await dbContext.SaveChangesAsync();
+
+        Mock<IUnitOfWork> uow = new Mock<IUnitOfWork>(MockBehavior.Strict);
+        uow.Setup(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()))
+           .Returns<CancellationToken>(dbContext.SaveChangesAsync);
+
+        SyncRequestRepository sut = new SyncRequestRepository(dbContext, uow.Object);
+
+        SyncRequestDto? result =
+                await sut.TryStartNextRecoveryRequestAsync(nameof(SyncAnalyticsCategory.UsersDetails),
+                                                           CancellationToken.None);
+
+        Assert.NotNull(result);
+        Assert.Equal(pending.Id, result.Id);
+        Assert.Equal(SyncRequestStatus.Running, result.Status);
+        Assert.Equal(SyncRequestStatus.Running, pending.Status);
+        Assert.Equal(0, pending.ReopenCount);
+        Assert.Null(pending.CurrentRunId);
+
+        uow.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    #endregion
+
+    #region ========== *** GetNextJoinableIncrementalRequestAsync *** ==========
+
+    [Fact]
+    public async Task GetNextJoinableIncrementalRequestAsync_ReturnsRunningRequestBeforePendingRequest()
+    {
+        Mock<IDateTimeProvider> dateTimeProvider = DateTimeProviderTestFactory.Create();
+
+        await using AppDbContext dbContext = PersistenceTestFactory.CreateInMemoryDbContext(dateTimeProvider.Object);
+
+        SyncRequestEntity pending = BuildRequest(nameof(SyncAnalyticsCategory.UsersDetails),
+                                                 SyncMode.Incremental,
+                                                 SyncRequestStatus.Pending,
+                                                 "2026-04-14T00:00:00Z/2026-04-14T00:30:00Z",
+                                                 1,
+                                                 null);
+
+        SyncRequestEntity running = BuildRequest(nameof(SyncAnalyticsCategory.UsersDetails),
+                                                 SyncMode.Incremental,
+                                                 SyncRequestStatus.Running,
+                                                 "2026-04-14T01:00:00Z/2026-04-14T01:30:00Z",
+                                                 2,
+                                                 null);
+        running.CurrentRunId = 123;
+
+        dbContext.Set<SyncRequestEntity>()
+                 .AddRange(pending, running);
+        await dbContext.SaveChangesAsync();
+
+        Mock<IUnitOfWork> uow = new Mock<IUnitOfWork>(MockBehavior.Strict);
+        SyncRequestRepository sut = new SyncRequestRepository(dbContext, uow.Object);
+
+        SyncRequestDto? result =
+                await sut.GetNextJoinableIncrementalRequestAsync(nameof(SyncAnalyticsCategory.UsersDetails),
+                                                                 CancellationToken.None);
+
+        Assert.NotNull(result);
+        Assert.Equal(running.Id, result.Id);
+        Assert.Equal(running.PublicId, result.PublicId);
+        Assert.Equal(SyncRequestStatus.Running, result.Status);
+        Assert.Equal(running.CurrentRunId, result.CurrentRunId);
     }
 
     #endregion

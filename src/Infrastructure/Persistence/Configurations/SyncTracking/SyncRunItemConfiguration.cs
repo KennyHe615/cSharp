@@ -44,7 +44,7 @@ public sealed class SyncRunItemConfiguration : IEntityTypeConfiguration<SyncRunI
 
         builder.Property(x => x.Status)
                .IsRequired()
-               .HasMaxLength(20);
+               .HasMaxLength(50);
 
         builder.Property(x => x.FailureReason)
                .HasMaxLength(1000);
@@ -55,17 +55,17 @@ public sealed class SyncRunItemConfiguration : IEntityTypeConfiguration<SyncRunI
         builder.Property(x => x.LeaseToken);
 
         builder.Property(x => x.ClaimedAtEastern)
-               .HasColumnType("datetimeoffset(3)");
+               .HasColumnType("datetimeoffset(0)");
 
         builder.Property(x => x.ClaimExpiresAtEastern)
-               .HasColumnType("datetimeoffset(3)");
+               .HasColumnType("datetimeoffset(0)");
 
         builder.Property(x => x.AttemptCount)
                .IsRequired()
                .HasDefaultValue(0);
 
         builder.Property(x => x.LastHeartbeatAtEastern)
-               .HasColumnType("datetimeoffset(3)");
+               .HasColumnType("datetimeoffset(0)");
 
         #endregion
 

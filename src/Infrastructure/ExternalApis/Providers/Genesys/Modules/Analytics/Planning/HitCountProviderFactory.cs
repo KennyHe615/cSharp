@@ -16,16 +16,17 @@ public sealed class HitCountProviderFactory(IServiceProvider serviceProvider) : 
     /// <exception cref="NotSupportedException">
     /// Thrown when the category does not support analytics hit-count planning.
     /// </exception>
-    public IHitCountProvider Create(SyncCategory category)
+    public IHitCountProvider Create(SyncAnalyticsCategory category)
     {
         // ReSharper disable once SwitchExpressionHandlesSomeKnownEnumValuesWithExceptionInDefault
         return category switch
                {
-                   SyncCategory.UsersDetails => serviceProvider.GetRequiredService<UsersDetailsHitCountProvider>(),
-                   SyncCategory.ConversationsDetails => serviceProvider
-                      .GetRequiredService<ConversationsDetailsHitCountProvider>(),
+                   SyncAnalyticsCategory.UsersDetails => serviceProvider
+                          .GetRequiredService<UsersDetailsHitCountProvider>(),
+                   SyncAnalyticsCategory.ConversationsDetails => serviceProvider
+                          .GetRequiredService<ConversationsDetailsHitCountProvider>(),
                    _ => throw new
-                       NotSupportedException($"Sync category '{category}' does not support analytics hit-count planning.")
+                                NotSupportedException($"Sync category '{category}' does not support analytics hit-count planning.")
                };
     }
 }

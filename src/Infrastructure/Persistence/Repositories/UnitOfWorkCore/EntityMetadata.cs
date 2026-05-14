@@ -1,3 +1,5 @@
+using Infrastructure.Persistence.DbContext;
+
 using Microsoft.EntityFrameworkCore.Metadata;
 
 using SharedKernel.Time;
@@ -12,7 +14,7 @@ namespace Infrastructure.Persistence.Repositories.UnitOfWorkCore;
 internal sealed class EntityMetadata<TEntity>(IEntityType entityType,
                                               IKey primaryKey,
                                               IDateTimeProvider dateTimeProvider)
-    where TEntity : class
+        where TEntity : class
 {
     public IKey PrimaryKey => primaryKey;
 
@@ -24,16 +26,18 @@ internal sealed class EntityMetadata<TEntity>(IEntityType entityType,
     {
         if (primaryKey.Properties.Count == 1)
         {
-            object? rawValue = GetPropertyValue(entity, primaryKey.Properties[0].Name);
+            IProperty property = primaryKey.Properties[0];
+            object? rawValue = GetPropertyValue(entity, property.Name);
 
-            return NormalizeKeyValue(rawValue);
+            return NormalizeKeyValue(rawValue, property);
         }
 
         object?[] keyValues = new object?[primaryKey.Properties.Count];
         for (int i = 0; i < primaryKey.Properties.Count; i++)
         {
-            object? rawValue = GetPropertyValue(entity, primaryKey.Properties[i].Name);
-            keyValues[i] = NormalizeKeyValue(rawValue);
+            IProperty property = primaryKey.Properties[i];
+            object? rawValue = GetPropertyValue(entity, property.Name);
+            keyValues[i] = NormalizeKeyValue(rawValue, property);
         }
 
         return new CompositeKey(keyValues);
@@ -46,18 +50,20 @@ internal sealed class EntityMetadata<TEntity>(IEntityType entityType,
     {
         if (primaryKey.Properties.Count == 1)
         {
-            object? rawValue = GetPropertyValue(entity, primaryKey.Properties[0].Name);
-            object normalized = NormalizeKeyValue(rawValue);
+            IProperty property = primaryKey.Properties[0];
+            object? rawValue = GetPropertyValue(entity, property.Name);
+            object normalized = NormalizeKeyValue(rawValue, property);
 
-            return $"{primaryKey.Properties[0].Name}={normalized}";
+            return $"{property.Name}={normalized}";
         }
 
         string[] keyParts = new string[primaryKey.Properties.Count];
         for (int i = 0; i < primaryKey.Properties.Count; i++)
         {
-            object? rawValue = GetPropertyValue(entity, primaryKey.Properties[i].Name);
-            object normalized = NormalizeKeyValue(rawValue);
-            keyParts[i] = $"{primaryKey.Properties[i].Name}={normalized}";
+            IProperty property = primaryKey.Properties[i];
+            object? rawValue = GetPropertyValue(entity, property.Name);
+            object normalized = NormalizeKeyValue(rawValue, property);
+            keyParts[i] = $"{property.Name}={normalized}";
         }
 
         return string.Join(", ", keyParts);
@@ -70,14 +76,16 @@ internal sealed class EntityMetadata<TEntity>(IEntityType entityType,
     /// </summary>
     private object? GetPropertyValue(TEntity entity, string propertyName)
     {
-        return entityType.FindProperty(propertyName)!.GetGetter().GetClrValue(entity);
+        return entityType.FindProperty(propertyName)!.GetGetter()
+                         .GetClrValue(entity);
     }
 
-    private object NormalizeKeyValue(object? value)
+    private object NormalizeKeyValue(object? value, IProperty property)
     {
         return value switch
                {
-                   DateTimeOffset dto => dateTimeProvider.ConvertToEst(dto),
+                   DateTimeOffset dto when !AppDbContext.IsUtcDateTimeOffsetProperty(property) => dateTimeProvider
+                          .ConvertToEst(dto),
                    null => DBNull.Value,
                    _ => value
                };

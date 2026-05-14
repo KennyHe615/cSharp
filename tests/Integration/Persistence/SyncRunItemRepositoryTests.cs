@@ -30,7 +30,7 @@ public sealed class SyncRunItemRepositoryTests
     {
         Mock<IDateTimeProvider> dateTimeProvider = DateTimeProviderTestFactory.Create();
         await using AppDbContext dbContext = PersistenceTestFactory.CreateInMemoryDbContext(dateTimeProvider.Object);
-        Mock<IUnitOfWork> uow = PersistenceTestFactory.CreateUnitOfWork<SyncRunItemEntity>(dbContext);
+        Mock<IUnitOfWork> uow = PersistenceTestFactory.CreateMockUnitOfWork<SyncRunItemEntity>(dbContext);
 
         long runId = await CreateRunningRunAsync(dbContext);
 
@@ -58,7 +58,7 @@ public sealed class SyncRunItemRepositoryTests
     {
         Mock<IDateTimeProvider> dateTimeProvider = DateTimeProviderTestFactory.Create();
         await using AppDbContext dbContext = PersistenceTestFactory.CreateInMemoryDbContext(dateTimeProvider.Object);
-        Mock<IUnitOfWork> uow = PersistenceTestFactory.CreateUnitOfWork<SyncRunItemEntity>(dbContext);
+        Mock<IUnitOfWork> uow = PersistenceTestFactory.CreateMockUnitOfWork<SyncRunItemEntity>(dbContext);
 
         long runId = await CreateRunningRunAsync(dbContext);
 
@@ -95,7 +95,7 @@ public sealed class SyncRunItemRepositoryTests
     {
         Mock<IDateTimeProvider> dateTimeProvider = DateTimeProviderTestFactory.Create();
         await using AppDbContext dbContext = PersistenceTestFactory.CreateInMemoryDbContext(dateTimeProvider.Object);
-        Mock<IUnitOfWork> uow = PersistenceTestFactory.CreateUnitOfWork<SyncRunItemEntity>(dbContext);
+        Mock<IUnitOfWork> uow = PersistenceTestFactory.CreateMockUnitOfWork<SyncRunItemEntity>(dbContext);
 
         long runId = await CreateRunningRunAsync(dbContext);
 
@@ -122,7 +122,7 @@ public sealed class SyncRunItemRepositoryTests
     {
         Mock<IDateTimeProvider> dateTimeProvider = DateTimeProviderTestFactory.Create();
         await using AppDbContext dbContext = PersistenceTestFactory.CreateInMemoryDbContext(dateTimeProvider.Object);
-        Mock<IUnitOfWork> uow = PersistenceTestFactory.CreateUnitOfWork<SyncRunItemEntity>(dbContext);
+        Mock<IUnitOfWork> uow = PersistenceTestFactory.CreateMockUnitOfWork<SyncRunItemEntity>(dbContext);
 
         long runId = await CreateRunningRunAsync(dbContext);
 
@@ -141,7 +141,7 @@ public sealed class SyncRunItemRepositoryTests
     {
         Mock<IDateTimeProvider> dateTimeProvider = DateTimeProviderTestFactory.Create();
         await using AppDbContext dbContext = PersistenceTestFactory.CreateInMemoryDbContext(dateTimeProvider.Object);
-        Mock<IUnitOfWork> uow = PersistenceTestFactory.CreateUnitOfWork<SyncRunItemEntity>(dbContext);
+        Mock<IUnitOfWork> uow = PersistenceTestFactory.CreateMockUnitOfWork<SyncRunItemEntity>(dbContext);
 
         long runId = await CreateRunningRunAsync(dbContext);
 
@@ -164,7 +164,7 @@ public sealed class SyncRunItemRepositoryTests
     {
         Mock<IDateTimeProvider> dateTimeProvider = DateTimeProviderTestFactory.Create();
         await using AppDbContext dbContext = PersistenceTestFactory.CreateInMemoryDbContext(dateTimeProvider.Object);
-        Mock<IUnitOfWork> uow = PersistenceTestFactory.CreateUnitOfWork<SyncRunItemEntity>(dbContext);
+        Mock<IUnitOfWork> uow = PersistenceTestFactory.CreateMockUnitOfWork<SyncRunItemEntity>(dbContext);
 
         long runId = await CreateRunningRunAsync(dbContext);
 
@@ -200,7 +200,7 @@ public sealed class SyncRunItemRepositoryTests
     {
         Mock<IDateTimeProvider> dateTimeProvider = DateTimeProviderTestFactory.Create();
         await using AppDbContext dbContext = PersistenceTestFactory.CreateInMemoryDbContext(dateTimeProvider.Object);
-        Mock<IUnitOfWork> uow = PersistenceTestFactory.CreateUnitOfWork<SyncRunItemEntity>(dbContext);
+        Mock<IUnitOfWork> uow = PersistenceTestFactory.CreateMockUnitOfWork<SyncRunItemEntity>(dbContext);
 
         long runId = await CreateRunningRunAsync(dbContext);
 
@@ -229,7 +229,7 @@ public sealed class SyncRunItemRepositoryTests
     {
         Mock<IDateTimeProvider> dateTimeProvider = DateTimeProviderTestFactory.Create();
         await using AppDbContext dbContext = PersistenceTestFactory.CreateInMemoryDbContext(dateTimeProvider.Object);
-        Mock<IUnitOfWork> uow = PersistenceTestFactory.CreateUnitOfWork<SyncRunItemEntity>(dbContext);
+        Mock<IUnitOfWork> uow = PersistenceTestFactory.CreateMockUnitOfWork<SyncRunItemEntity>(dbContext);
 
         long runId = await CreateRunningRunAsync(dbContext);
 
@@ -249,7 +249,7 @@ public sealed class SyncRunItemRepositoryTests
     {
         Mock<IDateTimeProvider> dateTimeProvider = DateTimeProviderTestFactory.Create();
         await using AppDbContext dbContext = PersistenceTestFactory.CreateInMemoryDbContext(dateTimeProvider.Object);
-        Mock<IUnitOfWork> uow = PersistenceTestFactory.CreateUnitOfWork<SyncRunItemEntity>(dbContext);
+        Mock<IUnitOfWork> uow = PersistenceTestFactory.CreateMockUnitOfWork<SyncRunItemEntity>(dbContext);
 
         long runId1 = await CreateRunningRunAsync(dbContext);
         long runId2 = await CreateRunningRunAsync(dbContext);
@@ -299,7 +299,7 @@ public sealed class SyncRunItemRepositoryTests
     {
         Mock<IDateTimeProvider> dateTimeProvider = DateTimeProviderTestFactory.Create();
         await using AppDbContext dbContext = PersistenceTestFactory.CreateSqliteDbContext(dateTimeProvider.Object);
-        Mock<IUnitOfWork> uow = PersistenceTestFactory.CreateUnitOfWork<SyncRunItemEntity>(dbContext);
+        Mock<IUnitOfWork> uow = PersistenceTestFactory.CreateMockUnitOfWork<SyncRunItemEntity>(dbContext);
 
         long runId = await CreateRunningRunAsync(dbContext);
 
@@ -339,7 +339,7 @@ public sealed class SyncRunItemRepositoryTests
     {
         Mock<IDateTimeProvider> dateTimeProvider = DateTimeProviderTestFactory.Create();
         await using AppDbContext dbContext = PersistenceTestFactory.CreateSqliteDbContext(dateTimeProvider.Object);
-        Mock<IUnitOfWork> uow = PersistenceTestFactory.CreateUnitOfWork<SyncRunItemEntity>(dbContext);
+        Mock<IUnitOfWork> uow = PersistenceTestFactory.CreateMockUnitOfWork<SyncRunItemEntity>(dbContext);
 
         long runId = await CreateRunningRunAsync(dbContext);
         SyncRunItemRepository sut = CreateRepository(dbContext, uow.Object);
@@ -378,7 +378,7 @@ public sealed class SyncRunItemRepositoryTests
     {
         Mock<IDateTimeProvider> dateTimeProvider = DateTimeProviderTestFactory.Create();
         await using AppDbContext dbContext = PersistenceTestFactory.CreateSqliteDbContext(dateTimeProvider.Object);
-        Mock<IUnitOfWork> uow = PersistenceTestFactory.CreateUnitOfWork<SyncRunItemEntity>(dbContext);
+        Mock<IUnitOfWork> uow = PersistenceTestFactory.CreateMockUnitOfWork<SyncRunItemEntity>(dbContext);
 
         long runId = await CreateRunningRunAsync(dbContext);
         SyncRunItemRepository sut = CreateRepository(dbContext, uow.Object);
@@ -416,7 +416,7 @@ public sealed class SyncRunItemRepositoryTests
     {
         Mock<IDateTimeProvider> dateTimeProvider = DateTimeProviderTestFactory.Create();
         await using AppDbContext dbContext = PersistenceTestFactory.CreateSqliteDbContext(dateTimeProvider.Object);
-        Mock<IUnitOfWork> uow = PersistenceTestFactory.CreateUnitOfWork<SyncRunItemEntity>(dbContext);
+        Mock<IUnitOfWork> uow = PersistenceTestFactory.CreateMockUnitOfWork<SyncRunItemEntity>(dbContext);
 
         long runId = await CreateRunningRunAsync(dbContext);
         SyncRunItemRepository sut = CreateRepository(dbContext, uow.Object);
@@ -461,7 +461,7 @@ public sealed class SyncRunItemRepositoryTests
     {
         Mock<IDateTimeProvider> dateTimeProvider = DateTimeProviderTestFactory.Create();
         await using AppDbContext dbContext = PersistenceTestFactory.CreateSqliteDbContext(dateTimeProvider.Object);
-        Mock<IUnitOfWork> uow = PersistenceTestFactory.CreateUnitOfWork<SyncRunItemEntity>(dbContext);
+        Mock<IUnitOfWork> uow = PersistenceTestFactory.CreateMockUnitOfWork<SyncRunItemEntity>(dbContext);
 
         long runId = await CreateRunningRunAsync(dbContext);
         SyncRunItemRepository sut = CreateRepository(dbContext, uow.Object);
@@ -508,7 +508,7 @@ public sealed class SyncRunItemRepositoryTests
     {
         Mock<IDateTimeProvider> dateTimeProvider = DateTimeProviderTestFactory.Create();
         await using AppDbContext dbContext = PersistenceTestFactory.CreateSqliteDbContext(dateTimeProvider.Object);
-        Mock<IUnitOfWork> uow = PersistenceTestFactory.CreateUnitOfWork<SyncRunItemEntity>(dbContext);
+        Mock<IUnitOfWork> uow = PersistenceTestFactory.CreateMockUnitOfWork<SyncRunItemEntity>(dbContext);
 
         long runId = await CreateRunningRunAsync(dbContext);
         SyncRunItemRepository sut = CreateRepository(dbContext, uow.Object);
@@ -555,7 +555,7 @@ public sealed class SyncRunItemRepositoryTests
     {
         Mock<IDateTimeProvider> dateTimeProvider = DateTimeProviderTestFactory.Create();
         await using AppDbContext dbContext = PersistenceTestFactory.CreateSqliteDbContext(dateTimeProvider.Object);
-        Mock<IUnitOfWork> uow = PersistenceTestFactory.CreateUnitOfWork<SyncRunItemEntity>(dbContext);
+        Mock<IUnitOfWork> uow = PersistenceTestFactory.CreateMockUnitOfWork<SyncRunItemEntity>(dbContext);
 
         long runId = await CreateRunningRunAsync(dbContext);
         SyncRunItemRepository sut = CreateRepository(dbContext, uow.Object);
@@ -603,7 +603,7 @@ public sealed class SyncRunItemRepositoryTests
     {
         Mock<IDateTimeProvider> dateTimeProvider = DateTimeProviderTestFactory.Create();
         await using AppDbContext dbContext = PersistenceTestFactory.CreateSqliteDbContext(dateTimeProvider.Object);
-        Mock<IUnitOfWork> uow = PersistenceTestFactory.CreateUnitOfWork<SyncRunItemEntity>(dbContext);
+        Mock<IUnitOfWork> uow = PersistenceTestFactory.CreateMockUnitOfWork<SyncRunItemEntity>(dbContext);
 
         long runId = await CreateRunningRunAsync(dbContext);
         SyncRunItemRepository sut = CreateRepository(dbContext, uow.Object);
@@ -653,7 +653,7 @@ public sealed class SyncRunItemRepositoryTests
     {
         Mock<IDateTimeProvider> dateTimeProvider = DateTimeProviderTestFactory.Create();
         await using AppDbContext dbContext = PersistenceTestFactory.CreateSqliteDbContext(dateTimeProvider.Object);
-        Mock<IUnitOfWork> uow = PersistenceTestFactory.CreateUnitOfWork<SyncRunItemEntity>(dbContext);
+        Mock<IUnitOfWork> uow = PersistenceTestFactory.CreateMockUnitOfWork<SyncRunItemEntity>(dbContext);
 
         long runId = await CreateRunningRunAsync(dbContext);
         SyncRunItemRepository sut = CreateRepository(dbContext, uow.Object);

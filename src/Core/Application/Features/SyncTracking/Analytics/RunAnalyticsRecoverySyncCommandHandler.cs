@@ -1,6 +1,4 @@
 using Application.Abstractions.Orchestration;
-using Application.Abstractions.Persistence;
-using Application.DTOs.SyncTracking;
 using Application.Enums;
 using Application.Features.Shared;
 using Application.Mediator;
@@ -9,15 +7,13 @@ using Application.Mediator;
 namespace Application.Features.SyncTracking.Analytics;
 
 /// <summary>
-/// Handles recovery sync execution for a resolved recovery scope.
-/// Request resolution may create, reuse active, or reopen failed/canceled based on persistence rules.
+/// Handles recovery sync execution for an already-claimed recovery request.
 /// </summary>
-public sealed class RunAnalyticsRecoverySyncCommandHandler(ISyncRequestRepository syncRequestRepository,
-                                                           ISyncRequestRunner syncRequestRunner)
-                : IRequestHandler<RunAnalyticsRecoverySyncCommand, long>
+public sealed class RunAnalyticsRecoverySyncCommandHandler(ISyncRequestRunner syncRequestRunner)
+        : IRequestHandler<RunAnalyticsRecoverySyncCommand, long>
 {
     /// <summary>
-    /// Resolves a recovery request by scope, executes it, and returns the internal request id.
+    /// Executes a claimed recovery request and returns the internal request id.
     /// </summary>
     /// <param name="request">Recovery sync command payload.</param>
     /// <param name="ct">Cancellation token from caller or host.</param>
@@ -36,23 +32,14 @@ public sealed class RunAnalyticsRecoverySyncCommandHandler(ISyncRequestRepositor
         if (!RecoveryValidationRules.OnlyUseGenesysJobIdForConversationsDetails(request.GenesysJobId,
                                                                                     request.Category
                                                                                     == SyncAnalyticsCategory
-                                                                                                   .ConversationsDetails))
+                                                                                           .ConversationsDetails))
         {
             throw new InvalidOperationException("GenesysJobId is only supported for ConversationsDetails recovery.");
         }
 
-        SyncRequestResolveResult resolveResult =
-                        await syncRequestRepository.CreateOrGetByScopeAsync(request.Category.ToString(),
-                                                                            SyncMode.Recovery,
-                                                                            request.Interval,
-                                                                            request.PageNumber,
-                                                                            request.GenesysJobId,
-                                                                            ct)
-                                                   .ConfigureAwait(false);
-
-        await syncRequestRunner.ExecuteAsync(resolveResult.Id, ct)
+        await syncRequestRunner.ExecuteAsync(request.RequestId, ct)
                                .ConfigureAwait(false);
 
-        return resolveResult.Id;
+        return request.RequestId;
     }
 }

@@ -1,18 +1,15 @@
 using Application.Abstractions.Context;
 using Application.Abstractions.Identity;
-using Application.Abstractions.Persistence;
-using Application.Enums;
 using Application.Features.SyncTracking.Analytics;
 using Application.Mediator;
 
-using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 using Moq;
 
 using Ntt.Analytics.Workers.UsersDetails;
 
 using SharedKernel.Lobs;
-using SharedKernel.Time;
 
 using Xunit;
 
@@ -25,75 +22,14 @@ namespace tests.Unit.AppServices.Ntt.Analytics.Workers.UsersDetails;
 public sealed class UsersDetailsIncrementalWorkerTests
 {
     /// <summary>
-    /// Verifies that no command is dispatched when the repository cannot reserve a new interval.
+    /// Verifies that the worker populates NTT context and dispatches one incremental cycle command.
     /// </summary>
     [Fact]
-    public async Task RunOnceAsync_WhenNoReservationExists_DoesNotPopulateCredentialsOrDispatch()
+    public async Task RunOnceAsync_WhenCycleReturnsRequestId_PopulatesContextAndDispatchesCycleCommand()
     {
         Mock<ISimpleMediator> mediator = new Mock<ISimpleMediator>(MockBehavior.Strict);
-
-        Mock<ILobContextAccessor> accessor = new Mock<ILobContextAccessor>(MockBehavior.Strict);
-        accessor.SetupAllProperties();
-
-        Mock<ICredentialProvider> credentialProvider = new Mock<ICredentialProvider>(MockBehavior.Strict);
-
-        Mock<IIncrementalSyncWindowRepository> repository =
-                new Mock<IIncrementalSyncWindowRepository>(MockBehavior.Strict);
-        repository.Setup(x => x.ReserveNextWindowAsync(LobName.Ntt,
-                                                       SyncAnalyticsCategory.UsersDetails,
-                                                       It.IsAny<DateTimeOffset>(),
-                                                       CancellationToken.None))
-                  .ReturnsAsync(new IncrementalSyncWindowReservation(false,
-                                                                     null,
-                                                                     null,
-                                                                     null));
-
-        Mock<IDateTimeProvider> dateTimeProvider = new Mock<IDateTimeProvider>(MockBehavior.Strict);
-        dateTimeProvider.SetupGet(x => x.EstNowOffset)
-                        .Returns(new DateTimeOffset(2026,
-                                                    5,
-                                                    4,
-                                                    10,
-                                                    17,
-                                                    12,
-                                                    TimeSpan.FromHours(-4)));
-
-        Mock<ILogger<UsersDetailsIncrementalWorker>> logger =
-                new Mock<ILogger<UsersDetailsIncrementalWorker>>(MockBehavior.Loose);
-
-        UsersDetailsIncrementalWorker sut = new UsersDetailsIncrementalWorker(mediator.Object,
-                                                                              accessor.Object,
-                                                                              credentialProvider.Object,
-                                                                              repository.Object,
-                                                                              dateTimeProvider.Object,
-                                                                              logger.Object);
-
-        await sut.RunOnceAsync(CancellationToken.None);
-
-        Assert.Null(accessor.Object.LobName);
-
-        credentialProvider.Verify(x => x.PopulateAsync(It.IsAny<ILobContextAccessor>(), It.IsAny<CancellationToken>()),
-                                  Times.Never);
-
-        mediator.Verify(x => x.Send(It.IsAny<RunAnalyticsIncrementalSyncCommand>(), It.IsAny<CancellationToken>()),
-                        Times.Never);
-    }
-
-    /// <summary>
-    /// Verifies that one reserved interval populates credentials and dispatches one incremental command.
-    /// </summary>
-    [Fact]
-    public async Task RunOnceAsync_WhenReservationExists_PopulatesCredentialsAndDispatchesIncrementalCommand()
-    {
-        Mock<ISimpleMediator> mediator = new Mock<ISimpleMediator>(MockBehavior.Strict);
-        RunAnalyticsIncrementalSyncCommand? dispatchedCommand = null;
-
-        mediator.Setup(x => x.Send(It.IsAny<RunAnalyticsIncrementalSyncCommand>(), CancellationToken.None))
-                .Callback<IRequest<long>, CancellationToken>((request, _) =>
-                                                             {
-                                                                 dispatchedCommand =
-                                                                         (RunAnalyticsIncrementalSyncCommand)request;
-                                                             })
+        mediator.Setup(x => x.Send(It.Is<RunUsersDetailsIncrementalCycleCommand>(command => command.Lob == LobName.Ntt),
+                                   CancellationToken.None))
                 .ReturnsAsync(123L);
 
         Mock<ILobContextAccessor> accessor = new Mock<ILobContextAccessor>(MockBehavior.Strict);
@@ -103,72 +39,71 @@ public sealed class UsersDetailsIncrementalWorkerTests
         credentialProvider.Setup(x => x.PopulateAsync(accessor.Object, CancellationToken.None))
                           .Returns(Task.CompletedTask);
 
-        Mock<IIncrementalSyncWindowRepository> repository =
-                new Mock<IIncrementalSyncWindowRepository>(MockBehavior.Strict);
-        repository.Setup(x => x.ReserveNextWindowAsync(LobName.Ntt,
-                                                       SyncAnalyticsCategory.UsersDetails,
-                                                       It.IsAny<DateTimeOffset>(),
-                                                       CancellationToken.None))
-                  .ReturnsAsync(new IncrementalSyncWindowReservation(true,
-                                                                     "2026-05-04T13:30Z/2026-05-04T14:00Z",
-                                                                     new DateTimeOffset(2026,
-                                                                         5,
-                                                                         4,
-                                                                         13,
-                                                                         30,
-                                                                         0,
-                                                                         TimeSpan.Zero),
-                                                                     new DateTimeOffset(2026,
-                                                                         5,
-                                                                         4,
-                                                                         14,
-                                                                         0,
-                                                                         0,
-                                                                         TimeSpan.Zero)));
-
-        Mock<IDateTimeProvider> dateTimeProvider = new Mock<IDateTimeProvider>(MockBehavior.Strict);
-        dateTimeProvider.SetupGet(x => x.EstNowOffset)
-                        .Returns(new DateTimeOffset(2026,
-                                                    5,
-                                                    4,
-                                                    10,
-                                                    17,
-                                                    12,
-                                                    TimeSpan.FromHours(-4)));
-
-        Mock<ILogger<UsersDetailsIncrementalWorker>> logger =
-                new Mock<ILogger<UsersDetailsIncrementalWorker>>(MockBehavior.Loose);
-
-        UsersDetailsIncrementalWorker sut = new UsersDetailsIncrementalWorker(mediator.Object,
-                                                                              accessor.Object,
-                                                                              credentialProvider.Object,
-                                                                              repository.Object,
-                                                                              dateTimeProvider.Object,
-                                                                              logger.Object);
+        UsersDetailsIncrementalWorker sut =
+                new UsersDetailsIncrementalWorker(mediator.Object,
+                                                  accessor.Object,
+                                                  credentialProvider.Object,
+                                                  NullLogger<UsersDetailsIncrementalWorker>.Instance);
 
         await sut.RunOnceAsync(CancellationToken.None);
 
         Assert.Equal(LobName.Ntt.Value, accessor.Object.LobName);
-        Assert.NotNull(dispatchedCommand);
-        Assert.Equal(SyncAnalyticsCategory.UsersDetails, dispatchedCommand!.Category);
-        Assert.Equal("2026-05-04T13:30Z/2026-05-04T14:00Z", dispatchedCommand.Interval);
-        Assert.Null(dispatchedCommand.PageNumber);
 
         credentialProvider.Verify(x => x.PopulateAsync(accessor.Object, CancellationToken.None), Times.Once);
-        mediator.Verify(x => x.Send(It.IsAny<RunAnalyticsIncrementalSyncCommand>(), CancellationToken.None),
+        mediator.Verify(x =>
+                                x.Send(It.Is<RunUsersDetailsIncrementalCycleCommand>(command =>
+                                               command.Lob == LobName.Ntt),
+                                       CancellationToken.None),
                         Times.Once);
     }
 
     /// <summary>
-    /// Verifies that dispatch failures are not swallowed by the incremental worker.
+    /// Verifies that the worker completes successfully when the incremental cycle finds no work.
     /// </summary>
     [Fact]
-    public async Task RunOnceAsync_WhenDispatchFails_RethrowsOriginalException()
+    public async Task RunOnceAsync_WhenCycleReturnsNoRequestId_CompletesWithoutError()
     {
-        InvalidOperationException expected = new InvalidOperationException("incremental dispatch failed");
+        Mock<ISimpleMediator> mediator = new Mock<ISimpleMediator>(MockBehavior.Strict);
+        mediator.Setup(x => x.Send(It.Is<RunUsersDetailsIncrementalCycleCommand>(command => command.Lob == LobName.Ntt),
+                                   CancellationToken.None))
+                .ReturnsAsync((long?)null);
+
+        Mock<ILobContextAccessor> accessor = new Mock<ILobContextAccessor>(MockBehavior.Strict);
+        accessor.SetupAllProperties();
+
+        Mock<ICredentialProvider> credentialProvider = new Mock<ICredentialProvider>(MockBehavior.Strict);
+        credentialProvider.Setup(x => x.PopulateAsync(accessor.Object, CancellationToken.None))
+                          .Returns(Task.CompletedTask);
+
+        UsersDetailsIncrementalWorker sut =
+                new UsersDetailsIncrementalWorker(mediator.Object,
+                                                  accessor.Object,
+                                                  credentialProvider.Object,
+                                                  NullLogger<UsersDetailsIncrementalWorker>.Instance);
+
+        await sut.RunOnceAsync(CancellationToken.None);
+
+        Assert.Equal(LobName.Ntt.Value, accessor.Object.LobName);
+
+        credentialProvider.Verify(x => x.PopulateAsync(accessor.Object, CancellationToken.None), Times.Once);
+        mediator.Verify(x =>
+                                x.Send(It.Is<RunUsersDetailsIncrementalCycleCommand>(command =>
+                                               command.Lob == LobName.Ntt),
+                                       CancellationToken.None),
+                        Times.Once);
+    }
+
+    /// <summary>
+    /// Verifies that mediator failures are not swallowed by the worker.
+    /// </summary>
+    [Fact]
+    public async Task RunOnceAsync_WhenCycleDispatchFails_RethrowsOriginalException()
+    {
+        InvalidOperationException expected = new InvalidOperationException("incremental cycle failed");
 
         Mock<ISimpleMediator> mediator = new Mock<ISimpleMediator>(MockBehavior.Strict);
-        mediator.Setup(x => x.Send(It.IsAny<RunAnalyticsIncrementalSyncCommand>(), CancellationToken.None))
+        mediator.Setup(x => x.Send(It.Is<RunUsersDetailsIncrementalCycleCommand>(command => command.Lob == LobName.Ntt),
+                                   CancellationToken.None))
                 .ThrowsAsync(expected);
 
         Mock<ILobContextAccessor> accessor = new Mock<ILobContextAccessor>(MockBehavior.Strict);
@@ -178,48 +113,11 @@ public sealed class UsersDetailsIncrementalWorkerTests
         credentialProvider.Setup(x => x.PopulateAsync(accessor.Object, CancellationToken.None))
                           .Returns(Task.CompletedTask);
 
-        Mock<IIncrementalSyncWindowRepository> repository =
-                new Mock<IIncrementalSyncWindowRepository>(MockBehavior.Strict);
-        repository.Setup(x => x.ReserveNextWindowAsync(LobName.Ntt,
-                                                       SyncAnalyticsCategory.UsersDetails,
-                                                       It.IsAny<DateTimeOffset>(),
-                                                       CancellationToken.None))
-                  .ReturnsAsync(new IncrementalSyncWindowReservation(true,
-                                                                     "2026-05-04T13:30Z/2026-05-04T14:00Z",
-                                                                     new DateTimeOffset(2026,
-                                                                         5,
-                                                                         4,
-                                                                         13,
-                                                                         30,
-                                                                         0,
-                                                                         TimeSpan.Zero),
-                                                                     new DateTimeOffset(2026,
-                                                                         5,
-                                                                         4,
-                                                                         14,
-                                                                         0,
-                                                                         0,
-                                                                         TimeSpan.Zero)));
-
-        Mock<IDateTimeProvider> dateTimeProvider = new Mock<IDateTimeProvider>(MockBehavior.Strict);
-        dateTimeProvider.SetupGet(x => x.EstNowOffset)
-                        .Returns(new DateTimeOffset(2026,
-                                                    5,
-                                                    4,
-                                                    10,
-                                                    17,
-                                                    12,
-                                                    TimeSpan.FromHours(-4)));
-
-        Mock<ILogger<UsersDetailsIncrementalWorker>> logger =
-                new Mock<ILogger<UsersDetailsIncrementalWorker>>(MockBehavior.Loose);
-
-        UsersDetailsIncrementalWorker sut = new UsersDetailsIncrementalWorker(mediator.Object,
-                                                                              accessor.Object,
-                                                                              credentialProvider.Object,
-                                                                              repository.Object,
-                                                                              dateTimeProvider.Object,
-                                                                              logger.Object);
+        UsersDetailsIncrementalWorker sut =
+                new UsersDetailsIncrementalWorker(mediator.Object,
+                                                  accessor.Object,
+                                                  credentialProvider.Object,
+                                                  NullLogger<UsersDetailsIncrementalWorker>.Instance);
 
         InvalidOperationException actual =
                 await Assert.ThrowsAsync<InvalidOperationException>(() => sut.RunOnceAsync(CancellationToken.None));
@@ -228,12 +126,15 @@ public sealed class UsersDetailsIncrementalWorkerTests
         Assert.Equal(LobName.Ntt.Value, accessor.Object.LobName);
 
         credentialProvider.Verify(x => x.PopulateAsync(accessor.Object, CancellationToken.None), Times.Once);
-        mediator.Verify(x => x.Send(It.IsAny<RunAnalyticsIncrementalSyncCommand>(), CancellationToken.None),
+        mediator.Verify(x =>
+                                x.Send(It.Is<RunUsersDetailsIncrementalCycleCommand>(command =>
+                                               command.Lob == LobName.Ntt),
+                                       CancellationToken.None),
                         Times.Once);
     }
 
     /// <summary>
-    /// Verifies that host cancellation is rethrown by the incremental worker.
+    /// Verifies that host cancellation from the mediator is propagated by the worker.
     /// </summary>
     [Fact]
     public async Task RunOnceAsync_WhenHostCancellationOccurs_RethrowsOperationCanceledException()
@@ -243,7 +144,8 @@ public sealed class UsersDetailsIncrementalWorkerTests
         CancellationToken ct = cts.Token;
 
         Mock<ISimpleMediator> mediator = new Mock<ISimpleMediator>(MockBehavior.Strict);
-        mediator.Setup(x => x.Send(It.IsAny<RunAnalyticsIncrementalSyncCommand>(), ct))
+        mediator.Setup(x => x.Send(It.Is<RunUsersDetailsIncrementalCycleCommand>(command => command.Lob == LobName.Ntt),
+                                   ct))
                 .ThrowsAsync(new OperationCanceledException("host canceled", ct));
 
         Mock<ILobContextAccessor> accessor = new Mock<ILobContextAccessor>(MockBehavior.Strict);
@@ -253,53 +155,21 @@ public sealed class UsersDetailsIncrementalWorkerTests
         credentialProvider.Setup(x => x.PopulateAsync(accessor.Object, ct))
                           .Returns(Task.CompletedTask);
 
-        Mock<IIncrementalSyncWindowRepository> repository =
-                new Mock<IIncrementalSyncWindowRepository>(MockBehavior.Strict);
-        repository.Setup(x => x.ReserveNextWindowAsync(LobName.Ntt,
-                                                       SyncAnalyticsCategory.UsersDetails,
-                                                       It.IsAny<DateTimeOffset>(),
-                                                       ct))
-                  .ReturnsAsync(new IncrementalSyncWindowReservation(true,
-                                                                     "2026-05-04T13:30Z/2026-05-04T14:00Z",
-                                                                     new DateTimeOffset(2026,
-                                                                         5,
-                                                                         4,
-                                                                         13,
-                                                                         30,
-                                                                         0,
-                                                                         TimeSpan.Zero),
-                                                                     new DateTimeOffset(2026,
-                                                                         5,
-                                                                         4,
-                                                                         14,
-                                                                         0,
-                                                                         0,
-                                                                         TimeSpan.Zero)));
-
-        Mock<IDateTimeProvider> dateTimeProvider = new Mock<IDateTimeProvider>(MockBehavior.Strict);
-        dateTimeProvider.SetupGet(x => x.EstNowOffset)
-                        .Returns(new DateTimeOffset(2026,
-                                                    5,
-                                                    4,
-                                                    10,
-                                                    17,
-                                                    12,
-                                                    TimeSpan.FromHours(-4)));
-
-        Mock<ILogger<UsersDetailsIncrementalWorker>> logger =
-                new Mock<ILogger<UsersDetailsIncrementalWorker>>(MockBehavior.Loose);
-
-        UsersDetailsIncrementalWorker sut = new UsersDetailsIncrementalWorker(mediator.Object,
-                                                                              accessor.Object,
-                                                                              credentialProvider.Object,
-                                                                              repository.Object,
-                                                                              dateTimeProvider.Object,
-                                                                              logger.Object);
+        UsersDetailsIncrementalWorker sut =
+                new UsersDetailsIncrementalWorker(mediator.Object,
+                                                  accessor.Object,
+                                                  credentialProvider.Object,
+                                                  NullLogger<UsersDetailsIncrementalWorker>.Instance);
 
         await Assert.ThrowsAsync<OperationCanceledException>(() => sut.RunOnceAsync(ct));
 
         Assert.Equal(LobName.Ntt.Value, accessor.Object.LobName);
+
         credentialProvider.Verify(x => x.PopulateAsync(accessor.Object, ct), Times.Once);
-        mediator.Verify(x => x.Send(It.IsAny<RunAnalyticsIncrementalSyncCommand>(), ct), Times.Once);
+        mediator.Verify(x =>
+                                x.Send(It.Is<RunUsersDetailsIncrementalCycleCommand>(command =>
+                                               command.Lob == LobName.Ntt),
+                                       ct),
+                        Times.Once);
     }
 }

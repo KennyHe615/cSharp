@@ -84,12 +84,7 @@ public sealed class MaterializeRecoveryIntakeCommandHandler(IRecoveryIntakeWorkR
         }
         catch (Exception ex)
         {
-            string failureReason = (string.IsNullOrWhiteSpace(ex.Message)
-                                            ? ex.GetType()
-                                                .Name
-                                            : ex.Message).Truncate(1000)!;
-
-            bool failed = await intakeWorkRepository.TryMarkFailedAsync(intake.Id, failureReason, ct)
+            bool failed = await intakeWorkRepository.TryMarkFailedAsync(intake.Id, ex.ToFailureReason(), ct)
                                                     .ConfigureAwait(false);
 
             if (!failed)

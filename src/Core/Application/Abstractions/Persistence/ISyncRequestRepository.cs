@@ -32,6 +32,16 @@ public interface ISyncRequestRepository
                                                            CancellationToken ct);
 
     /// <summary>
+    /// Atomically starts the next eligible recovery request for one analytics category.
+    /// Eligibility is the same as <see cref="GetEligibleRecoveryRequestsAsync"/>, but this method claims one row
+    /// by moving it to <see cref="SyncRequestStatus.Running"/> before returning it.
+    /// </summary>
+    /// <param name="category">Recovery target category token.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The claimed recovery request, or <c>null</c> when no eligible request exists.</returns>
+    Task<SyncRequestDto?> TryStartNextRecoveryRequestAsync(string category, CancellationToken ct);
+
+    /// <summary>
     /// Gets one sync request by internal database id.
     /// </summary>
     /// <param name="id">Internal sync request id.</param>
@@ -40,17 +50,22 @@ public interface ISyncRequestRepository
     Task<SyncRequestDto?> GetByIdAsync(long id, CancellationToken ct);
 
     /// <summary>
-    /// Lists all eligible recovery requests for one analytics category.
-    /// Eligibility is defined as:
-    /// <list type="bullet">
-    /// <item><description><see cref="SyncRequestStatus.Pending"/> requests are always eligible.</description></item>
-    /// <item><description><see cref="SyncRequestStatus.Failed"/> and <see cref="SyncRequestStatus.Canceled"/> requests are eligible when they still have retry budget remaining.</description></item>
-    /// <item><description><see cref="SyncRequestStatus.Running"/> is excluded because the request is already executing.</description></item>
-    /// <item><description><see cref="SyncRequestStatus.Completed"/> and <see cref="SyncRequestStatus.CompletedWithRecoveryItems"/> are excluded because they are terminal states.</description></item>
-    /// </list>
+    /// Gets the next pending or running incremental request that another worker can join.
+    /// This does not claim ownership of the request; page-level ownership is handled by
+    /// <c>sync_run_item</c> leases inside the executable run.
+    /// </summary>
+    /// <param name="category">Sync category name.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The next joinable incremental request when one exists; otherwise <c>null</c>.</returns>
+    Task<SyncRequestDto?> GetNextJoinableIncrementalRequestAsync(string category, CancellationToken ct);
+
+    /// <summary>
+    /// Lists eligible recovery requests for one analytics category.
+    /// This query is for diagnostics and non-scaled inspection. Scaled workers should use
+    /// <see cref="TryStartNextRecoveryRequestAsync"/> to claim one request atomically.
     /// </summary>
     /// <param name="category">Recovery target category token.</param>
     /// <param name="ct">Cancellation token.</param>
-    /// <returns>All eligible recovery request rows for the specified category, ordered by oldest actionable work first.</returns>
+    /// <returns>Eligible recovery request rows for the specified category, ordered by oldest actionable work first.</returns>
     Task<IReadOnlyCollection<SyncRequestDto>> GetEligibleRecoveryRequestsAsync(string category, CancellationToken ct);
 }

@@ -24,7 +24,7 @@ public sealed class SyncRunConfiguration : IEntityTypeConfiguration<SyncRunEntit
 
         builder.Property(x => x.Status)
                .IsRequired()
-               .HasMaxLength(20);
+               .HasMaxLength(50);
 
         builder.Property(x => x.SupersededByRunId);
 

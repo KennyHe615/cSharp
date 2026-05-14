@@ -74,7 +74,7 @@ public readonly record struct UtcInterval
         if (TryParse(value, out UtcInterval interval)) return interval;
 
         throw new
-            FormatException("Invalid interval format. Expected UTC interval: yyyy-MM-ddTHH:mmZ/yyyy-MM-ddTHH:mmZ.");
+                FormatException("Invalid interval format. Expected UTC interval: yyyy-MM-ddTHH:mmZ/yyyy-MM-ddTHH:mmZ.");
     }
 
     /// <summary>
@@ -117,6 +117,18 @@ public readonly record struct UtcInterval
     public override string ToString()
     {
         return $@"{Start.UtcDateTime:yyyy-MM-ddTHH:mm\Z}/{End.UtcDateTime:yyyy-MM-ddTHH:mm\Z}";
+    }
+
+    /// <summary>
+    /// Normalizes a UTC interval string to the canonical <see cref="ToString"/> format.
+    /// </summary>
+    /// <param name="value">Interval text.</param>
+    /// <returns>Canonical UTC interval text.</returns>
+    /// <exception cref="FormatException">Thrown when the value is not a valid UTC interval.</exception>
+    public static string Normalize(string value)
+    {
+        return Parse(value)
+               .ToString();
     }
 
     #region ========== *** Private Section *** ==========

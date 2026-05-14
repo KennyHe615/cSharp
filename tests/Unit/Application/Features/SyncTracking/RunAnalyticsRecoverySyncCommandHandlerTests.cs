@@ -1,6 +1,4 @@
 using Application.Abstractions.Orchestration;
-using Application.Abstractions.Persistence;
-using Application.DTOs.SyncTracking;
 using Application.Enums;
 using Application.Features.SyncTracking.Analytics;
 
@@ -14,123 +12,72 @@ namespace tests.Unit.Application.Features.SyncTracking;
 public sealed class RunAnalyticsRecoverySyncCommandHandlerTests
 {
     [Fact]
-    public async Task Handle_AnalyticsCategoryWithInterval_ResolvesRecoveryScope_ExecutesAndReturnsRequestId()
+    public async Task Handle_AnalyticsCategoryWithInterval_ExecutesClaimedRequestAndReturnsRequestId()
     {
-        SyncRequestResolveResult resolveResult = new SyncRequestResolveResult
-                                                 {
-                                                     Id = 101L,
-                                                     PublicId = Guid.Parse(
-                                                             "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"),
-                                                     RequestAction =
-                                                             SyncRequestResolveAction
-                                                                    .Created
-                                                 };
-
-        Mock<ISyncRequestRepository> syncRequestRepository = new Mock<ISyncRequestRepository>(MockBehavior.Strict);
-        syncRequestRepository.Setup(x => x.CreateOrGetByScopeAsync(nameof(SyncAnalyticsCategory.UsersDetails),
-                                                                   SyncMode.Recovery,
-                                                                   "2026-01-01T00:00Z/2026-01-01T00:30Z",
-                                                                   2,
-                                                                   null,
-                                                                   CancellationToken.None))
-                             .ReturnsAsync(resolveResult);
+        const long requestId = 101L;
+        CancellationToken ct = CancellationToken.None;
 
         Mock<ISyncRequestRunner> syncRequestRunner = new Mock<ISyncRequestRunner>(MockBehavior.Strict);
-        syncRequestRunner.Setup(x => x.ExecuteAsync(101L, CancellationToken.None))
+        syncRequestRunner.Setup(x => x.ExecuteAsync(requestId, ct))
                          .ReturnsAsync(new SyncExecutionResult(CompletedWithRecoveryItems: false));
 
         RunAnalyticsRecoverySyncCommandHandler sut =
-                new RunAnalyticsRecoverySyncCommandHandler(syncRequestRepository.Object, syncRequestRunner.Object);
+                new RunAnalyticsRecoverySyncCommandHandler(syncRequestRunner.Object);
 
         RunAnalyticsRecoverySyncCommand command =
-                new RunAnalyticsRecoverySyncCommand(SyncAnalyticsCategory.UsersDetails,
+                new RunAnalyticsRecoverySyncCommand(requestId,
+                                                    SyncAnalyticsCategory.UsersDetails,
                                                     "2026-01-01T00:00Z/2026-01-01T00:30Z",
                                                     2,
                                                     null);
 
-        long result = await sut.Handle(command, CancellationToken.None);
+        long result = await sut.Handle(command, ct);
 
-        Assert.Equal(101L, result);
+        Assert.Equal(requestId, result);
 
-        syncRequestRepository.Verify(x => x.CreateOrGetByScopeAsync(nameof(SyncAnalyticsCategory.UsersDetails),
-                                                                    SyncMode.Recovery,
-                                                                    "2026-01-01T00:00Z/2026-01-01T00:30Z",
-                                                                    2,
-                                                                    null,
-                                                                    CancellationToken.None),
-                                     Times.Once);
-
-        syncRequestRunner.Verify(x => x.ExecuteAsync(101L, CancellationToken.None), Times.Once);
-
-        syncRequestRepository.VerifyNoOtherCalls();
+        syncRequestRunner.Verify(x => x.ExecuteAsync(requestId, ct), Times.Once);
         syncRequestRunner.VerifyNoOtherCalls();
     }
 
     [Fact]
-    public async Task Handle_ConversationsDetailsWithGenesysJobId_ResolvesRecoveryScope_ExecutesAndReturnsRequestId()
+    public async Task Handle_ConversationsDetailsWithGenesysJobId_ExecutesClaimedRequestAndReturnsRequestId()
     {
-        SyncRequestResolveResult resolveResult = new SyncRequestResolveResult
-                                                 {
-                                                     Id = 151L,
-                                                     PublicId = Guid.Parse(
-                                                             "bbbbbbbb-cccc-dddd-eeee-ffffffffffff"),
-                                                     RequestAction =
-                                                             SyncRequestResolveAction
-                                                                    .ReusedActive
-                                                 };
-
-        Mock<ISyncRequestRepository> syncRequestRepository = new Mock<ISyncRequestRepository>(MockBehavior.Strict);
-        syncRequestRepository.Setup(x => x.CreateOrGetByScopeAsync(nameof(SyncAnalyticsCategory.ConversationsDetails),
-                                                                   SyncMode.Recovery,
-                                                                   null,
-                                                                   null,
-                                                                   "JOB-123",
-                                                                   CancellationToken.None))
-                             .ReturnsAsync(resolveResult);
+        const long requestId = 151L;
+        CancellationToken ct = CancellationToken.None;
 
         Mock<ISyncRequestRunner> syncRequestRunner = new Mock<ISyncRequestRunner>(MockBehavior.Strict);
-        syncRequestRunner.Setup(x => x.ExecuteAsync(151L, CancellationToken.None))
+        syncRequestRunner.Setup(x => x.ExecuteAsync(requestId, ct))
                          .ReturnsAsync(new SyncExecutionResult(CompletedWithRecoveryItems: false));
 
         RunAnalyticsRecoverySyncCommandHandler sut =
-                new RunAnalyticsRecoverySyncCommandHandler(syncRequestRepository.Object, syncRequestRunner.Object);
+                new RunAnalyticsRecoverySyncCommandHandler(syncRequestRunner.Object);
 
         RunAnalyticsRecoverySyncCommand command =
-                new RunAnalyticsRecoverySyncCommand(SyncAnalyticsCategory.ConversationsDetails,
+                new RunAnalyticsRecoverySyncCommand(requestId,
+                                                    SyncAnalyticsCategory.ConversationsDetails,
                                                     null,
                                                     null,
                                                     "JOB-123");
 
-        long result = await sut.Handle(command, CancellationToken.None);
+        long result = await sut.Handle(command, ct);
 
-        Assert.Equal(151L, result);
+        Assert.Equal(requestId, result);
 
-        syncRequestRepository.Verify(x => x.CreateOrGetByScopeAsync(nameof(SyncAnalyticsCategory.ConversationsDetails),
-                                                                    SyncMode.Recovery,
-                                                                    null,
-                                                                    null,
-                                                                    "JOB-123",
-                                                                    CancellationToken.None),
-                                     Times.Once);
-
-        syncRequestRunner.Verify(x => x.ExecuteAsync(151L, CancellationToken.None), Times.Once);
-
-        syncRequestRepository.VerifyNoOtherCalls();
+        syncRequestRunner.Verify(x => x.ExecuteAsync(requestId, ct), Times.Once);
         syncRequestRunner.VerifyNoOtherCalls();
     }
 
     [Fact]
-    public async Task
-            Handle_GenesysJobIdForNonConversationsDetails_ThrowsInvalidOperationException_WithoutRepositoryOrRunnerCall()
+    public async Task Handle_GenesysJobIdForNonConversationsDetails_ThrowsInvalidOperationException_WithoutRunnerCall()
     {
-        Mock<ISyncRequestRepository> syncRequestRepository = new Mock<ISyncRequestRepository>(MockBehavior.Strict);
         Mock<ISyncRequestRunner> syncRequestRunner = new Mock<ISyncRequestRunner>(MockBehavior.Strict);
 
         RunAnalyticsRecoverySyncCommandHandler sut =
-                new RunAnalyticsRecoverySyncCommandHandler(syncRequestRepository.Object, syncRequestRunner.Object);
+                new RunAnalyticsRecoverySyncCommandHandler(syncRequestRunner.Object);
 
         RunAnalyticsRecoverySyncCommand command =
-                new RunAnalyticsRecoverySyncCommand(SyncAnalyticsCategory.UsersDetails,
+                new RunAnalyticsRecoverySyncCommand(201L,
+                                                    SyncAnalyticsCategory.UsersDetails,
                                                     null,
                                                     null,
                                                     "JOB-123");
@@ -140,21 +87,20 @@ public sealed class RunAnalyticsRecoverySyncCommandHandlerTests
 
         Assert.Equal("GenesysJobId is only supported for ConversationsDetails recovery.", ex.Message);
 
-        syncRequestRepository.VerifyNoOtherCalls();
         syncRequestRunner.VerifyNoOtherCalls();
     }
 
     [Fact]
-    public async Task Handle_UnsupportedCategory_ThrowsInvalidOperationException_WithoutRepositoryOrRunnerCall()
+    public async Task Handle_UnsupportedCategory_ThrowsInvalidOperationException_WithoutRunnerCall()
     {
-        Mock<ISyncRequestRepository> syncRequestRepository = new Mock<ISyncRequestRepository>(MockBehavior.Strict);
         Mock<ISyncRequestRunner> syncRequestRunner = new Mock<ISyncRequestRunner>(MockBehavior.Strict);
 
         RunAnalyticsRecoverySyncCommandHandler sut =
-                new RunAnalyticsRecoverySyncCommandHandler(syncRequestRepository.Object, syncRequestRunner.Object);
+                new RunAnalyticsRecoverySyncCommandHandler(syncRequestRunner.Object);
 
         RunAnalyticsRecoverySyncCommand command =
-                new RunAnalyticsRecoverySyncCommand((SyncAnalyticsCategory)999,
+                new RunAnalyticsRecoverySyncCommand(202L,
+                                                    (SyncAnalyticsCategory)999,
                                                     "2026-01-01T00:00Z/2026-01-01T00:30Z",
                                                     null,
                                                     null);
@@ -164,63 +110,36 @@ public sealed class RunAnalyticsRecoverySyncCommandHandlerTests
 
         Assert.Contains("Recovery mode is not supported for category", ex.Message);
 
-        syncRequestRepository.VerifyNoOtherCalls();
         syncRequestRunner.VerifyNoOtherCalls();
     }
 
     [Fact]
     public async Task Handle_RunExecutionThrows_RethrowsSameException()
     {
-        SyncRequestResolveResult resolveResult = new SyncRequestResolveResult
-                                                 {
-                                                     Id = 201L,
-                                                     PublicId = Guid.Parse(
-                                                             "11111111-2222-3333-4444-555555555555"),
-                                                     RequestAction =
-                                                             SyncRequestResolveAction
-                                                                    .ReusedActive
-                                                 };
-
+        const long requestId = 301L;
+        CancellationToken ct = CancellationToken.None;
         InvalidOperationException original = new InvalidOperationException("run failed");
 
-        Mock<ISyncRequestRepository> syncRequestRepository = new Mock<ISyncRequestRepository>(MockBehavior.Strict);
-        syncRequestRepository.Setup(x => x.CreateOrGetByScopeAsync(nameof(SyncAnalyticsCategory.ConversationsDetails),
-                                                                   SyncMode.Recovery,
-                                                                   null,
-                                                                   null,
-                                                                   "JOB-999",
-                                                                   CancellationToken.None))
-                             .ReturnsAsync(resolveResult);
-
         Mock<ISyncRequestRunner> syncRequestRunner = new Mock<ISyncRequestRunner>(MockBehavior.Strict);
-        syncRequestRunner.Setup(x => x.ExecuteAsync(201L, CancellationToken.None))
+        syncRequestRunner.Setup(x => x.ExecuteAsync(requestId, ct))
                          .ThrowsAsync(original);
 
         RunAnalyticsRecoverySyncCommandHandler sut =
-                new RunAnalyticsRecoverySyncCommandHandler(syncRequestRepository.Object, syncRequestRunner.Object);
+                new RunAnalyticsRecoverySyncCommandHandler(syncRequestRunner.Object);
 
         RunAnalyticsRecoverySyncCommand command =
-                new RunAnalyticsRecoverySyncCommand(SyncAnalyticsCategory.ConversationsDetails,
+                new RunAnalyticsRecoverySyncCommand(requestId,
+                                                    SyncAnalyticsCategory.ConversationsDetails,
                                                     null,
                                                     null,
                                                     "JOB-999");
 
         InvalidOperationException ex =
-                await Assert.ThrowsAsync<InvalidOperationException>(() => sut.Handle(command, CancellationToken.None));
+                await Assert.ThrowsAsync<InvalidOperationException>(() => sut.Handle(command, ct));
 
         Assert.Same(original, ex);
 
-        syncRequestRepository.Verify(x => x.CreateOrGetByScopeAsync(nameof(SyncAnalyticsCategory.ConversationsDetails),
-                                                                    SyncMode.Recovery,
-                                                                    null,
-                                                                    null,
-                                                                    "JOB-999",
-                                                                    CancellationToken.None),
-                                     Times.Once);
-
-        syncRequestRunner.Verify(x => x.ExecuteAsync(201L, CancellationToken.None), Times.Once);
-
-        syncRequestRepository.VerifyNoOtherCalls();
+        syncRequestRunner.Verify(x => x.ExecuteAsync(requestId, ct), Times.Once);
         syncRequestRunner.VerifyNoOtherCalls();
     }
 }

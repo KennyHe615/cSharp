@@ -17,8 +17,9 @@ internal static class EntityUpdateHandler
     public static UpsertResult ProcessUpsertOperations<TEntity>(Microsoft.EntityFrameworkCore.DbContext dbContext,
                                                                 List<TEntity> incomingList,
                                                                 Dictionary<object, TEntity> dbById,
-                                                                EntityMetadata<TEntity> metadata)
-                    where TEntity : class
+                                                                EntityMetadata<TEntity> metadata,
+                                                                Action<TEntity, TEntity>? onMatched = null)
+            where TEntity : class
     {
         HashSet<object> incomingKeys = [];
         int addedCount = 0;
@@ -31,7 +32,14 @@ internal static class EntityUpdateHandler
 
             if (dbById.TryGetValue(key, out TEntity? existing))
             {
-                UpdateEntity(dbContext, existing, incoming);
+                if (onMatched is null)
+                {
+                    UpdateEntity(dbContext, existing, incoming);
+                }
+                else
+                {
+                    onMatched(existing, incoming);
+                }
 
                 updatedCount++;
             }
@@ -51,7 +59,7 @@ internal static class EntityUpdateHandler
                                                        HashSet<object> incomingKeys,
                                                        EntityMetadata<TEntity> metadata,
                                                        Action<TEntity> onMissingFromIncoming)
-                    where TEntity : class
+            where TEntity : class
     {
         foreach (TEntity dbEntity in dbEntities.Where(e => !incomingKeys.Contains(metadata.GetCompositeKey(e))))
         {
@@ -64,7 +72,7 @@ internal static class EntityUpdateHandler
     private static void UpdateEntity<TEntity>(Microsoft.EntityFrameworkCore.DbContext dbContext,
                                               TEntity existing,
                                               TEntity incoming)
-                    where TEntity : class
+            where TEntity : class
     {
         EntityEntry<TEntity> existingEntry = dbContext.Entry(existing);
 

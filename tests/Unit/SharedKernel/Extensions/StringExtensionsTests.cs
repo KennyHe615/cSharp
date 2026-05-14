@@ -80,7 +80,8 @@ public sealed class StringExtensionsTests
     public void ToGuid_ReturnsGuid_WhenValid()
     {
         Guid expected = Guid.NewGuid();
-        Guid? actual = expected.ToString().ToGuid();
+        Guid? actual = expected.ToString()
+                               .ToGuid();
 
         Assert.Equal(expected, actual);
     }
@@ -93,6 +94,53 @@ public sealed class StringExtensionsTests
     {
         Guid? actual = input.ToGuid();
         Assert.Null(actual);
+    }
+
+    #endregion
+
+    #region NormalizeToNull
+
+    [Theory]
+    [InlineData(null, null, null)]
+    [InlineData("", null, null)]
+    [InlineData("   ", null, null)]
+    [InlineData("  abc  ", null, "abc")]
+    [InlineData("  abcdef  ", 3, "abc")]
+    public void NormalizeToNull_ReturnsExpected(string? input, int? maxLength, string? expected)
+    {
+        string? actual = input.NormalizeToNull(maxLength);
+
+        Assert.Equal(expected, actual);
+    }
+
+    [Fact]
+    public void NormalizeToNull_Throws_WhenMaxLengthIsNegative()
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(() => "abc".NormalizeToNull(-1));
+    }
+
+    #endregion
+
+    #region ToFailureReason
+
+    [Fact]
+    public void ToFailureReason_ReturnsNormalizedExceptionMessage()
+    {
+        Exception ex = new Exception("  Something failed while syncing.  ");
+
+        string actual = ex.ToFailureReason(16);
+
+        Assert.Equal("Something failed", actual);
+    }
+
+    [Fact]
+    public void ToFailureReason_FallsBackToExceptionType_WhenMessageIsBlank()
+    {
+        Exception ex = new Exception("");
+
+        string actual = ex.ToFailureReason();
+
+        Assert.Equal(nameof(Exception), actual);
     }
 
     #endregion

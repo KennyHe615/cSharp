@@ -1,3 +1,5 @@
+using System.Data;
+
 using Application.Abstractions.Persistence;
 using Application.Enums;
 
@@ -42,6 +44,35 @@ public sealed class SyncRunRepository(AppDbContext dbContext,
                                                    // Scale-out race: another instance created/promoted the active run first.
                                                    // Re-run once against the committed winner state.
                                                    return await StartNewRunCoreAsync(requestId, ct)
+                                                                 .ConfigureAwait(false);
+                                               }
+                                           })
+                             .ConfigureAwait(false);
+    }
+
+    /// <inheritdoc />
+    /// <exception cref="InvalidOperationException">
+    /// Thrown when the specified <paramref name="requestId"/> does not exist.
+    /// </exception>
+    public async Task<long> StartOrJoinActiveRunAsync(long requestId, CancellationToken ct)
+    {
+        IExecutionStrategy strategy = dbContext.Database.CreateExecutionStrategy();
+
+        return await strategy.ExecuteAsync(async () =>
+                                           {
+                                               try
+                                               {
+                                                   return await StartOrJoinActiveRunCoreAsync(requestId, ct)
+                                                                 .ConfigureAwait(false);
+                                               }
+                                               catch (Exception ex) when (UniqueViolationDetector
+                                                                                 .IsActiveRunUniqueViolation(ex))
+                                               {
+                                                   dbContext.ChangeTracker.Clear();
+
+                                                   // Scale-out race: another instance created the active run first.
+                                                   // Re-run once and join the committed winner.
+                                                   return await StartOrJoinActiveRunCoreAsync(requestId, ct)
                                                                  .ConfigureAwait(false);
                                                }
                                            })
@@ -201,6 +232,77 @@ public sealed class SyncRunRepository(AppDbContext dbContext,
     }
 
     /// <summary>
+    /// Starts a new current run when none exists, otherwise joins the current active run.
+    /// This method is intended for distributed page-claim workflows where multiple workers
+    /// must cooperate on the same physical run.
+    /// </summary>
+    /// <param name="requestId">Parent sync request id.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The active current run id.</returns>
+    /// <exception cref="InvalidOperationException">
+    /// Thrown when the specified <paramref name="requestId"/> does not exist.
+    /// </exception>
+    private async Task<long> StartOrJoinActiveRunCoreAsync(long requestId, CancellationToken ct)
+    {
+        await using IDbContextTransaction tx =
+                await dbContext.Database.BeginTransactionAsync(IsolationLevel.Serializable, ct)
+                               .ConfigureAwait(false);
+
+        SyncRequestEntity request = await GetRequestOrThrowAsync(requestId, ct)
+                                           .ConfigureAwait(false);
+
+        SyncRunEntity? currentActiveRun = await GetCurrentActiveRunAsync(request, ct)
+                                                 .ConfigureAwait(false);
+
+        if (currentActiveRun is not null)
+        {
+            if (request.Status != SyncRequestStatus.Running)
+            {
+                request.Status = SyncRequestStatus.Running;
+
+                await uow.SaveChangesAsync(ct)
+                         .ConfigureAwait(false);
+            }
+
+            await tx.CommitAsync(ct)
+                    .ConfigureAwait(false);
+
+            return currentActiveRun.Id;
+        }
+
+        SyncRunEntity? activeRun = await GetActiveRunAsync(requestId, ct)
+                                          .ConfigureAwait(false);
+
+        if (activeRun is not null)
+        {
+            request.CurrentRunId = activeRun.Id;
+            request.Status = SyncRequestStatus.Running;
+
+            await uow.SaveChangesAsync(ct)
+                     .ConfigureAwait(false);
+
+            await tx.CommitAsync(ct)
+                    .ConfigureAwait(false);
+
+            return activeRun.Id;
+        }
+
+        SyncRunEntity newRun = await CreatePendingRunAsync(requestId, 1, ct)
+                                      .ConfigureAwait(false);
+
+        await PromoteRunToRunningAsync(newRun, dateTimeProvider.EstNowOffset, ct)
+               .ConfigureAwait(false);
+
+        await SetCurrentRunAsync(request, newRun.Id, ct)
+               .ConfigureAwait(false);
+
+        await tx.CommitAsync(ct)
+                .ConfigureAwait(false);
+
+        return newRun.Id;
+    }
+
+    /// <summary>
     /// Gets a sync request entity by id or throws if not found.
     /// </summary>
     /// <param name="requestId">Sync request id.</param>
@@ -284,6 +386,25 @@ public sealed class SyncRunRepository(AppDbContext dbContext,
     {
         return await dbContext.Set<SyncRunEntity>()
                               .FirstOrDefaultAsync(x => x.RequestId == requestId
+                                                        && (x.Status    == SyncRunStatus.Pending
+                                                            || x.Status == SyncRunStatus.Running),
+                                                   ct)
+                              .ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Gets the request's current run when it is still active.
+    /// </summary>
+    /// <param name="request">Tracked parent sync request.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The current active run when found; otherwise <c>null</c>.</returns>
+    private async Task<SyncRunEntity?> GetCurrentActiveRunAsync(SyncRequestEntity request, CancellationToken ct)
+    {
+        if (!request.CurrentRunId.HasValue) return null;
+
+        return await dbContext.Set<SyncRunEntity>()
+                              .FirstOrDefaultAsync(x => x.Id           == request.CurrentRunId.Value
+                                                        && x.RequestId == request.Id
                                                         && (x.Status    == SyncRunStatus.Pending
                                                             || x.Status == SyncRunStatus.Running),
                                                    ct)

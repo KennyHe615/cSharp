@@ -16,8 +16,8 @@ public interface IIntervalPlanner
     /// within provider constraints (historical window, max interval span, and hit threshold).
     /// </summary>
     /// <param name="category">
-    /// Target analytics category. Expected values are <see cref="SyncCategory.UsersDetails"/> or
-    /// <see cref="SyncCategory.ConversationsDetails"/>.
+    /// Target analytics category. Expected values are <see cref="SyncAnalyticsCategory.UsersDetails"/> or
+    /// <see cref="SyncAnalyticsCategory.ConversationsDetails"/>.
     /// </param>
     /// <param name="interval">Source UTC interval to split.</param>
     /// <param name="ct">Cancellation token.</param>
@@ -25,7 +25,7 @@ public interface IIntervalPlanner
     /// Ordered list of planned slices covering the input interval from start to end without overlap.
     /// Each item includes total hits and derived page metadata.
     /// </returns>
-    Task<IReadOnlyList<PlannedIntervalDto>> PlanAsync(SyncCategory category,
+    Task<IReadOnlyList<PlannedIntervalDto>> PlanAsync(SyncAnalyticsCategory category,
                                                       UtcInterval interval,
                                                       CancellationToken ct = default);
 }

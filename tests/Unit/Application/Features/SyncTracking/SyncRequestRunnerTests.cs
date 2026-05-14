@@ -13,6 +13,8 @@ namespace tests.Unit.Application.Features.SyncTracking;
 
 public sealed class SyncRequestRunnerTests
 {
+    #region ========== *** ExecuteAsync *** ==========
+
     [Fact]
     public async Task ExecuteAsync_Success_DispatchesAndMarksCompleted()
     {
@@ -59,9 +61,9 @@ public sealed class SyncRequestRunnerTests
         syncRequestRepository.VerifyAll();
         syncRunCoordinator.VerifyAll();
         syncExecutionDispatcher.VerifyAll();
-        syncRunCoordinator.Verify(
-                x => x.MarkCompletedWithRecoveryItemsAsync(It.IsAny<long>(), It.IsAny<CancellationToken>()),
-                Times.Never);
+        syncRunCoordinator.Verify(x => x.MarkCompletedWithRecoveryItemsAsync(It.IsAny<long>(),
+                                                                             It.IsAny<CancellationToken>()),
+                                  Times.Never);
     }
 
     [Fact]
@@ -156,9 +158,9 @@ public sealed class SyncRequestRunnerTests
 
         syncRunCoordinator.Verify(x => x.MarkCompletedAsync(It.IsAny<long>(), It.IsAny<CancellationToken>()),
                                   Times.Never);
-        syncRunCoordinator.Verify(
-                x => x.MarkCompletedWithRecoveryItemsAsync(It.IsAny<long>(), It.IsAny<CancellationToken>()),
-                Times.Never);
+        syncRunCoordinator.Verify(x => x.MarkCompletedWithRecoveryItemsAsync(It.IsAny<long>(),
+                                                                             It.IsAny<CancellationToken>()),
+                                  Times.Never);
         syncRunCoordinator.Verify(x => x.MarkFailedAsync(It.IsAny<long>(),
                                                          It.IsAny<string>(),
                                                          It.IsAny<CancellationToken>()),
@@ -170,6 +172,64 @@ public sealed class SyncRequestRunnerTests
 
         syncRequestRepository.VerifyAll();
         syncRunCoordinator.VerifyAll();
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_DispatchReturnsFailed_MarksFailedAndReturnsResult()
+    {
+        const long requestId = 250L;
+        const long runId = 25L;
+        CancellationToken ct = CancellationToken.None;
+
+        SyncRequestDto request = BuildRequest(requestId);
+        SyncExecutionResult expected = new SyncExecutionResult(false, true, "dispatcher returned failure");
+
+        Mock<ISyncRunCoordinator> syncRunCoordinator = new Mock<ISyncRunCoordinator>(MockBehavior.Strict);
+        Mock<ISyncRequestRepository> syncRequestRepository = new Mock<ISyncRequestRepository>(MockBehavior.Strict);
+        Mock<ISyncExecutionDispatcher> syncExecutionDispatcher =
+                new Mock<ISyncExecutionDispatcher>(MockBehavior.Strict);
+
+        syncRequestRepository.Setup(x => x.GetByIdAsync(requestId, ct))
+                             .ReturnsAsync(request);
+
+        syncRunCoordinator.Setup(x => x.StartNewRunAsync(requestId, ct))
+                          .ReturnsAsync(runId);
+
+        syncRunCoordinator.Setup(x => x.IsCurrentRunAsync(runId, ct))
+                          .ReturnsAsync(true);
+
+        syncExecutionDispatcher.Setup(x => x.ExecuteAsync(runId,
+                                                          request.Category,
+                                                          request.Mode,
+                                                          request.Interval,
+                                                          request.PageNumber,
+                                                          request.GenesysJobId,
+                                                          ct))
+                               .ReturnsAsync(expected);
+
+        syncRunCoordinator.Setup(x => x.MarkFailedAsync(runId, expected.FailureReason!, ct))
+                          .Returns(Task.CompletedTask);
+
+        SyncRequestRunner sut = new SyncRequestRunner(syncRunCoordinator.Object,
+                                                      syncRequestRepository.Object,
+                                                      syncExecutionDispatcher.Object);
+
+        SyncExecutionResult actual = await sut.ExecuteAsync(requestId, ct);
+
+        Assert.Same(expected, actual);
+
+        syncRunCoordinator.Verify(x => x.MarkCompletedAsync(It.IsAny<long>(), It.IsAny<CancellationToken>()),
+                                  Times.Never);
+        syncRunCoordinator.Verify(x => x.MarkCompletedWithRecoveryItemsAsync(It.IsAny<long>(),
+                                                                             It.IsAny<CancellationToken>()),
+                                  Times.Never);
+        syncRunCoordinator.Verify(x => x.MarkCanceledAsync(It.IsAny<long>(),
+                                                           It.IsAny<string?>(),
+                                                           It.IsAny<CancellationToken>()),
+                                  Times.Never);
+        syncRequestRepository.VerifyAll();
+        syncRunCoordinator.VerifyAll();
+        syncExecutionDispatcher.VerifyAll();
     }
 
     [Fact]
@@ -222,9 +282,9 @@ public sealed class SyncRequestRunnerTests
         syncRunCoordinator.Verify(x => x.MarkFailedAsync(runId, expected.Message, ct), Times.Never);
         syncRunCoordinator.Verify(x => x.MarkCompletedAsync(It.IsAny<long>(), It.IsAny<CancellationToken>()),
                                   Times.Never);
-        syncRunCoordinator.Verify(
-                x => x.MarkCompletedWithRecoveryItemsAsync(It.IsAny<long>(), It.IsAny<CancellationToken>()),
-                Times.Never);
+        syncRunCoordinator.Verify(x => x.MarkCompletedWithRecoveryItemsAsync(It.IsAny<long>(),
+                                                                             It.IsAny<CancellationToken>()),
+                                  Times.Never);
         syncRunCoordinator.Verify(x => x.MarkCanceledAsync(It.IsAny<long>(),
                                                            It.IsAny<string?>(),
                                                            It.IsAny<CancellationToken>()),
@@ -287,9 +347,9 @@ public sealed class SyncRequestRunnerTests
                                   Times.Never);
         syncRunCoordinator.Verify(x => x.MarkCompletedAsync(It.IsAny<long>(), It.IsAny<CancellationToken>()),
                                   Times.Never);
-        syncRunCoordinator.Verify(
-                x => x.MarkCompletedWithRecoveryItemsAsync(It.IsAny<long>(), It.IsAny<CancellationToken>()),
-                Times.Never);
+        syncRunCoordinator.Verify(x => x.MarkCompletedWithRecoveryItemsAsync(It.IsAny<long>(),
+                                                                             It.IsAny<CancellationToken>()),
+                                  Times.Never);
 
         syncRequestRepository.VerifyAll();
         syncRunCoordinator.VerifyAll();
@@ -349,9 +409,9 @@ public sealed class SyncRequestRunnerTests
                                   Times.Never);
         syncRunCoordinator.Verify(x => x.MarkCompletedAsync(It.IsAny<long>(), It.IsAny<CancellationToken>()),
                                   Times.Never);
-        syncRunCoordinator.Verify(
-                x => x.MarkCompletedWithRecoveryItemsAsync(It.IsAny<long>(), It.IsAny<CancellationToken>()),
-                Times.Never);
+        syncRunCoordinator.Verify(x => x.MarkCompletedWithRecoveryItemsAsync(It.IsAny<long>(),
+                                                                             It.IsAny<CancellationToken>()),
+                                  Times.Never);
 
         syncRequestRepository.VerifyAll();
         syncRunCoordinator.VerifyAll();
@@ -394,6 +454,177 @@ public sealed class SyncRequestRunnerTests
 
         syncRequestRepository.VerifyAll();
     }
+
+    #endregion
+
+    #region ========== *** ExecuteJoinableAsync *** ==========
+
+    [Fact]
+    public async Task ExecuteJoinableAsync_Success_StartsOrJoinsActiveRunAndMarksCompleted()
+    {
+        const long requestId = 600L;
+        const long runId = 60L;
+        CancellationToken ct = CancellationToken.None;
+
+        SyncRequestDto request = BuildRequest(requestId);
+
+        Mock<ISyncRunCoordinator> syncRunCoordinator = new Mock<ISyncRunCoordinator>(MockBehavior.Strict);
+        Mock<ISyncRequestRepository> syncRequestRepository = new Mock<ISyncRequestRepository>(MockBehavior.Strict);
+        Mock<ISyncExecutionDispatcher> syncExecutionDispatcher =
+                new Mock<ISyncExecutionDispatcher>(MockBehavior.Strict);
+
+        syncRequestRepository.Setup(x => x.GetByIdAsync(requestId, ct))
+                             .ReturnsAsync(request);
+
+        syncRunCoordinator.Setup(x => x.StartOrJoinActiveRunAsync(requestId, ct))
+                          .ReturnsAsync(runId);
+
+        syncRunCoordinator.Setup(x => x.IsCurrentRunAsync(runId, ct))
+                          .ReturnsAsync(true);
+
+        syncExecutionDispatcher.Setup(x => x.ExecuteAsync(runId,
+                                                          request.Category,
+                                                          request.Mode,
+                                                          request.Interval,
+                                                          request.PageNumber,
+                                                          request.GenesysJobId,
+                                                          ct))
+                               .ReturnsAsync(new SyncExecutionResult(CompletedWithRecoveryItems: false));
+
+        syncRunCoordinator.Setup(x => x.MarkCompletedAsync(runId, ct))
+                          .Returns(Task.CompletedTask);
+
+        SyncRequestRunner sut = new SyncRequestRunner(syncRunCoordinator.Object,
+                                                      syncRequestRepository.Object,
+                                                      syncExecutionDispatcher.Object);
+
+        SyncExecutionResult result = await sut.ExecuteJoinableAsync(requestId, ct);
+
+        Assert.False(result.CompletedWithRecoveryItems);
+
+        syncRunCoordinator.Verify(x => x.StartNewRunAsync(It.IsAny<long>(), It.IsAny<CancellationToken>()),
+                                  Times.Never);
+        syncRequestRepository.VerifyAll();
+        syncRunCoordinator.VerifyAll();
+        syncExecutionDispatcher.VerifyAll();
+    }
+
+    [Fact]
+    public async Task ExecuteJoinableAsync_DispatchThrowsException_DoesNotMarkFailedAndRethrows()
+    {
+        const long requestId = 700L;
+        const long runId = 70L;
+        CancellationToken ct = CancellationToken.None;
+
+        SyncRequestDto request = BuildRequest(requestId);
+        InvalidOperationException expected = new InvalidOperationException("shared run participant failed");
+
+        Mock<ISyncRunCoordinator> syncRunCoordinator = new Mock<ISyncRunCoordinator>(MockBehavior.Strict);
+        Mock<ISyncRequestRepository> syncRequestRepository = new Mock<ISyncRequestRepository>(MockBehavior.Strict);
+        Mock<ISyncExecutionDispatcher> syncExecutionDispatcher =
+                new Mock<ISyncExecutionDispatcher>(MockBehavior.Strict);
+
+        syncRequestRepository.Setup(x => x.GetByIdAsync(requestId, ct))
+                             .ReturnsAsync(request);
+
+        syncRunCoordinator.Setup(x => x.StartOrJoinActiveRunAsync(requestId, ct))
+                          .ReturnsAsync(runId);
+
+        syncRunCoordinator.Setup(x => x.IsCurrentRunAsync(runId, ct))
+                          .ReturnsAsync(true);
+
+        syncExecutionDispatcher.Setup(x => x.ExecuteAsync(runId,
+                                                          request.Category,
+                                                          request.Mode,
+                                                          request.Interval,
+                                                          request.PageNumber,
+                                                          request.GenesysJobId,
+                                                          ct))
+                               .ThrowsAsync(expected);
+
+        SyncRequestRunner sut = new SyncRequestRunner(syncRunCoordinator.Object,
+                                                      syncRequestRepository.Object,
+                                                      syncExecutionDispatcher.Object);
+
+        InvalidOperationException actual =
+                await Assert.ThrowsAsync<InvalidOperationException>(() => sut.ExecuteJoinableAsync(requestId, ct));
+
+        Assert.Same(expected, actual);
+
+        syncRunCoordinator.Verify(x => x.MarkFailedAsync(It.IsAny<long>(),
+                                                         It.IsAny<string>(),
+                                                         It.IsAny<CancellationToken>()),
+                                  Times.Never);
+        syncRunCoordinator.Verify(x => x.MarkCanceledAsync(It.IsAny<long>(),
+                                                           It.IsAny<string?>(),
+                                                           It.IsAny<CancellationToken>()),
+                                  Times.Never);
+        syncRequestRepository.VerifyAll();
+        syncRunCoordinator.VerifyAll();
+        syncExecutionDispatcher.VerifyAll();
+    }
+
+    [Fact]
+    public async Task ExecuteJoinableAsync_CallerCancellation_DoesNotMarkCanceledAndRethrows()
+    {
+        const long requestId = 800L;
+        const long runId = 80L;
+
+        using CancellationTokenSource cts = new CancellationTokenSource();
+        await cts.CancelAsync();
+        CancellationToken callerCt = cts.Token;
+
+        SyncRequestDto request = BuildRequest(requestId);
+        OperationCanceledException expected = new OperationCanceledException("joinable participant canceled");
+
+        Mock<ISyncRunCoordinator> syncRunCoordinator = new Mock<ISyncRunCoordinator>(MockBehavior.Strict);
+        Mock<ISyncRequestRepository> syncRequestRepository = new Mock<ISyncRequestRepository>(MockBehavior.Strict);
+        Mock<ISyncExecutionDispatcher> syncExecutionDispatcher =
+                new Mock<ISyncExecutionDispatcher>(MockBehavior.Strict);
+
+        syncRequestRepository.Setup(x => x.GetByIdAsync(requestId, callerCt))
+                             .ReturnsAsync(request);
+
+        syncRunCoordinator.Setup(x => x.StartOrJoinActiveRunAsync(requestId, callerCt))
+                          .ReturnsAsync(runId);
+
+        syncRunCoordinator.Setup(x => x.IsCurrentRunAsync(runId, callerCt))
+                          .ReturnsAsync(true);
+
+        syncExecutionDispatcher.Setup(x => x.ExecuteAsync(runId,
+                                                          request.Category,
+                                                          request.Mode,
+                                                          request.Interval,
+                                                          request.PageNumber,
+                                                          request.GenesysJobId,
+                                                          callerCt))
+                               .ThrowsAsync(expected);
+
+        SyncRequestRunner sut = new SyncRequestRunner(syncRunCoordinator.Object,
+                                                      syncRequestRepository.Object,
+                                                      syncExecutionDispatcher.Object);
+
+        OperationCanceledException actual =
+                await Assert.ThrowsAsync<OperationCanceledException>(() =>
+                                                                             sut.ExecuteJoinableAsync(requestId,
+                                                                                 callerCt));
+
+        Assert.Same(expected, actual);
+
+        syncRunCoordinator.Verify(x => x.MarkCanceledAsync(It.IsAny<long>(),
+                                                           It.IsAny<string?>(),
+                                                           It.IsAny<CancellationToken>()),
+                                  Times.Never);
+        syncRunCoordinator.Verify(x => x.MarkFailedAsync(It.IsAny<long>(),
+                                                         It.IsAny<string>(),
+                                                         It.IsAny<CancellationToken>()),
+                                  Times.Never);
+        syncRequestRepository.VerifyAll();
+        syncRunCoordinator.VerifyAll();
+        syncExecutionDispatcher.VerifyAll();
+    }
+
+    #endregion
 
     #region ========== *** Private Section *** ==========
 

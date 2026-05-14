@@ -5,8 +5,9 @@ using Application.Mediator;
 namespace Application.Features.SyncTracking.Analytics;
 
 /// <summary>
-/// Command to run a recovery sync for a single request scope.
+/// Command to run a recovery sync for a single claimed request scope.
 /// </summary>
+/// <param name="RequestId">Internal id of the already-claimed recovery sync request.</param>
 /// <param name="Category">Recovery target category.</param>
 /// <param name="Interval">
 /// Optional interval selector for interval-based recovery.
@@ -20,7 +21,8 @@ namespace Application.Features.SyncTracking.Analytics;
 /// Supported only for <see cref="SyncAnalyticsCategory.ConversationsDetails"/>.
 /// Must not be provided together with <paramref name="Interval"/>.
 /// </param>
-public sealed record RunAnalyticsRecoverySyncCommand(SyncAnalyticsCategory Category,
+public sealed record RunAnalyticsRecoverySyncCommand(long RequestId,
+                                                     SyncAnalyticsCategory Category,
                                                      string? Interval,
                                                      int? PageNumber,
                                                      string? GenesysJobId) : IRequest<long>;

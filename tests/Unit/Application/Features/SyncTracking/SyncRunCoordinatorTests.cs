@@ -29,6 +29,24 @@ public sealed class SyncRunCoordinatorTests
     }
 
     [Fact]
+    public async Task StartOrJoinActiveRunAsync_DelegatesToRepository()
+    {
+        const long requestId = 12L;
+        const long expectedRunId = 89L;
+
+        Mock<ISyncRunRepository> syncRunRepository = new Mock<ISyncRunRepository>(MockBehavior.Strict);
+        syncRunRepository.Setup(x => x.StartOrJoinActiveRunAsync(requestId, CancellationToken.None))
+                         .ReturnsAsync(expectedRunId);
+
+        SyncRunCoordinator sut = new SyncRunCoordinator(syncRunRepository.Object);
+
+        long actualRunId = await sut.StartOrJoinActiveRunAsync(requestId, CancellationToken.None);
+
+        Assert.Equal(expectedRunId, actualRunId);
+        syncRunRepository.Verify(x => x.StartOrJoinActiveRunAsync(requestId, CancellationToken.None), Times.Once);
+    }
+
+    [Fact]
     public async Task IsCurrentRunAsync_DelegatesToRepository()
     {
         const long runId = 22L;
@@ -59,6 +77,22 @@ public sealed class SyncRunCoordinatorTests
         await sut.MarkCompletedAsync(runId, CancellationToken.None);
 
         syncRunRepository.Verify(x => x.MarkCompletedAsync(runId, CancellationToken.None), Times.Once);
+    }
+
+    [Fact]
+    public async Task MarkCompletedWithRecoveryItemsAsync_DelegatesToRepository()
+    {
+        const long runId = 34L;
+
+        Mock<ISyncRunRepository> syncRunRepository = new Mock<ISyncRunRepository>(MockBehavior.Strict);
+        syncRunRepository.Setup(x => x.MarkCompletedWithRecoveryItemsAsync(runId, CancellationToken.None))
+                         .Returns(Task.CompletedTask);
+
+        SyncRunCoordinator sut = new SyncRunCoordinator(syncRunRepository.Object);
+
+        await sut.MarkCompletedWithRecoveryItemsAsync(runId, CancellationToken.None);
+
+        syncRunRepository.Verify(x => x.MarkCompletedWithRecoveryItemsAsync(runId, CancellationToken.None), Times.Once);
     }
 
     [Fact]

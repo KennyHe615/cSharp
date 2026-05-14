@@ -16,6 +16,12 @@ public sealed class SyncRunCoordinator(ISyncRunRepository syncRunRepository) : I
     }
 
     /// <inheritdoc />
+    public Task<long> StartOrJoinActiveRunAsync(long requestId, CancellationToken ct)
+    {
+        return syncRunRepository.StartOrJoinActiveRunAsync(requestId, ct);
+    }
+
+    /// <inheritdoc />
     public Task<bool> IsCurrentRunAsync(long runId, CancellationToken ct)
     {
         return syncRunRepository.IsCurrentRunAsync(runId, ct);
