@@ -1,5 +1,5 @@
-using Application.Abstractions.Persistence;
-using Application.Features.SyncTracking.Shared;
+using Application.Abstractions.Persistence.SyncTracking;
+using Application.Features.SyncTracking;
 
 using Moq;
 

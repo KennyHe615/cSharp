@@ -34,7 +34,6 @@
 
     <ItemGroup>
         <ProjectReference Include="..\Core\Application\Application.csproj"/>
-        <ProjectReference Include="..\Core\Domain\Domain.csproj"/>
         <ProjectReference Include="..\SharedKernel\SharedKernel.csproj"/>
     </ItemGroup>
 
@@ -46,7 +45,6 @@
 
     <ItemGroup>
         <Folder Include="ExternalApis\Providers\Genesys\Modules\"/>
-        <Folder Include="Observability\Telemetry\"/>
         <Folder Include="Persistence\Migrations\"/>
         <Folder Include="Storage\Tables\"/>
     </ItemGroup>

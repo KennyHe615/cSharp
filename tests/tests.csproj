@@ -30,4 +30,13 @@
         <ProjectReference Include="..\src\Infrastructure\Infrastructure.csproj"/>
     </ItemGroup>
 
+    <ItemGroup>
+        <Folder Include="Integration\Hosts\"/>
+        <Folder Include="Integration\Infrastructure\Configurations\Recovery\"/>
+        <Folder Include="Integration\Infrastructure\Configurations\SyncTracking\"/>
+        <Folder Include="Integration\Persistence\"/>
+        <Folder Include="Unit\Hosts\"/>
+        <Folder Include="Unit\Infrastructure\ExternalApis\Shared\"/>
+    </ItemGroup>
+
 </Project>

@@ -3,7 +3,7 @@ using System.Diagnostics.CodeAnalysis;
 using Application.Abstractions.Planning;
 using Application.DTOs.Planning;
 using Application.Enums;
-using Application.Features.Analytics.Planning;
+using Application.Features.Shared;
 
 using Infrastructure.ExternalApis.Providers.Genesys.Configuration;
 using Infrastructure.ExternalApis.Providers.Genesys.Modules.Analytics.Planning;

@@ -1,7 +1,7 @@
 using Application.Abstractions.Context;
 using Application.Abstractions.Identity;
 using Application.Enums;
-using Application.Features.SyncTracking.Analytics;
+using Application.Features.Analytics.UsersDetails;
 using Application.Mediator;
 
 using SharedKernel.Lobs;

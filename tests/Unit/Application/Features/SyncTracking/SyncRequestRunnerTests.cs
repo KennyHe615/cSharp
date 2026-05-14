@@ -1,8 +1,8 @@
-using Application.Abstractions.Orchestration;
-using Application.Abstractions.Persistence;
+using Application.Abstractions.Orchestration.Sync;
+using Application.Abstractions.Persistence.SyncTracking;
 using Application.DTOs.SyncTracking;
 using Application.Enums;
-using Application.Features.SyncTracking.Shared;
+using Application.Features.SyncTracking;
 
 using Moq;
 

@@ -1,9 +1,13 @@
 using Application.Abstractions.Normalization;
 using Application.Abstractions.Orchestration;
+using Application.Abstractions.Orchestration.Analytics;
+using Application.Abstractions.Orchestration.References;
+using Application.Abstractions.Orchestration.Sync;
 using Application.Behaviors;
-using Application.Features.SyncTracking.Analytics;
-using Application.Features.SyncTracking.References;
-using Application.Features.SyncTracking.Shared;
+using Application.Features.Analytics.Shared;
+using Application.Features.Analytics.UsersDetails;
+using Application.Features.References;
+using Application.Features.SyncTracking;
 using Application.Mediator;
 using Application.Normalizers.Genesys;
 

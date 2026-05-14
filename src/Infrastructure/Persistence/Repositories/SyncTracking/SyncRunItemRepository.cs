@@ -1,6 +1,7 @@
 using System.Linq.Expressions;
 
 using Application.Abstractions.Persistence;
+using Application.Abstractions.Persistence.SyncTracking;
 using Application.DTOs.SyncTracking;
 using Application.Enums;
 

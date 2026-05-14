@@ -3,7 +3,7 @@ using System.Diagnostics;
 using Application.Abstractions.Context;
 using Application.Abstractions.Identity;
 using Application.Enums;
-using Application.Features.SyncTracking.References;
+using Application.Features.References;
 using Application.Mediator;
 
 using Microsoft.Azure.Functions.Worker;
@@ -49,7 +49,7 @@ public sealed class ReferencesTimerRunner(ISimpleMediator mediator,
                                 .ConfigureAwait(false);
 
         int executed = await ExecuteCategoriesAsync(lob, categories, ct)
-           .ConfigureAwait(false);
+                              .ConfigureAwait(false);
 
         overall.Stop();
         logger.LogInformation(LobLogTemplates.LobCategory
@@ -63,6 +63,7 @@ public sealed class ReferencesTimerRunner(ISimpleMediator mediator,
     }
 
     #region ========== *** Private Section *** ==========
+
     /// <summary>
     /// Executes references full-sync category commands sequentially for the given LOB.
     /// Logs per-category start/completion, and skips categories that are not wired yet.
@@ -117,5 +118,6 @@ public sealed class ReferencesTimerRunner(ISimpleMediator mediator,
 
         return executed;
     }
+
     #endregion
 }

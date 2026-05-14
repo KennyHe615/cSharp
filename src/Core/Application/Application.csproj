@@ -14,14 +14,11 @@
     </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\Domain\Domain.csproj"/>
         <ProjectReference Include="..\..\SharedKernel\SharedKernel.csproj"/>
     </ItemGroup>
 
     <ItemGroup>
         <Folder Include="Contracts\InternalApis\"/>
-        <Folder Include="Features\Analytics\UsersDetails\"/>
-        <Folder Include="Validation\"/>
     </ItemGroup>
 
 </Project>
